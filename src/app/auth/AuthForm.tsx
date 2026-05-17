@@ -138,7 +138,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
               minLength={3}
               maxLength={24}
               className="mt-2 w-full rounded-md border border-white/10 bg-black/20 px-4 py-3 text-white outline-none transition placeholder:text-white/35 focus:border-[#ffd166]"
-              placeholder="curieux42"
+              placeholder="LeSavantFou06"
             />
             <span className="mt-2 block text-xs leading-5 text-white/45">
               Il sera normalise en{" "}
@@ -163,7 +163,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
             autoComplete="email"
             required
             className="mt-2 w-full rounded-md border border-white/10 bg-black/20 px-4 py-3 text-white outline-none transition placeholder:text-white/35 focus:border-[#ffd166]"
-            placeholder="toi@exemple.fr"
+            placeholder="mail@exemple.fr"
           />
           <FieldError message={fieldErrors.email} />
         </label>
