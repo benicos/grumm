@@ -1,64 +1,122 @@
-import Image from "next/image";
+import type { Metadata } from "next";
+import { Inter } from "next/font/google";
+import Link from "next/link";
+import HeroBackground from "./components/HeroBackground";
+import Navbar from "./components/Navbar";
 
-export default function Home() {
+export const metadata: Metadata = {
+  title: {
+    absolute: "Velora",
+  },
+};
+
+const inter = Inter({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800"],
+});
+
+export default function VeloraLanding() {
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
+    <div
+      className={`${inter.className} relative min-h-screen overflow-x-hidden bg-[#050b13] text-white`}
+    >
+      <HeroBackground />
+      <Navbar />
+
+      <main className="relative z-10">
+        <section className="flex min-h-[92vh] items-center px-3 lg:px-5">
+          <div className="mx-auto w-full max-w-[1180px]">
+            <div className="inline-flex w-fit items-center rounded-full px-3 py-1 text-sm/6 text-[#ffd166] ring-1 ring-white/10 hover:ring-white/20">
+              Scroll. Learn. Grow.
+            </div>
+            <h1 className="mt-8 text-[clamp(3.2rem,7vw,5.9rem)] font-semibold leading-[0.95] tracking-[-0.06em] text-white">
+              La culture qui se <span className="text-[#ffd166]">scrolle</span>.
+            </h1>
+
+            <p className="mt-8 max-w-[620px] text-lg font-medium leading-8 text-gray-400">
+              VELORA transforme la curiosité en réflexe. Une plateforme pensée
+              pour apprendre vite, retenir facilement et découvrir des faits
+              que vous aurez réellement envie de raconter.
+            </p>
+
+            <div className="mt-10 flex flex-wrap items-center gap-6">
+              <Link
+                href="/discover"
+                className="rounded-[14px] bg-gradient-to-br from-[#ffd166] to-[#ffb347] px-[18px] py-3 font-bold text-[#09111d] transition hover:-translate-y-[2px]"
+              >
+                Découvrir
+              </Link>
+            </div>
+          </div>
+        </section>
+
+        <section className="py-[110px]">
+          <div className="mx-auto max-w-[1180px] px-5">
+            <div className="mb-[52px]">
+              <span className="mb-[14px] inline-block text-[0.82rem] font-bold uppercase tracking-[0.08em] text-[#ffd166]">
+                Le concept
+              </span>
+
+              <h2 className="mb-[18px] text-[clamp(2rem,5vw,4rem)] font-bold leading-none tracking-[-0.05em]">
+                Une plateforme pensée pour la curiosité moderne.
+              </h2>
+
+              <p className="max-w-[720px] text-[#94a6c7]">
+                Le genre de choses qu&apos;on aime raconter ensuite.
+              </p>
+            </div>
+
+            <div className="grid gap-6 md:grid-cols-3">
+              {[
+                {
+                  icon: "01",
+                  title: "Découvrir",
+                  text: "Un flux de découvertes courtes et surprenantes. Une idée à la fois, sans distraction.",
+                  href: "/discover",
+                  alt: "Découvrir",
+                },
+                {
+                  icon: "02",
+                  title: "Explorer",
+                  text: "Science, histoire, psychologie, espace, nature... Explorez les sujets qui vous intéressent vraiment.",
+                  href: "/explorer",
+                  alt: "Explorer",
+                },
+                {
+                  icon: "03",
+                  title: "Aller plus loin",
+                  text: "Certaines découvertes méritent plus qu'un swipe. Approfondissez avec des contenus plus immersifs.",
+                  href: "/#",
+                  alt: "En savoir plus",
+                },
+              ].map((card) => (
+                <div
+                  key={card.title}
+                  className="rounded-[26px] border border-white/[0.08] bg-[rgba(17,27,44,0.82)] p-7 backdrop-blur-xl transition hover:-translate-y-[6px] hover:border-[rgba(255,209,102,0.24)]"
+                >
+                  <div className="mb-6 grid h-[54px] w-[54px] place-items-center rounded-[18px] bg-white/[0.06] text-[0.9rem] font-black text-[#ffd166]">
+                    {card.icon}
+                  </div>
+
+                  <h3 className="mb-3 text-[1.4rem] font-semibold tracking-[-0.03em]">
+                    {card.title}
+                  </h3>
+
+                  <p className="mb-6 leading-relaxed text-[#94a6c7]">
+                    {card.text}
+                  </p>
+
+                  <Link
+                    href={card.href}
+                    className="font-semibold text-[#ffd166]"
+                  >
+                    {card.alt} -&gt;
+                  </Link>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
       </main>
     </div>
   );
