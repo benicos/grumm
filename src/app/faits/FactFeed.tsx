@@ -17,6 +17,9 @@ import {
 } from "@/lib/facts";
 import type { CategorySummary, FeedFact } from "@/lib/facts";
 import { rememberAuthRedirect } from "@/lib/authRedirect";
+import { getGoalCelebrationMessage } from "@/lib/badges";
+import { logAppError } from "@/lib/errors";
+import { getToneBackground } from "@/lib/gradients";
 import { useAuth } from "../auth/AuthProvider";
 import { AppState, FeedSkeleton } from "../components/AppState";
 import Navbar from "../components/Navbar";
@@ -182,6 +185,8 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
     count: 0,
     goal: profile?.daily_goal ?? DEFAULT_DAILY_GOAL,
   });
+  const [goalCelebrationMessage, setGoalCelebrationMessage] =
+    useState("Premier pas.");
   const [showGoalAnimation, setShowGoalAnimation] = useState(false);
   const touchStartY = useRef<number | null>(null);
   const dragOffsetRef = useRef(0);
@@ -372,7 +377,10 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
           setSaved(actions.saved);
         }
       } catch (error) {
-        console.warn("User fact actions unavailable", error);
+        logAppError(error, {
+          operation: "load user fact actions",
+          source: "Supabase",
+        });
       }
     }
 
@@ -413,7 +421,10 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
           }));
         }
       } catch (error) {
-        console.warn("Daily progress unavailable", error);
+        logAppError(error, {
+          operation: "load daily progress",
+          source: "Supabase",
+        });
       }
     }
 
@@ -449,8 +460,11 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
 
         if (result.completedToday && !goalAnimationShownRef.current) {
           goalAnimationShownRef.current = true;
+          setGoalCelebrationMessage(
+            getGoalCelebrationMessage(result.completedDailyGoals),
+          );
           setShowGoalAnimation(true);
-          window.setTimeout(() => setShowGoalAnimation(false), 2400);
+          window.setTimeout(() => setShowGoalAnimation(false), 1700);
         }
       })
       .catch(() => undefined);
@@ -589,18 +603,20 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
           const translate = offset * 100 + (isDragging ? dragOffset / 7 : 0);
           const isActive = offset === 0;
           const depth = Math.abs(offset);
+          const toneBackground = getToneBackground(fact.tone);
 
           return (
             <article
               key={`${fact.id}-${step}`}
               aria-hidden={!isActive}
               data-active={isActive}
-              className={`absolute inset-0 grid place-items-center bg-gradient-to-br ${fact.tone} px-5 transition-[transform,opacity,filter] duration-[1050ms] ease-[cubic-bezier(0.19,1,0.22,1)] will-change-transform sm:px-8 ${
+              className={`absolute inset-0 grid place-items-center ${toneBackground.className} px-5 transition-[transform,opacity,filter] duration-[1050ms] ease-[cubic-bezier(0.19,1,0.22,1)] will-change-transform sm:px-8 ${
                 isActive
                   ? "pointer-events-auto opacity-100 blur-0"
                   : "pointer-events-none opacity-65 blur-[0.5px]"
               }`}
               style={{
+                ...toneBackground.style,
                 transform: `translateY(${translate}%) scale(${
                   isActive
                     ? 1 - Math.abs(dragOffset) / 3200
@@ -830,7 +846,7 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
       </section>
 
       {showGoalAnimation && (
-        <div className="pointer-events-none fixed inset-0 z-50 grid place-items-center overflow-hidden bg-black/35 backdrop-blur-[3px]">
+        <div className="pointer-events-none fixed inset-0 z-50 grid place-items-center overflow-hidden bg-black/20 backdrop-blur-[2px]">
           {confettiPieces.map((piece, index) => (
             <span
               key={`${piece.left}-${piece.top}`}
@@ -859,24 +875,29 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
             />
           ))}
 
-          <div className="relative w-[min(420px,calc(100vw-40px))] overflow-hidden rounded-[28px] border border-white/15 bg-[#07111f]/82 p-7 text-center shadow-[0_0_100px_rgba(255,209,102,0.28)]">
+          <div className="relative w-[min(310px,calc(100vw-40px))] overflow-hidden rounded-[24px] border border-white/15 bg-[#07111f]/86 p-6 text-center shadow-[0_0_90px_rgba(255,209,102,0.22)]">
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(255,209,102,0.22),transparent_42%)]" />
-            <div className="absolute left-1/2 top-0 h-28 w-28 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#ffd166]/30 blur-2xl" />
+            <div className="absolute left-1/2 top-0 h-24 w-24 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#ffd166]/30 blur-2xl" />
             <div className="relative">
-              <div className="mx-auto mb-5 grid h-16 w-16 place-items-center rounded-full bg-[#ffd166] text-2xl font-black text-[#07111f] shadow-[0_16px_50px_rgba(255,209,102,0.34)]">
-                OK
+              <div className="mx-auto mb-5 grid h-16 w-16 place-items-center rounded-full bg-[#ffd166] text-[#07111f] shadow-[0_16px_50px_rgba(255,209,102,0.34)] goal-pop">
+                <svg viewBox="0 0 24 24" aria-hidden="true" className="h-8 w-8">
+                  <path
+                    d="m5 12.4 4.1 4.1L19 6.8"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2.6"
+                  />
+                </svg>
               </div>
               <p className="text-sm font-bold uppercase tracking-[0.24em] text-[#ffd166]">
-                Objectif du jour valide
+                Objectif atteint
               </p>
-              <h2 className="mt-4 text-3xl font-extrabold leading-tight tracking-[-0.04em] text-white sm:text-4xl">
-                Tu as atteint ton objectif de lecture aujourd&apos;hui.
+              <h2 className="mt-4 text-3xl font-extrabold leading-tight tracking-[-0.04em] text-white">
+                {goalCelebrationMessage}
               </h2>
-              <p className="mx-auto mt-4 max-w-[300px] text-sm leading-6 text-white/68">
-                Cette journee ne sera comptee qu&apos;une seule fois, meme apres
-                reload.
-              </p>
-              <div className="mt-6 h-2 overflow-hidden rounded-full bg-white/10">
+              <div className="mt-6 h-1.5 overflow-hidden rounded-full bg-white/10">
                 <div className="h-full w-full rounded-full bg-gradient-to-r from-[#ffd166] to-[#6ae3c0] goal-fill" />
               </div>
             </div>
@@ -929,12 +950,31 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
           animation: goalFill 1.1s cubic-bezier(0.16, 1, 0.3, 1) both;
         }
 
+        .goal-pop {
+          animation: goalPop 0.55s cubic-bezier(0.16, 1, 0.3, 1) both;
+        }
+
         @keyframes goalFill {
           from {
             transform: translateX(-100%);
           }
           to {
             transform: translateX(0);
+          }
+        }
+
+        @keyframes goalPop {
+          0% {
+            opacity: 0;
+            transform: scale(0.72);
+          }
+          70% {
+            opacity: 1;
+            transform: scale(1.08);
+          }
+          100% {
+            opacity: 1;
+            transform: scale(1);
           }
         }
       `}</style>

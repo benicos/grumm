@@ -1,4 +1,5 @@
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { formatAppError, logAppError } from "@/lib/errors";
 import { slugify } from "@/lib/slug";
 
 export const DEFAULT_DAILY_GOAL = 10;
@@ -32,6 +33,7 @@ export type DailyProgressResult = {
   dailyGoal: number;
   goalCompleted: boolean;
   completedToday: boolean;
+  completedDailyGoals: number;
   uniqueViewCreated: boolean;
   reason?: "auth_required" | "unavailable";
 };
@@ -78,6 +80,7 @@ type RawDailyProgressRow = {
   daily_goal: number;
   goal_completed: boolean;
   completed_today?: boolean;
+  completed_goals_count?: number;
   unique_view_created?: boolean;
 };
 
@@ -124,38 +127,28 @@ function mapCategory(category: FactCategory): CategorySummary {
   };
 }
 
-function getSupabaseDataErrorMessage(error: unknown) {
-  if (error && typeof error === "object" && "message" in error) {
-    const message = String(error.message);
-    const normalizedMessage = message.toLowerCase();
+function getSupabaseDataErrorMessage(
+  error: unknown,
+  context?: {
+    operation?: string;
+    table?: string;
+  },
+) {
+  const prodMessage =
+    context?.operation?.includes("action") ||
+    context?.operation?.includes("like") ||
+    context?.operation?.includes("save")
+      ? "Cette action n'a pas pu être effectuée."
+      : "Impossible de charger ce contenu pour le moment.";
 
-    if (normalizedMessage.includes("failed to fetch")) {
-      return "Connexion a Supabase impossible. Verifie la connexion ou les variables d'environnement.";
-    }
-
-    if (
-      normalizedMessage.includes("permission denied") ||
-      normalizedMessage.includes("row-level security") ||
-      normalizedMessage.includes("403")
-    ) {
-      return "Lecture refusee par Supabase. Verifie les policies RLS associees.";
-    }
-
-    if (
-      normalizedMessage.includes("relationship") ||
-      normalizedMessage.includes("foreign key")
-    ) {
-      return "Relation facts/categories introuvable. Verifie le schema SQL Supabase.";
-    }
-
-    if (normalizedMessage.includes("slug")) {
-      return "La colonne slug manque encore dans Supabase. Applique la migration fournie.";
-    }
-
-    return message;
-  }
-
-  return "Les donnees sont indisponibles pour le moment.";
+  return formatAppError(error, {
+    context: {
+      operation: context?.operation,
+      source: "Supabase",
+      table: context?.table,
+    },
+    prodMessage,
+  });
 }
 
 function uniqueFactsById(facts: FeedFact[]) {
@@ -193,8 +186,31 @@ function emptyDailyProgress(
     dailyGoal: getBoundedDailyGoal(dailyGoal),
     goalCompleted: false,
     completedToday: false,
+    completedDailyGoals: 0,
     uniqueViewCreated: false,
   };
+}
+
+async function getCompletedDailyGoalsCount(
+  supabase: NonNullable<ReturnType<typeof createSupabaseBrowserClient>>,
+  userId: string,
+) {
+  const { count, error } = await supabase
+    .from("user_daily_progress")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", userId)
+    .eq("goal_completed", true);
+
+  if (error) {
+    throw new FeedError(
+      getSupabaseDataErrorMessage(error, {
+        operation: "count completed daily goals",
+        table: "user_daily_progress",
+      }),
+    );
+  }
+
+  return count ?? 0;
 }
 
 export async function getCurrentUserId() {
@@ -237,7 +253,12 @@ export async function getFeedFacts(options?: { themeSlug?: string }) {
       .maybeSingle();
 
     if (categoryError) {
-      throw new FeedError(getSupabaseDataErrorMessage(categoryError));
+      throw new FeedError(
+        getSupabaseDataErrorMessage(categoryError, {
+          operation: "read theme",
+          table: "categories",
+        }),
+      );
     }
 
     if (!categoryData) {
@@ -261,7 +282,12 @@ export async function getFeedFacts(options?: { themeSlug?: string }) {
     .order("published_at", { ascending: false });
 
   if (error) {
-    throw new FeedError(getSupabaseDataErrorMessage(error));
+    throw new FeedError(
+      getSupabaseDataErrorMessage(error, {
+        operation: "read discover facts",
+        table: "facts",
+      }),
+    );
   }
 
   return {
@@ -271,8 +297,13 @@ export async function getFeedFacts(options?: { themeSlug?: string }) {
   };
 }
 
-export async function getExplorerData() {
+function normalizeSearchTerm(query?: string) {
+  return query?.trim().replace(/[%,_]/g, " ").replace(/\s+/g, " ") ?? "";
+}
+
+export async function getExplorerData(options?: { query?: string }) {
   const supabase = createSupabaseBrowserClient();
+  const searchTerm = normalizeSearchTerm(options?.query);
 
   if (!supabase) {
     return {
@@ -282,27 +313,82 @@ export async function getExplorerData() {
     };
   }
 
-  const [categoriesResult, factsResult] = await Promise.all([
-    supabase
-      .from("categories")
-      .select("id,name,slug,tone,accent_color")
-      .order("name", { ascending: true }),
-    supabase
-      .from("facts")
-      .select(FACT_SELECT)
-      .eq("status", "published")
-      .order("published_at", { ascending: false }),
-  ]);
+  const categoriesQuery = supabase
+    .from("categories")
+    .select("id,name,slug,tone,accent_color")
+    .order("name", { ascending: true });
+
+  const categoriesResult = searchTerm
+    ? await categoriesQuery.or(`name.ilike.%${searchTerm}%,slug.ilike.%${searchTerm}%`)
+    : await categoriesQuery.limit(18);
 
   if (categoriesResult.error) {
-    throw new FeedError(getSupabaseDataErrorMessage(categoriesResult.error));
+    throw new FeedError(
+      getSupabaseDataErrorMessage(categoriesResult.error, {
+        operation: "read explorer themes",
+        table: "categories",
+      }),
+    );
   }
+
+  const matchingCategories = (categoriesResult.data ?? []) as FactCategory[];
+  const matchingCategoryIds = matchingCategories.map((category) => category.id);
+
+  const directFactsQuery = supabase
+    .from("facts")
+    .select(FACT_SELECT)
+    .eq("status", "published")
+    .order("published_at", { ascending: false })
+    .limit(searchTerm ? 30 : 24);
+
+  const factsResult = searchTerm
+    ? await directFactsQuery.or(
+        `title.ilike.%${searchTerm}%,hook.ilike.%${searchTerm}%,content.ilike.%${searchTerm}%,source.ilike.%${searchTerm}%`,
+      )
+    : await directFactsQuery;
+
+  const categoryFactsResult =
+    searchTerm && matchingCategoryIds.length > 0
+      ? await supabase
+          .from("facts")
+          .select(FACT_SELECT)
+          .eq("status", "published")
+          .in("category_id", matchingCategoryIds)
+          .order("published_at", { ascending: false })
+          .limit(30)
+      : null;
 
   if (factsResult.error) {
-    throw new FeedError(getSupabaseDataErrorMessage(factsResult.error));
+    throw new FeedError(
+      getSupabaseDataErrorMessage(factsResult.error, {
+        operation: "search explorer facts",
+        table: "facts",
+      }),
+    );
   }
 
-  const facts = uniqueFactsById(((factsResult.data ?? []) as FactRow[]).map(mapFact));
+  if (categoryFactsResult?.error) {
+    throw new FeedError(
+      getSupabaseDataErrorMessage(categoryFactsResult.error, {
+        operation: "search explorer facts by theme",
+        table: "facts",
+      }),
+    );
+  }
+
+  const categoriesForCounts = searchTerm
+    ? matchingCategories
+    : ((await supabase
+      .from("categories")
+      .select("id,name,slug,tone,accent_color")
+      .order("name", { ascending: true })
+      .limit(18)).data ?? []) as FactCategory[];
+  const facts = uniqueFactsById(
+    [
+      ...(((factsResult.data ?? []) as FactRow[]).map(mapFact)),
+      ...(((categoryFactsResult?.data ?? []) as FactRow[]).map(mapFact)),
+    ],
+  );
   const counts = new Map<string, number>();
 
   for (const fact of facts) {
@@ -310,12 +396,10 @@ export async function getExplorerData() {
   }
 
   return {
-    categories: ((categoriesResult.data ?? []) as FactCategory[]).map(
-      (category) => ({
+    categories: categoriesForCounts.map((category) => ({
         ...mapCategory(category),
         count: counts.get(category.slug) ?? 0,
-      }),
-    ),
+      })),
     facts,
     source: "supabase" as const,
   };
@@ -336,7 +420,12 @@ export async function getFactBySlug(slug: string) {
     .maybeSingle();
 
   if (error) {
-    throw new FeedError(getSupabaseDataErrorMessage(error));
+    throw new FeedError(
+      getSupabaseDataErrorMessage(error, {
+        operation: "read fact by slug",
+        table: "facts",
+      }),
+    );
   }
 
   return data ? mapFact(data as FactRow) : null;
@@ -350,27 +439,41 @@ export async function getTodayDailyProgress(dailyGoal = DEFAULT_DAILY_GOAL) {
     return { ...emptyDailyProgress(boundedGoal), ok: false, reason: "auth_required" as const };
   }
 
-  const { data, error } = await supabase
-    .from("user_daily_progress")
-    .select("progress_date,viewed_fact_ids,facts_read_count,daily_goal,goal_completed,completed_at")
-    .eq("user_id", userId)
-    .eq("progress_date", todayKey())
-    .maybeSingle();
+  const [progressResult, completedGoals] = await Promise.all([
+    supabase
+      .from("user_daily_progress")
+      .select("progress_date,viewed_fact_ids,facts_read_count,daily_goal,goal_completed,completed_at")
+      .eq("user_id", userId)
+      .eq("progress_date", todayKey())
+      .maybeSingle(),
+    getCompletedDailyGoalsCount(supabase, userId),
+  ]);
+
+  const { data, error } = progressResult;
 
   if (error) {
-    throw new FeedError(getSupabaseDataErrorMessage(error));
+    throw new FeedError(
+      getSupabaseDataErrorMessage(error, {
+        operation: "read daily progress",
+        table: "user_daily_progress",
+      }),
+    );
   }
 
   if (!data) {
-    return emptyDailyProgress(boundedGoal);
+    return {
+      ...emptyDailyProgress(boundedGoal),
+      completedDailyGoals: completedGoals,
+    };
   }
 
   return {
     ok: true,
     viewedTodayCount: data.facts_read_count,
-    dailyGoal: data.daily_goal,
-    goalCompleted: data.goal_completed,
+    dailyGoal: boundedGoal,
+    goalCompleted: data.goal_completed || data.facts_read_count >= boundedGoal,
     completedToday: false,
+    completedDailyGoals: completedGoals,
     uniqueViewCreated: false,
   };
 }
@@ -398,7 +501,10 @@ export async function getUserFactActions(factIds: string[]) {
 
   if (likesResult.error || savesResult.error) {
     throw new FeedError(
-      getSupabaseDataErrorMessage(likesResult.error ?? savesResult.error),
+      getSupabaseDataErrorMessage(likesResult.error ?? savesResult.error, {
+        operation: "read user fact actions",
+        table: likesResult.error ? "likes" : "saves",
+      }),
     );
   }
 
@@ -423,7 +529,12 @@ export async function likeFact(factId: string) {
     );
 
   if (error) {
-    throw new FeedError(getSupabaseDataErrorMessage(error));
+    throw new FeedError(
+      getSupabaseDataErrorMessage(error, {
+        operation: "like action",
+        table: "likes",
+      }),
+    );
   }
 
   return { ok: true };
@@ -443,7 +554,12 @@ export async function unlikeFact(factId: string) {
     .eq("user_id", userId);
 
   if (error) {
-    throw new FeedError(getSupabaseDataErrorMessage(error));
+    throw new FeedError(
+      getSupabaseDataErrorMessage(error, {
+        operation: "unlike action",
+        table: "likes",
+      }),
+    );
   }
 
   return { ok: true };
@@ -464,7 +580,12 @@ export async function saveFact(factId: string) {
     );
 
   if (error) {
-    throw new FeedError(getSupabaseDataErrorMessage(error));
+    throw new FeedError(
+      getSupabaseDataErrorMessage(error, {
+        operation: "save action",
+        table: "saves",
+      }),
+    );
   }
 
   return { ok: true };
@@ -484,7 +605,12 @@ export async function unsaveFact(factId: string) {
     .eq("user_id", userId);
 
   if (error) {
-    throw new FeedError(getSupabaseDataErrorMessage(error));
+    throw new FeedError(
+      getSupabaseDataErrorMessage(error, {
+        operation: "unsave action",
+        table: "saves",
+      }),
+    );
   }
 
   return { ok: true };
@@ -523,15 +649,28 @@ export async function recordFactView(
       | null;
 
     if (row) {
+      const completedDailyGoals =
+        row.completed_goals_count ??
+        (await getCompletedDailyGoalsCount(supabase, user.id));
+
       return {
         ok: true,
         viewedTodayCount: row.facts_read_count,
         dailyGoal: row.daily_goal,
         goalCompleted: row.goal_completed,
         completedToday: Boolean(row.completed_today),
+        completedDailyGoals,
         uniqueViewCreated: Boolean(row.unique_view_created),
       };
     }
+  }
+
+  if (error) {
+    logAppError(error, {
+      operation: "record fact read rpc fallback",
+      source: "Supabase",
+      table: "record_fact_read",
+    });
   }
 
   const directResult = await recordFactViewDirectly(
@@ -567,7 +706,12 @@ async function recordFactViewDirectly(
     );
 
   if (uniqueViewResult.error) {
-    throw new FeedError(getSupabaseDataErrorMessage(uniqueViewResult.error));
+    throw new FeedError(
+      getSupabaseDataErrorMessage(uniqueViewResult.error, {
+        operation: "record unique fact view",
+        table: "user_fact_views",
+      }),
+    );
   }
 
   const { data: currentProgress, error: progressError } = await supabase
@@ -578,7 +722,12 @@ async function recordFactViewDirectly(
     .maybeSingle();
 
   if (progressError) {
-    throw new FeedError(getSupabaseDataErrorMessage(progressError));
+    throw new FeedError(
+      getSupabaseDataErrorMessage(progressError, {
+        operation: "read daily progress before update",
+        table: "user_daily_progress",
+      }),
+    );
   }
 
   if (!currentProgress) {
@@ -602,8 +751,18 @@ async function recordFactViewDirectly(
         return recordFactViewDirectly(userId, factId, progressDate, dailyGoal);
       }
 
-      throw new FeedError(getSupabaseDataErrorMessage(insertError));
+      throw new FeedError(
+        getSupabaseDataErrorMessage(insertError, {
+          operation: "create daily progress",
+          table: "user_daily_progress",
+        }),
+      );
     }
+
+    const completedDailyGoals = await getCompletedDailyGoalsCount(
+      supabase,
+      userId,
+    );
 
     return {
       ok: true,
@@ -611,6 +770,7 @@ async function recordFactViewDirectly(
       dailyGoal: insertedProgress.daily_goal,
       goalCompleted: insertedProgress.goal_completed,
       completedToday: insertedProgress.goal_completed,
+      completedDailyGoals,
       uniqueViewCreated: true,
     };
   }
@@ -626,6 +786,7 @@ async function recordFactViewDirectly(
       dailyGoal: row.daily_goal,
       goalCompleted: row.goal_completed,
       completedToday: false,
+      completedDailyGoals: await getCompletedDailyGoalsCount(supabase, userId),
       uniqueViewCreated: false,
     };
   }
@@ -653,8 +814,15 @@ async function recordFactViewDirectly(
     .single();
 
   if (updateError) {
-    throw new FeedError(getSupabaseDataErrorMessage(updateError));
+    throw new FeedError(
+      getSupabaseDataErrorMessage(updateError, {
+        operation: "update daily progress",
+        table: "user_daily_progress",
+      }),
+    );
   }
+
+  const completedDailyGoals = await getCompletedDailyGoalsCount(supabase, userId);
 
   return {
     ok: true,
@@ -662,6 +830,7 @@ async function recordFactViewDirectly(
     dailyGoal: updatedProgress.daily_goal,
     goalCompleted: updatedProgress.goal_completed,
     completedToday,
+    completedDailyGoals,
     uniqueViewCreated: true,
   };
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { logAppError } from "@/lib/errors";
 import { AppState } from "./components/AppState";
 
 export default function Error({
@@ -11,7 +12,10 @@ export default function Error({
   unstable_retry: () => void;
 }) {
   useEffect(() => {
-    console.error(error);
+    logAppError(error, {
+      operation: "render app error boundary",
+      route: window.location.pathname,
+    });
   }, [error]);
 
   return (

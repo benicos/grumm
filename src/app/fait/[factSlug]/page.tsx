@@ -16,6 +16,7 @@ import {
 } from "@/lib/facts";
 import type { FeedFact } from "@/lib/facts";
 import { rememberAuthRedirect } from "@/lib/authRedirect";
+import { getToneBackground } from "@/lib/gradients";
 import { useAuth } from "../../auth/AuthProvider";
 import { AppState } from "../../components/AppState";
 import Navbar from "../../components/Navbar";
@@ -214,9 +215,12 @@ export default function FactDetailPage() {
     );
   }
 
+  const toneBackground = getToneBackground(fact.tone);
+
   return (
     <main
-      className={`${inter.className} min-h-screen overflow-hidden bg-gradient-to-br ${fact.tone} text-white`}
+      className={`${inter.className} min-h-screen overflow-hidden ${toneBackground.className} text-white`}
+      style={toneBackground.style}
     >
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_12%,rgba(255,255,255,0.2),transparent_28%),linear-gradient(180deg,rgba(0,0,0,0.12),rgba(0,0,0,0.72))]" />
       <Navbar />

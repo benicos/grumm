@@ -1,6 +1,12 @@
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { formatAppError, getConfiguredErrorMessage } from "@/lib/errors";
 import { FeedError, type FeedFact } from "@/lib/facts";
-import { slugify } from "@/lib/slug";
+import type { UserRole } from "@/lib/roles";
+import {
+  getUsernameValidationMessage,
+  normalizeUsername,
+  slugify,
+} from "@/lib/slug";
 
 type RelatedFactRow = {
   fact_id: string;
@@ -37,6 +43,7 @@ export type UserProfileSummary = {
   username: string | null;
   email: string | null;
   dailyGoal: number;
+  role: UserRole;
   likedCount: number;
   savedCount: number;
   uniqueViewsCount: number;
@@ -45,6 +52,12 @@ export type UserProfileSummary = {
   likedFacts: FeedFact[];
   savedFacts: FeedFact[];
 };
+
+export type ProfileField = "username" | "email" | "password" | "dailyGoal" | "global";
+
+export type ProfileMutationResult =
+  | { ok: true; message: string }
+  | { ok: false; field: ProfileField; message: string };
 
 function categoryFromRelation(fact: NonNullable<RelatedFactRow["facts"]>) {
   return Array.isArray(fact.categories)
@@ -89,17 +102,13 @@ function todayKey() {
 }
 
 function getProfileErrorMessage(error: unknown) {
-  if (error && typeof error === "object" && "message" in error) {
-    const message = String(error.message);
-
-    if (message.toLowerCase().includes("permission denied")) {
-      return "Le profil n'a pas pu etre lu. Verifie les policies Supabase.";
-    }
-
-    return message;
-  }
-
-  return "Le profil est indisponible pour le moment.";
+  return formatAppError(error, {
+    context: {
+      operation: "read profile summary",
+      source: "Supabase",
+    },
+    prodMessage: "Impossible de charger ton profil pour le moment.",
+  });
 }
 
 const RELATED_FACT_SELECT =
@@ -109,7 +118,7 @@ export async function getUserProfileSummary(): Promise<UserProfileSummary> {
   const supabase = createSupabaseBrowserClient();
 
   if (!supabase) {
-    throw new FeedError("Supabase n'est pas configure.");
+    throw new FeedError(getConfiguredErrorMessage());
   }
 
   const {
@@ -130,7 +139,7 @@ export async function getUserProfileSummary(): Promise<UserProfileSummary> {
   ] = await Promise.all([
     supabase
       .from("profiles")
-      .select("username,daily_goal")
+      .select("username,daily_goal,role")
       .eq("id", user.id)
       .maybeSingle(),
     supabase
@@ -187,6 +196,7 @@ export async function getUserProfileSummary(): Promise<UserProfileSummary> {
         : null),
     email: user.email ?? null,
     dailyGoal: profileResult.data?.daily_goal ?? 10,
+    role: (profileResult.data?.role ?? "membre") as UserRole,
     likedCount: likedFacts.length,
     savedCount: savedFacts.length,
     uniqueViewsCount: uniqueViews.size,
@@ -195,4 +205,264 @@ export async function getUserProfileSummary(): Promise<UserProfileSummary> {
     likedFacts,
     savedFacts,
   };
+}
+
+async function getAuthenticatedProfileClient() {
+  const supabase = createSupabaseBrowserClient();
+
+  if (!supabase) {
+    return {
+      ok: false as const,
+      message: getConfiguredErrorMessage(),
+    };
+  }
+
+  const {
+    data: { user },
+    error,
+  } = await supabase.auth.getUser();
+
+  if (error || !user) {
+    return {
+      ok: false as const,
+      message: "Connecte-toi pour modifier ton profil.",
+    };
+  }
+
+  return { ok: true as const, supabase, user };
+}
+
+function getProfileMutationError(
+  error: unknown,
+  field: ProfileField,
+  prodMessage: string,
+) {
+  return {
+    ok: false as const,
+    field,
+    message: formatAppError(error, {
+      context: {
+        operation: "update profile",
+        source: "Supabase",
+        table: "profiles",
+      },
+      prodMessage,
+    }),
+  };
+}
+
+export async function updateProfileSettings({
+  dailyGoal,
+  username,
+}: {
+  dailyGoal: number;
+  username: string;
+}): Promise<ProfileMutationResult> {
+  const auth = await getAuthenticatedProfileClient();
+
+  if (!auth.ok) {
+    return { ok: false, field: "global", message: auth.message };
+  }
+
+  const normalizedUsername = normalizeUsername(username);
+  const usernameMessage = getUsernameValidationMessage(normalizedUsername);
+
+  if (usernameMessage) {
+    return { ok: false, field: "username", message: usernameMessage };
+  }
+
+  if (!Number.isInteger(dailyGoal) || dailyGoal < 1 || dailyGoal > 100) {
+    return {
+      ok: false,
+      field: "dailyGoal",
+      message: "Choisis un objectif entre 1 et 100.",
+    };
+  }
+
+  const { data: currentProfile, error: currentProfileError } = await auth.supabase
+    .from("profiles")
+    .select("username")
+    .eq("id", auth.user.id)
+    .maybeSingle();
+
+  if (currentProfileError) {
+    return getProfileMutationError(
+      currentProfileError,
+      "username",
+      "Nous n'avons pas pu vérifier ce pseudo.",
+    );
+  }
+
+  if (currentProfile?.username !== normalizedUsername) {
+    const { data: isAvailable, error: usernameError } = await auth.supabase.rpc(
+      "is_username_available",
+      {
+        p_username: normalizedUsername,
+      },
+    );
+
+    if (usernameError) {
+      return getProfileMutationError(
+        usernameError,
+        "username",
+        "Nous n'avons pas pu vérifier ce pseudo.",
+      );
+    }
+
+    if (!isAvailable) {
+      return {
+        ok: false,
+        field: "username",
+        message: "Ce nom d'utilisateur est déjà pris.",
+      };
+    }
+  }
+
+  const { error } = await auth.supabase
+    .from("profiles")
+    .update({
+      daily_goal: dailyGoal,
+      username: normalizedUsername,
+    })
+    .eq("id", auth.user.id);
+
+  if (error) {
+    return getProfileMutationError(
+      error,
+      "global",
+      "Nous n'avons pas pu mettre ton profil à jour.",
+    );
+  }
+
+  await auth.supabase.auth.updateUser({
+    data: {
+      username: normalizedUsername,
+    },
+  });
+
+  return { ok: true, message: "Profil mis à jour." };
+}
+
+export async function updateProfileEmail(
+  email: string,
+): Promise<ProfileMutationResult> {
+  const auth = await getAuthenticatedProfileClient();
+
+  if (!auth.ok) {
+    return { ok: false, field: "global", message: auth.message };
+  }
+
+  if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+    return {
+      ok: false,
+      field: "email",
+      message: "Entre une adresse email valide.",
+    };
+  }
+
+  const { error } = await auth.supabase.auth.updateUser({
+    email: email.trim(),
+  });
+
+  if (error) {
+    return {
+      ok: false,
+      field: "email",
+      message: formatAppError(error, {
+        context: {
+          operation: "update auth email",
+          source: "Supabase Auth",
+        },
+        prodMessage: "Nous n'avons pas pu mettre ton email à jour.",
+      }),
+    };
+  }
+
+  return {
+    ok: true,
+    message: "Email mis à jour. Une confirmation peut être demandée.",
+  };
+}
+
+export async function updateProfilePassword(
+  password: string,
+): Promise<ProfileMutationResult> {
+  const auth = await getAuthenticatedProfileClient();
+
+  if (!auth.ok) {
+    return { ok: false, field: "global", message: auth.message };
+  }
+
+  if (password.length < 8) {
+    return {
+      ok: false,
+      field: "password",
+      message: "Le mot de passe doit contenir au moins 8 caractères.",
+    };
+  }
+
+  const { error } = await auth.supabase.auth.updateUser({
+    password,
+  });
+
+  if (error) {
+    return {
+      ok: false,
+      field: "password",
+      message: formatAppError(error, {
+        context: {
+          operation: "update auth password",
+          source: "Supabase Auth",
+        },
+        prodMessage: "Nous n'avons pas pu mettre ton mot de passe à jour.",
+      }),
+    };
+  }
+
+  return { ok: true, message: "Mot de passe mis à jour." };
+}
+
+export async function resetUserFactViews(): Promise<ProfileMutationResult> {
+  const auth = await getAuthenticatedProfileClient();
+
+  if (!auth.ok) {
+    return { ok: false, field: "global", message: auth.message };
+  }
+
+  const today = todayKey();
+  const [uniqueViewsResult, legacyViewsResult, todayProgressResult] =
+    await Promise.all([
+      auth.supabase
+        .from("user_fact_views")
+        .delete()
+        .eq("user_id", auth.user.id),
+      auth.supabase.from("views").delete().eq("user_id", auth.user.id),
+      auth.supabase
+        .from("user_daily_progress")
+        .delete()
+        .eq("user_id", auth.user.id)
+        .eq("progress_date", today),
+    ]);
+
+  const error =
+    uniqueViewsResult.error ??
+    legacyViewsResult.error ??
+    todayProgressResult.error;
+
+  if (error) {
+    return {
+      ok: false,
+      field: "global",
+      message: formatAppError(error, {
+        context: {
+          operation: "reset user fact views",
+          source: "Supabase",
+          table: "user_fact_views",
+        },
+        prodMessage: "Nous n'avons pas pu réinitialiser tes vues.",
+      }),
+    };
+  }
+
+  return { ok: true, message: "Vues réinitialisées." };
 }

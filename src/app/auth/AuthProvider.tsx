@@ -13,6 +13,7 @@ import {
   createSupabaseBrowserClient,
   isSupabaseConfigured,
 } from "@/lib/supabase/client";
+import type { UserRole } from "@/lib/roles";
 
 type AuthContextValue = {
   user: User | null;
@@ -28,14 +29,30 @@ type UserProfile = {
   username: string | null;
   daily_goal: number;
   avatar_url: string | null;
+  role: UserRole;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
+const AUTH_TIMEOUT_MS = 3500;
+
+function withTimeout<T>(promise: PromiseLike<T>, fallback: unknown): Promise<T> {
+  return new Promise((resolve) => {
+    const timeout = window.setTimeout(
+      () => resolve(fallback as T),
+      AUTH_TIMEOUT_MS,
+    );
+
+    Promise.resolve(promise)
+      .then((value) => resolve(value))
+      .catch(() => resolve(fallback as T))
+      .finally(() => window.clearTimeout(timeout));
+  });
+}
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [isLoading, setIsLoading] = useState(isSupabaseConfigured);
+  const [isLoading, setIsLoading] = useState(isSupabaseConfigured());
 
   const loadProfile = useCallback(
     async (nextSession: Session | null) => {
@@ -46,11 +63,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      const { data } = await supabase
-        .from("profiles")
-        .select("username,daily_goal,avatar_url")
-        .eq("id", nextSession.user.id)
-        .maybeSingle();
+      const { data } = await withTimeout(
+        supabase
+          .from("profiles")
+          .select("username,daily_goal,avatar_url,role")
+          .eq("id", nextSession.user.id)
+          .maybeSingle(),
+        { data: null, error: null },
+      );
 
       setProfile(data ?? null);
     },
@@ -67,7 +87,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    const { data } = await supabase.auth.getSession();
+    const { data } = await withTimeout(supabase.auth.getSession(), {
+      data: { session: null },
+      error: null,
+    });
     setSession(data.session);
     await loadProfile(data.session);
     setIsLoading(false);
@@ -77,10 +100,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const supabase = createSupabaseBrowserClient();
 
     if (!supabase) {
+      window.setTimeout(() => setIsLoading(false), 0);
       return;
     }
 
-    supabase.auth.getSession().then(async ({ data }) => {
+    withTimeout(supabase.auth.getSession(), {
+      data: { session: null },
+      error: null,
+    }).then(async ({ data }) => {
       setSession(data.session);
       await loadProfile(data.session);
       setIsLoading(false);
@@ -98,6 +125,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       subscription.unsubscribe();
     };
   }, [loadProfile]);
+
+  useEffect(() => {
+    if (!isLoading) {
+      return;
+    }
+
+    const timeout = window.setTimeout(() => {
+      setIsLoading(false);
+    }, AUTH_TIMEOUT_MS + 500);
+
+    return () => {
+      window.clearTimeout(timeout);
+    };
+  }, [isLoading]);
 
   const value = useMemo(
     () => ({

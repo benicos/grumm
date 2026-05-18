@@ -1,4 +1,5 @@
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { formatAppError, getConfiguredErrorMessage } from "@/lib/errors";
 import {
   getUsernameValidationMessage,
   normalizeUsername,
@@ -14,6 +15,10 @@ export type AuthResult =
 
 export function getSupabaseErrorMessage(message: string) {
   const normalizedMessage = message.toLowerCase();
+
+  if (message === "supabase_unconfigured") {
+    return getConfiguredErrorMessage();
+  }
 
   if (normalizedMessage.includes("invalid login credentials")) {
     return "Email ou mot de passe incorrect.";
@@ -100,26 +105,31 @@ async function isUsernameAvailable(username: string) {
   if (!supabase) {
     return {
       ok: false as const,
-      message: "Supabase n'est pas configure.",
+      message: getConfiguredErrorMessage(),
       field: "global" as const,
     };
   }
 
-  const { data, error } = await supabase
-    .from("profiles")
-    .select("id")
-    .eq("username", username)
-    .maybeSingle();
+  const { data, error } = await supabase.rpc("is_username_available", {
+    p_username: username,
+  });
 
   if (error) {
     return {
       ok: false as const,
-      message: getSupabaseErrorMessage(error.message),
+      message: formatAppError(error, {
+        context: {
+          operation: "check username availability",
+          source: "Supabase",
+          table: "profiles",
+        },
+        prodMessage: getSupabaseErrorMessage(error.message),
+      }),
       field: getSupabaseField(error.message),
     };
   }
 
-  return { ok: true as const, available: !data };
+  return { ok: true as const, available: Boolean(data) };
 }
 
 export async function signInWithEmail(
@@ -129,7 +139,7 @@ export async function signInWithEmail(
   const supabase = createSupabaseBrowserClient();
 
   if (!supabase) {
-    return { ok: false, message: "Supabase n'est pas configure." };
+    return { ok: false, message: getSupabaseErrorMessage("supabase_unconfigured") };
   }
 
   const { error } = await supabase.auth.signInWithPassword({
@@ -156,7 +166,7 @@ export async function signUpWithEmail(
   const supabase = createSupabaseBrowserClient();
 
   if (!supabase) {
-    return { ok: false, message: "Supabase n'est pas configure." };
+    return { ok: false, message: getSupabaseErrorMessage("supabase_unconfigured") };
   }
 
   const username = normalizeUsername(usernameInput);
@@ -210,7 +220,14 @@ export async function signUpWithEmail(
     if (profileError) {
       return {
         ok: false,
-        message: getSupabaseErrorMessage(profileError.message),
+        message: formatAppError(profileError, {
+          context: {
+            operation: "create profile after signup",
+            source: "Supabase",
+            table: "profiles",
+          },
+          prodMessage: getSupabaseErrorMessage(profileError.message),
+        }),
         field: getSupabaseField(profileError.message),
       };
     }
@@ -231,7 +248,7 @@ export async function signOut(): Promise<AuthResult> {
   const supabase = createSupabaseBrowserClient();
 
   if (!supabase) {
-    return { ok: false, message: "Supabase n'est pas configure." };
+    return { ok: false, message: getSupabaseErrorMessage("supabase_unconfigured") };
   }
 
   const { error } = await supabase.auth.signOut();

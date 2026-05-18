@@ -1,36 +1,93 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Velora
 
-## Getting Started
+Velora est une application Next.js App Router avec Tailwind CSS et Supabase
+pour l'authentification, les données, la progression de lecture et les rôles.
 
-First, run the development server:
+## Développement
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Variables attendues :
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+NEXT_PUBLIC_SITE_URL=
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Option de debug :
 
-## Learn More
+```bash
+NEXT_PUBLIC_ERROR_MODE=debug
+```
 
-To learn more about Next.js, take a look at the following resources:
+En développement, les erreurs affichent le contexte utile. En production, les
+messages visibles restent génériques et les détails techniques ne doivent pas
+être exposés à l'utilisateur.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Workflow Git / Vercel
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Organisation recommandée :
 
-## Deploy on Vercel
+- `main` = production stable.
+- `dev` = développement et previews.
+- Développer sur `dev`.
+- Lancer `npm run lint` puis `npm run build`.
+- Merger `dev` vers `main` uniquement quand la version est stable.
+- Configurer Vercel avec `main` comme Production Branch.
+- Laisser Vercel créer les Preview Deployments depuis `dev` et les branches de
+  travail.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Vercel ne se configure pas entièrement depuis ce dépôt sans accès au projet
+Vercel. À vérifier dans le dashboard Vercel :
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Project Settings -> Git -> Production Branch = `main`.
+- Preview deployments activés pour les branches non production.
+- Variables Supabase présentes dans Production et Preview.
+- `NEXT_PUBLIC_SITE_URL` défini sur le domaine public en production.
+
+## Supabase
+
+Appliquer les migrations SQL dans l'ordre logique :
+
+1. `supabase/schema.sql` pour une base neuve.
+2. `supabase/velora_urls_progress.sql` si la base existait avant les slugs et la
+   progression.
+3. `supabase/velora_seed_20_more_facts.sql` pour enrichir les contenus.
+4. `supabase/velora_roles_profile_admin.sql` pour les rôles, policies admin,
+   reset des vues et progression enrichie.
+5. `supabase/velora_role_trigger_fix.sql` si une base existante a déjà le
+   trigger de protection des rôles et bloque les migrations ou les updates
+   administrateur.
+
+Premier administrateur :
+
+```sql
+update public.profiles
+set role = 'administrateur'
+where id = 'UUID_DU_PROFIL_ADMIN';
+```
+
+Cette opération doit être faite une seule fois depuis un contexte SQL Supabase
+fiable. Un utilisateur normal ne peut pas s'attribuer lui-même ce rôle via
+l'application.
+
+## Vérifications avant merge
+
+```bash
+npm run lint
+npm run build
+```
+
+Parcours critiques :
+
+- `/discover`, `/explorer`, `/fact/[slug]`.
+- `/profile` connecté et déconnecté.
+- Édition pseudo, email, mot de passe et objectif quotidien.
+- Reset des vues uniques.
+- Badges et progression quotidienne.
+- `/admin` avec membre, rédacteur et administrateur.
+- Anciennes routes françaises, qui doivent rediriger proprement.

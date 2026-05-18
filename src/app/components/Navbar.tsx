@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { signOut } from "@/lib/auth";
+import { canAccessAdmin } from "@/lib/roles";
 import { useAuth } from "../auth/AuthProvider";
 
 type NavbarProps = {
@@ -75,9 +76,13 @@ function LogoutIcon() {
 
 export default function Navbar({ fixed = false }: NavbarProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const { displayName, isAuthenticated, isLoading, refreshUser } = useAuth();
+  const { displayName, isAuthenticated, isLoading, profile, refreshUser } =
+    useAuth();
   const router = useRouter();
   const loginHref = "/login";
+  const visibleLinks = canAccessAdmin(profile?.role)
+    ? [...links, { label: "Admin", href: "/admin" }]
+    : links;
 
   const handleSignOut = async () => {
     await signOut();
@@ -130,7 +135,7 @@ export default function Navbar({ fixed = false }: NavbarProps) {
           </Link>
 
           <nav className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-12 font-bold uppercase lg:flex">
-            {links.map((item) => (
+            {visibleLinks.map((item) => (
               <Link
                 key={item.label}
                 href={item.href}
@@ -183,7 +188,7 @@ export default function Navbar({ fixed = false }: NavbarProps) {
             <div className="mt-6 flow-root">
               <div className="-my-6 divide-y divide-white/10">
                 <div className="space-y-2 py-6">
-                  {links.map((item) => (
+                  {visibleLinks.map((item) => (
                     <Link
                       key={item.label}
                       href={item.href}

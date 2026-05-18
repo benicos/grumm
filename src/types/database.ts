@@ -49,6 +49,7 @@ export type Database = {
           content: string;
           source: string;
           source_url: string | null;
+          author_id: string | null;
           status: "draft" | "published" | "archived";
           published_at: string | null;
           display_order: number;
@@ -66,6 +67,7 @@ export type Database = {
           content: string;
           source: string;
           source_url?: string | null;
+          author_id?: string | null;
           status?: "draft" | "published" | "archived";
           published_at?: string | null;
           display_order?: number;
@@ -83,6 +85,7 @@ export type Database = {
           content?: string;
           source?: string;
           source_url?: string | null;
+          author_id?: string | null;
           status?: "draft" | "published" | "archived";
           published_at?: string | null;
           display_order?: number;
@@ -107,6 +110,7 @@ export type Database = {
           username: string;
           avatar_url: string | null;
           daily_goal: number;
+          role: "membre" | "redacteur" | "administrateur";
           created_at: string;
           updated_at: string;
         };
@@ -115,6 +119,7 @@ export type Database = {
           username: string;
           avatar_url?: string | null;
           daily_goal?: number;
+          role?: "membre" | "redacteur" | "administrateur";
           created_at?: string;
           updated_at?: string;
         };
@@ -123,6 +128,7 @@ export type Database = {
           username?: string;
           avatar_url?: string | null;
           daily_goal?: number;
+          role?: "membre" | "redacteur" | "administrateur";
           created_at?: string;
           updated_at?: string;
         };
@@ -286,6 +292,12 @@ export type Database = {
     };
     Views: Record<string, never>;
     Functions: {
+      is_username_available: {
+        Args: {
+          p_username: string;
+        };
+        Returns: boolean;
+      };
       record_fact_read: {
         Args: {
           p_fact_id: string;
@@ -298,6 +310,7 @@ export type Database = {
           goal_completed: boolean;
           completed_today: boolean;
           unique_view_created: boolean;
+          completed_goals_count: number;
         }[];
       };
     };

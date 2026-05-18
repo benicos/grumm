@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { getExplorerData } from "@/lib/facts";
 import type { CategorySummary, FeedFact } from "@/lib/facts";
+import { getToneBackground } from "@/lib/gradients";
 import { AppState } from "../components/AppState";
 import HeroBackground from "../components/HeroBackground";
 import Navbar from "../components/Navbar";
@@ -52,6 +53,44 @@ function themeSignal(theme: CategorySummary) {
   return `${theme.count} faits publies`;
 }
 
+function stringSeed(value: string) {
+  let hash = 2166136261;
+
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+
+  return hash >>> 0;
+}
+
+function seededRandom(seed: number) {
+  let value = seed;
+
+  return () => {
+    value += 0x6d2b79f5;
+    let next = value;
+    next = Math.imul(next ^ (next >>> 15), next | 1);
+    next ^= next + Math.imul(next ^ (next >>> 7), next | 61);
+    return ((next ^ (next >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function shuffleItems<T>(items: T[], seedKey: string) {
+  const random = seededRandom(stringSeed(seedKey));
+  const shuffled = [...items];
+
+  for (let index = shuffled.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(random() * (index + 1));
+    [shuffled[index], shuffled[swapIndex]] = [
+      shuffled[swapIndex],
+      shuffled[index],
+    ];
+  }
+
+  return shuffled;
+}
+
 export default function ExplorerPage() {
   const [query, setQuery] = useState("");
   const [themes, setThemes] = useState<CategorySummary[]>([]);
@@ -59,36 +98,33 @@ export default function ExplorerPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const normalizedQuery = query.trim().toLowerCase();
+  const [sessionSeed] = useState(() => `${Date.now()}:${Math.random()}`);
   const visibleFacts = useMemo(() => {
     const selectedFacts = normalizedQuery
-      ? facts.filter((fact) =>
-          `${fact.category} ${fact.title} ${fact.source}`
-            .toLowerCase()
-            .includes(normalizedQuery),
-        )
-      : facts;
+      ? facts
+      : shuffleItems(facts, `${sessionSeed}:facts`);
 
-    return selectedFacts.slice(0, 5);
-  }, [facts, normalizedQuery]);
+    return selectedFacts.slice(0, normalizedQuery ? 10 : 5);
+  }, [facts, normalizedQuery, sessionSeed]);
   const visibleThemes = useMemo(() => {
     const selectedThemes = normalizedQuery
-      ? themes.filter((theme) =>
-          `${theme.name} ${theme.slug}`.toLowerCase().includes(normalizedQuery),
-        )
-      : themes;
+      ? themes
+      : shuffleItems(themes, `${sessionSeed}:themes`);
 
-    return selectedThemes;
-  }, [normalizedQuery, themes]);
+    return selectedThemes.slice(0, normalizedQuery ? 18 : 6);
+  }, [normalizedQuery, sessionSeed, themes]);
 
   useEffect(() => {
     let isMounted = true;
 
-    async function loadExplorerData() {
+    const timeout = window.setTimeout(async () => {
       setIsLoading(true);
       setError(null);
 
       try {
-        const data = await getExplorerData();
+        const data = await getExplorerData({
+          query: normalizedQuery || undefined,
+        });
 
         if (!isMounted) {
           return;
@@ -109,14 +145,13 @@ export default function ExplorerPage() {
           setIsLoading(false);
         }
       }
-    }
-
-    loadExplorerData();
+    }, normalizedQuery ? 240 : 0);
 
     return () => {
       isMounted = false;
+      window.clearTimeout(timeout);
     };
-  }, []);
+  }, [normalizedQuery]);
 
   if (error && !isLoading) {
     return (
@@ -168,7 +203,7 @@ export default function ExplorerPage() {
                   Selection
                 </p>
                 <h2 className="mt-2 text-2xl font-bold tracking-[-0.04em]">
-                  Faits publies
+                  {normalizedQuery ? "Résultats" : "Faits à découvrir"}
                 </h2>
               </div>
               <Link href="/discover" className="text-sm font-bold text-[#ffd166]">
@@ -212,7 +247,7 @@ export default function ExplorerPage() {
 
               {!isLoading && visibleFacts.length === 0 && (
                 <div className="rounded-lg bg-black/18 p-4 text-sm text-white/62 ring-1 ring-white/10">
-                  Aucun fait ne correspond a cette recherche.
+                  Aucun fait ne correspond à cette recherche.
                 </div>
               )}
             </div>
@@ -226,7 +261,7 @@ export default function ExplorerPage() {
                 Themes
               </p>
               <h2 className="mt-2 text-3xl font-extrabold tracking-[-0.04em]">
-                Pistes de curiosite
+                {normalizedQuery ? "Thèmes liés" : "Pistes de curiosité"}
               </h2>
             </div>
           </div>
@@ -235,32 +270,37 @@ export default function ExplorerPage() {
             <ExplorerSkeleton />
           ) : visibleThemes.length > 0 ? (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {visibleThemes.map((theme) => (
-                <Link
-                  href={`/discover/theme/${theme.slug}`}
-                  key={theme.id}
-                  className={`group relative min-h-[210px] overflow-hidden rounded-[8px] border border-white/10 bg-gradient-to-br ${theme.tone} p-6 shadow-[0_28px_90px_rgba(0,0,0,0.2)] transition hover:-translate-y-1 hover:border-white/25`}
-                >
-                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.28),transparent_26%),linear-gradient(180deg,transparent,rgba(0,0,0,0.42))]" />
-                  <div className="relative flex h-full flex-col justify-between">
-                    <div className="flex items-start justify-between gap-4">
-                      <h3 className="text-3xl font-extrabold tracking-[-0.05em]">
-                        {theme.name}
-                      </h3>
-                      <span className="rounded-full bg-black/20 px-3 py-1 text-sm font-bold backdrop-blur">
-                        {theme.count ?? 0}
-                      </span>
+              {visibleThemes.map((theme) => {
+                const toneBackground = getToneBackground(theme.tone);
+
+                return (
+                  <Link
+                    href={`/discover/theme/${theme.slug}`}
+                    key={theme.id}
+                    className={`group relative min-h-[210px] overflow-hidden rounded-[8px] border border-white/10 ${toneBackground.className} p-6 shadow-[0_28px_90px_rgba(0,0,0,0.2)] transition hover:-translate-y-1 hover:border-white/25`}
+                    style={toneBackground.style}
+                  >
+                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.28),transparent_26%),linear-gradient(180deg,transparent,rgba(0,0,0,0.42))]" />
+                    <div className="relative flex h-full flex-col justify-between">
+                      <div className="flex items-start justify-between gap-4">
+                        <h3 className="text-3xl font-extrabold tracking-[-0.05em]">
+                          {theme.name}
+                        </h3>
+                        <span className="rounded-full bg-black/20 px-3 py-1 text-sm font-bold backdrop-blur">
+                          {theme.count ?? 0}
+                        </span>
+                      </div>
+                      <p className="mt-12 max-w-[220px] text-sm font-medium text-white/78">
+                        {themeSignal(theme)}
+                      </p>
                     </div>
-                    <p className="mt-12 max-w-[220px] text-sm font-medium text-white/78">
-                      {themeSignal(theme)}
-                    </p>
-                  </div>
-                </Link>
-              ))}
+                  </Link>
+                );
+              })}
             </div>
           ) : (
             <div className="rounded-lg border border-white/10 bg-white/[0.055] p-6 text-sm text-white/62">
-              Aucun theme ne correspond a cette recherche.
+              Aucun thème ne correspond à cette recherche.
             </div>
           )}
         </section>
