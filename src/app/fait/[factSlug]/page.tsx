@@ -28,7 +28,7 @@ const inter = Inter({
 
 function FactDetailSkeleton() {
   return (
-    <main className="min-h-screen bg-[#050b13] text-white">
+    <main className="min-h-screen bg-[#132338] text-white">
       <Navbar />
       <section className="mx-auto flex min-h-[calc(100vh-100px)] w-full max-w-5xl items-center px-6 py-14">
         <div className="w-full rounded-[28px] border border-white/10 bg-white/[0.055] p-8 shadow-[0_30px_120px_rgba(0,0,0,0.42)]">

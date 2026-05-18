@@ -19,7 +19,7 @@ export default function RequireAuth({ children }: { children: React.ReactNode })
 
   if (isLoading) {
     return (
-      <div className="grid min-h-screen place-items-center bg-[#050b13] px-6 text-white">
+      <div className="grid min-h-screen place-items-center bg-[#132338] px-6 text-white">
         <div className="w-full max-w-sm rounded-lg border border-white/10 bg-white/[0.055] p-6 shadow-2xl backdrop-blur-xl">
           <div className="h-3 w-28 rounded-full bg-white/10" />
           <div className="mt-5 h-8 w-48 rounded-full bg-white/10" />
@@ -33,7 +33,7 @@ export default function RequireAuth({ children }: { children: React.ReactNode })
 
   if (!isAuthenticated) {
     return (
-      <div className="grid min-h-screen place-items-center bg-[#050b13] px-6 text-center text-white">
+      <div className="grid min-h-screen place-items-center bg-[#132338] px-6 text-center text-white">
         <div className="max-w-sm rounded-lg border border-white/10 bg-white/[0.055] p-6 shadow-2xl backdrop-blur-xl">
           <p className="text-xs font-bold uppercase tracking-[0.22em] text-[#ffd166]">
             Connexion requise

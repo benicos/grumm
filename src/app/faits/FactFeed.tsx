@@ -544,7 +544,7 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
 
   return (
     <main
-      className={`${inter.className} min-h-screen overflow-hidden bg-[#050b13] text-white`}
+      className={`${inter.className} min-h-screen overflow-hidden bg-[#132338] text-white`}
       onKeyDown={(event) => {
         if (event.key === "ArrowDown" || event.key === "PageDown") {
           moveTo(1);
@@ -828,7 +828,7 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
         })}
 
         {!hasFacts && !isLoadingFacts && (
-          <div className="absolute inset-0 grid place-items-center bg-[#050b13] px-6 text-center">
+          <div className="absolute inset-0 grid place-items-center bg-[#132338] px-6 text-center">
             <div className="max-w-sm">
               <p className="text-xs font-bold uppercase tracking-[0.22em] text-[#ffd166]">
                 Découvrir est vide

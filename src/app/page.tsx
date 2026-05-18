@@ -18,7 +18,7 @@ const inter = Inter({
 export default function VeloraLanding() {
   return (
     <div
-      className={`${inter.className} relative min-h-screen overflow-x-hidden bg-[#050b13] text-white`}
+      className={`${inter.className} relative min-h-screen overflow-x-hidden bg-[#132338] text-white`}
     >
       <HeroBackground />
       <Navbar />

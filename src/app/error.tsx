@@ -19,7 +19,7 @@ export default function Error({
   }, [error]);
 
   return (
-    <div className="bg-[#050b13]">
+    <div className="bg-[#132338]">
       <title>Erreur | Velora</title>
       <AppState
         eyebrow="Erreur"

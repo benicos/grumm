@@ -20,7 +20,7 @@ export function AppState({
   secondaryLabel = "Ouvrir Découvrir",
 }: AppStateProps) {
   return (
-    <main className="grid min-h-screen place-items-center bg-[#050b13] px-6 py-20 text-white">
+    <main className="grid min-h-screen place-items-center bg-[#132338] px-6 py-20 text-white">
       <section className="relative w-full max-w-xl overflow-hidden rounded-[24px] border border-white/10 bg-white/[0.055] p-8 text-center shadow-[0_30px_120px_rgba(0,0,0,0.42)] backdrop-blur-xl">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(255,209,102,0.18),transparent_40%),linear-gradient(180deg,rgba(255,255,255,0.04),transparent)]" />
         <div className="relative">
@@ -57,7 +57,7 @@ export function AppState({
 
 export function FeedSkeleton() {
   return (
-    <div className="absolute inset-0 grid place-items-center overflow-hidden bg-[#050b13] px-5">
+    <div className="absolute inset-0 grid place-items-center overflow-hidden bg-[#132338] px-5">
       <div className="relative flex h-full w-full max-w-6xl flex-col pb-24 pt-36">
         <div className="h-8 w-36 animate-pulse rounded-full bg-white/10" />
         <div className="flex flex-1 items-center py-7">
