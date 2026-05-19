@@ -15,6 +15,7 @@ const inter = Inter({
 const baseLinks = [
   { href: "/admin", label: "Dashboard", roles: ["redacteur", "administrateur"] },
   { href: "/admin/facts", label: "Faits", roles: ["redacteur", "administrateur"] },
+  { href: "/admin/facts/pending", label: "Validation", roles: ["administrateur"] },
   { href: "/admin/themes", label: "Themes", roles: ["administrateur"] },
   { href: "/admin/users", label: "Utilisateurs", roles: ["administrateur"] },
   { href: "/admin/roles", label: "Roles", roles: ["administrateur"] },
@@ -148,7 +149,12 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
               {navLinks.map((item) => {
                 const isActive =
                   pathname === item.href ||
-                  (item.href !== "/admin" && pathname.startsWith(`${item.href}/`));
+                  (item.href !== "/admin" &&
+                    pathname.startsWith(`${item.href}/`) &&
+                    !(
+                      item.href === "/admin/facts" &&
+                      pathname.startsWith("/admin/facts/pending")
+                    ));
 
                 return (
                   <Link

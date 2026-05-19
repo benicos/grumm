@@ -3,6 +3,7 @@ import { formatAppError, logAppError } from "@/lib/errors";
 import { slugify } from "@/lib/slug";
 
 export const DEFAULT_DAILY_GOAL = 10;
+export const DISCOVER_FEED_BATCH_SIZE = 18;
 
 export type FeedFact = {
   id: string;
@@ -75,6 +76,23 @@ type FactRow = {
   categories: FactCategory | FactCategory[] | null;
 };
 
+type FeedRpcRow = {
+  id: string;
+  slug: string;
+  title: string;
+  hook: string;
+  content: string;
+  source: string;
+  source_url: string | null;
+  tone: string | null;
+  accent_color: string | null;
+  category_id: string;
+  category_name: string;
+  category_slug: string;
+  category_tone: string;
+  category_accent_color: string;
+};
+
 type RawDailyProgressRow = {
   facts_read_count: number;
   daily_goal: number;
@@ -86,9 +104,6 @@ type RawDailyProgressRow = {
 
 const FACT_SELECT =
   "id,slug,title,hook,content,source,source_url,tone,accent_color,categories(id,name,slug,tone,accent_color)";
-
-const FACT_SELECT_WITH_INNER_CATEGORY =
-  "id,slug,title,hook,content,source,source_url,tone,accent_color,categories!inner(id,name,slug,tone,accent_color)";
 
 function categoryFromRelation(fact: FactRow) {
   return Array.isArray(fact.categories)
@@ -114,6 +129,25 @@ function mapFact(fact: FactRow): FeedFact {
       category?.tone ??
       "from-[#0b1424] via-[#132744] to-[#f0a95a]",
     accent: fact.accent_color ?? category?.accent_color ?? "#ffd166",
+  };
+}
+
+function mapFeedRpcFact(fact: FeedRpcRow): FeedFact {
+  return {
+    id: fact.id,
+    slug: fact.slug || slugify(fact.title),
+    category: fact.category_name ?? "General",
+    categorySlug: fact.category_slug ?? "general",
+    title: fact.title,
+    hook: fact.hook,
+    detail: fact.content,
+    source: fact.source || "Source non renseignee",
+    sourceUrl: fact.source_url ?? null,
+    tone:
+      fact.tone ??
+      fact.category_tone ??
+      "from-[#0b1424] via-[#132744] to-[#f0a95a]",
+    accent: fact.accent_color ?? fact.category_accent_color ?? "#ffd166",
   };
 }
 
@@ -232,7 +266,11 @@ export async function getCurrentUserId() {
   return { supabase, userId: user?.id ?? null };
 }
 
-export async function getFeedFacts(options?: { themeSlug?: string }) {
+export async function getFeedFacts(options?: {
+  excludeIds?: string[];
+  limit?: number;
+  themeSlug?: string;
+}) {
   const supabase = createSupabaseBrowserClient();
 
   if (!supabase) {
@@ -268,18 +306,11 @@ export async function getFeedFacts(options?: { themeSlug?: string }) {
     theme = mapCategory(categoryData);
   }
 
-  let query = supabase
-    .from("facts")
-    .select(theme ? FACT_SELECT_WITH_INNER_CATEGORY : FACT_SELECT)
-    .eq("status", "published");
-
-  if (theme) {
-    query = query.eq("category_id", theme.id);
-  }
-
-  const { data, error } = await query
-    .order("display_order", { ascending: true })
-    .order("published_at", { ascending: false });
+  const { data, error } = await supabase.rpc("get_discover_feed", {
+    p_exclude_ids: options?.excludeIds ?? [],
+    p_limit: options?.limit ?? DISCOVER_FEED_BATCH_SIZE,
+    p_theme_slug: options?.themeSlug ?? null,
+  });
 
   if (error) {
     throw new FeedError(
@@ -291,7 +322,7 @@ export async function getFeedFacts(options?: { themeSlug?: string }) {
   }
 
   return {
-    facts: uniqueFactsById(((data ?? []) as FactRow[]).map(mapFact)),
+    facts: uniqueFactsById(((data ?? []) as FeedRpcRow[]).map(mapFeedRpcFact)),
     source: "supabase" as const,
     theme,
   };

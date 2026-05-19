@@ -6,6 +6,7 @@ import { Inter } from "next/font/google";
 import { useRouter } from "next/navigation";
 import {
   DEFAULT_DAILY_GOAL,
+  DISCOVER_FEED_BATCH_SIZE,
   getFeedFacts,
   getTodayDailyProgress,
   getUserFactActions,
@@ -97,59 +98,60 @@ type FactFeedProps = {
   themeSlug?: string;
 };
 
-function stringSeed(value: string) {
-  let hash = 2166136261;
+const RECENT_FEED_STORAGE_LIMIT = 120;
 
-  for (let index = 0; index < value.length; index += 1) {
-    hash ^= value.charCodeAt(index);
-    hash = Math.imul(hash, 16777619);
-  }
-
-  return hash >>> 0;
+function getFeedStorageKey(scope: string) {
+  return `velora:recentFeedFacts:${scope}`;
 }
 
-function seededRandom(seed: number) {
-  let value = seed;
-
-  return () => {
-    value += 0x6d2b79f5;
-    let next = value;
-    next = Math.imul(next ^ (next >>> 15), next | 1);
-    next ^= next + Math.imul(next ^ (next >>> 7), next | 61);
-    return ((next ^ (next >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
-function shuffleFacts(facts: FeedFact[], key: string) {
-  const random = seededRandom(stringSeed(key));
-  const shuffled = [...facts];
-
-  for (let index = shuffled.length - 1; index > 0; index -= 1) {
-    const swapIndex = Math.floor(random() * (index + 1));
-    [shuffled[index], shuffled[swapIndex]] = [
-      shuffled[swapIndex],
-      shuffled[index],
-    ];
-  }
-
-  return shuffled;
-}
-
-function getSessionSeed(scope: string) {
+function getRememberedFactIds(scope: string) {
   if (typeof window === "undefined") {
-    return `${scope}:server`;
+    return [] as string[];
   }
 
-  const key = `velora:feedSeed:${scope}`;
-  const existingSeed = window.sessionStorage.getItem(key);
+  try {
+    const rawValue = window.sessionStorage.getItem(getFeedStorageKey(scope));
+    const parsedValue = rawValue ? JSON.parse(rawValue) : [];
 
-  if (existingSeed) {
-    return existingSeed;
+    return Array.isArray(parsedValue)
+      ? parsedValue.filter((value): value is string => typeof value === "string")
+      : [];
+  } catch {
+    return [];
+  }
+}
+
+function rememberFactIds(scope: string, factIds: string[]) {
+  if (typeof window === "undefined" || factIds.length === 0) {
+    return;
   }
 
-  const seed = `${scope}:${Date.now()}:${Math.random()}`;
-  window.sessionStorage.setItem(key, seed);
-  return seed;
+  const existingIds = getRememberedFactIds(scope);
+  const nextIds = [
+    ...existingIds.filter((factId) => !factIds.includes(factId)),
+    ...factIds,
+  ].slice(-RECENT_FEED_STORAGE_LIMIT);
+
+  try {
+    window.sessionStorage.setItem(
+      getFeedStorageKey(scope),
+      JSON.stringify(nextIds),
+    );
+  } catch {
+    // Session memory is only a feed quality hint.
+  }
+}
+
+function clearRememberedFactIds(scope: string) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  try {
+    window.sessionStorage.removeItem(getFeedStorageKey(scope));
+  } catch {
+    // Session memory is only a feed quality hint.
+  }
 }
 
 function toggleAction(
@@ -174,6 +176,8 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
   const [theme, setTheme] = useState<CategorySummary | null>(null);
   const [isUnknownTheme, setIsUnknownTheme] = useState(false);
   const [isLoadingFacts, setIsLoadingFacts] = useState(true);
+  const [isLoadingMoreFacts, setIsLoadingMoreFacts] = useState(false);
+  const [hasMoreFacts, setHasMoreFacts] = useState(true);
   const [feedError, setFeedError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [currentStep, setCurrentStep] = useState(0);
@@ -195,11 +199,12 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
   const wheelResetTimer = useRef<number | null>(null);
   const reportedFactsRef = useRef(new Set<string>());
   const goalAnimationShownRef = useRef(false);
+  const loadedFactIdsRef = useRef<string[]>([]);
+  const feedRequestIdRef = useRef(0);
+  const isMountedRef = useRef(false);
 
   const hasFacts = facts.length > 0;
-  const activeFactIndex = hasFacts
-    ? ((currentStep % facts.length) + facts.length) % facts.length
-    : 0;
+  const activeFactIndex = hasFacts ? Math.min(currentStep, facts.length - 1) : 0;
   const activeFact = facts[activeFactIndex];
   const currentDailyGoal = profile?.daily_goal ?? dailyProgress.goal;
   const progress = useMemo(
@@ -213,22 +218,30 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
   const visibleCards = hasFacts
     ? [-1, 0, 1].map((offset) => {
         const step = currentStep + offset;
-        const factIndex = ((step % facts.length) + facts.length) % facts.length;
+        const fact = step >= 0 && step < facts.length ? facts[step] : null;
 
         return {
-          fact: facts[factIndex],
+          fact,
           offset,
           step,
         };
-      })
+      }).filter(
+        (card): card is { fact: FeedFact; offset: number; step: number } =>
+          Boolean(card.fact),
+      )
     : [];
 
   const moveTo = useCallback((direction: 1 | -1) => {
-    setCurrentStep((current) => Math.max(current + direction, 0));
+    setCurrentStep((current) => {
+      const maxStep = Math.max(facts.length - 1, 0);
+      const nextStep = Math.max(current + direction, 0);
+
+      return Math.min(nextStep, maxStep);
+    });
     setDragOffset(0);
     dragOffsetRef.current = 0;
     setIsDragging(false);
-  }, []);
+  }, [facts.length]);
 
   const showTemporaryNotice = useCallback((message: string) => {
     setNotice(message);
@@ -304,20 +317,47 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
     showTemporaryNotice("Copie indisponible sur ce navigateur.");
   };
 
-  useEffect(() => {
-    let isMounted = true;
+  const loadFeedBatch = useCallback(
+    async (mode: "append" | "reset") => {
+      const isReset = mode === "reset";
+      const scope = themeSlug ?? "all";
+      const requestId = feedRequestIdRef.current + 1;
+      feedRequestIdRef.current = requestId;
 
-    async function loadFacts() {
-      setIsLoadingFacts(true);
+      if (isReset) {
+        loadedFactIdsRef.current = [];
+        setHasMoreFacts(true);
+        setIsUnknownTheme(false);
+        setCurrentStep(0);
+        setIsLoadingFacts(true);
+      } else {
+        setIsLoadingMoreFacts(true);
+      }
+
       setFeedError(null);
-      setIsUnknownTheme(false);
-      reportedFactsRef.current = new Set<string>();
-      goalAnimationShownRef.current = false;
+
+      const rememberedFactIds = isReset ? getRememberedFactIds(scope) : [];
+      const excludeIds = isReset
+        ? rememberedFactIds
+        : loadedFactIdsRef.current;
 
       try {
-        const result = await getFeedFacts({ themeSlug });
+        let result = await getFeedFacts({
+          excludeIds,
+          limit: DISCOVER_FEED_BATCH_SIZE,
+          themeSlug,
+        });
 
-        if (!isMounted) {
+        if (isReset && result.facts.length === 0 && rememberedFactIds.length > 0) {
+          clearRememberedFactIds(scope);
+          result = await getFeedFacts({
+            excludeIds: [],
+            limit: DISCOVER_FEED_BATCH_SIZE,
+            themeSlug,
+          });
+        }
+
+        if (!isMountedRef.current || requestId !== feedRequestIdRef.current) {
           return;
         }
 
@@ -325,35 +365,104 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
           setFacts([]);
           setTheme(null);
           setIsUnknownTheme(true);
+          setHasMoreFacts(false);
           return;
         }
 
-        const seed = getSessionSeed(themeSlug ?? "all");
-        setFacts(shuffleFacts(result.facts, seed));
+        const batchFacts = result.facts;
+        const batchFactIds = batchFacts.map((fact) => fact.id);
+
+        setFacts((currentFacts) => {
+          if (isReset) {
+            return batchFacts;
+          }
+
+          const existingIds = new Set(currentFacts.map((fact) => fact.id));
+          return [
+            ...currentFacts,
+            ...batchFacts.filter((fact) => !existingIds.has(fact.id)),
+          ];
+        });
+
+        loadedFactIdsRef.current = isReset
+          ? batchFactIds
+          : [
+              ...loadedFactIdsRef.current,
+              ...batchFactIds.filter(
+                (factId) => !loadedFactIdsRef.current.includes(factId),
+              ),
+            ];
+        rememberFactIds(scope, batchFactIds);
         setTheme(result.theme ?? null);
-        setCurrentStep(0);
+        setHasMoreFacts(batchFacts.length >= DISCOVER_FEED_BATCH_SIZE);
       } catch (error) {
-        if (isMounted) {
-          setFacts([]);
+        if (isMountedRef.current && requestId === feedRequestIdRef.current) {
+          if (isReset) {
+            setFacts([]);
+          }
+
           setFeedError(
             error instanceof Error
               ? error.message
-              : "Découvrir est indisponible pour le moment.",
+              : "Decouvrir est indisponible pour le moment.",
           );
         }
       } finally {
-        if (isMounted) {
-          setIsLoadingFacts(false);
+        if (isMountedRef.current && requestId === feedRequestIdRef.current) {
+          if (isReset) {
+            setIsLoadingFacts(false);
+          } else {
+            setIsLoadingMoreFacts(false);
+          }
         }
       }
-    }
+    },
+    [themeSlug],
+  );
 
-    loadFacts();
+  useEffect(() => {
+    isMountedRef.current = true;
 
     return () => {
-      isMounted = false;
+      isMountedRef.current = false;
     };
-  }, [themeSlug]);
+  }, []);
+
+  useEffect(() => {
+    if (isLoadingAuth) {
+      return;
+    }
+
+    reportedFactsRef.current = new Set<string>();
+    goalAnimationShownRef.current = false;
+
+    queueMicrotask(() => {
+      void loadFeedBatch("reset");
+    });
+  }, [isAuthenticated, isLoadingAuth, loadFeedBatch]);
+
+  useEffect(() => {
+    if (
+      isLoadingFacts ||
+      isLoadingMoreFacts ||
+      !hasMoreFacts ||
+      facts.length === 0 ||
+      facts.length - activeFactIndex > 5
+    ) {
+      return;
+    }
+
+    queueMicrotask(() => {
+      void loadFeedBatch("append");
+    });
+  }, [
+    activeFactIndex,
+    facts.length,
+    hasMoreFacts,
+    isLoadingFacts,
+    isLoadingMoreFacts,
+    loadFeedBatch,
+  ]);
 
   useEffect(() => {
     let isMounted = true;
@@ -910,7 +1019,11 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
           <span className="h-7 w-[1px] overflow-hidden rounded-full bg-white/25">
             <span className="block h-3 w-full animate-[pulse_1.2s_ease-in-out_infinite] rounded-full bg-white" />
           </span>
-          Swipe pour continuer
+          {isLoadingMoreFacts
+            ? "Chargement..."
+            : hasMoreFacts || activeFactIndex < facts.length - 1
+              ? "Swipe pour continuer"
+              : "Fin du flux pour cette session"}
         </div>
       </div>
 

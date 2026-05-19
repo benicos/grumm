@@ -62,6 +62,8 @@ Appliquer les migrations SQL dans l'ordre logique :
 5. `supabase/velora_role_trigger_fix.sql` si une base existante a déjà le
    trigger de protection des rôles et bloque les migrations ou les updates
    administrateur.
+6. `supabase/velora_fact_review_feed.sql` pour le workflow de validation des
+   faits, les policies RLS durcies et le feed aleatoire pondere.
 
 Premier administrateur :
 

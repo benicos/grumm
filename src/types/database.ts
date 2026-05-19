@@ -50,7 +50,7 @@ export type Database = {
           source: string;
           source_url: string | null;
           author_id: string | null;
-          status: "draft" | "published" | "archived";
+          status: "draft" | "pending_review" | "published" | "rejected" | "archived";
           published_at: string | null;
           display_order: number;
           tone: string | null;
@@ -68,7 +68,7 @@ export type Database = {
           source: string;
           source_url?: string | null;
           author_id?: string | null;
-          status?: "draft" | "published" | "archived";
+          status?: "draft" | "pending_review" | "published" | "rejected" | "archived";
           published_at?: string | null;
           display_order?: number;
           tone?: string | null;
@@ -86,7 +86,7 @@ export type Database = {
           source?: string;
           source_url?: string | null;
           author_id?: string | null;
-          status?: "draft" | "published" | "archived";
+          status?: "draft" | "pending_review" | "published" | "rejected" | "archived";
           published_at?: string | null;
           display_order?: number;
           tone?: string | null;
@@ -311,6 +311,41 @@ export type Database = {
           completed_today: boolean;
           unique_view_created: boolean;
           completed_goals_count: number;
+        }[];
+      };
+      get_discover_feed: {
+        Args: {
+          p_limit?: number;
+          p_theme_slug?: string | null;
+          p_exclude_ids?: string[];
+        };
+        Returns: {
+          id: string;
+          slug: string;
+          title: string;
+          hook: string;
+          content: string;
+          source: string;
+          source_url: string | null;
+          tone: string | null;
+          accent_color: string | null;
+          category_id: string;
+          category_name: string;
+          category_slug: string;
+          category_tone: string;
+          category_accent_color: string;
+          seen_by_user: boolean;
+        }[];
+      };
+      get_admin_fact_authors: {
+        Args: {
+          p_fact_ids?: string[];
+        };
+        Returns: {
+          fact_id: string;
+          author_id: string | null;
+          username: string | null;
+          role: "membre" | "redacteur" | "administrateur" | null;
         }[];
       };
     };

@@ -6,11 +6,21 @@ import { slugify } from "@/lib/slug";
 import type { Database } from "@/types/database";
 
 export type AdminCategory = Database["public"]["Tables"]["categories"]["Row"];
-export type AdminFact = Database["public"]["Tables"]["facts"]["Row"] & {
-  categories: Pick<AdminCategory, "name" | "slug"> | null;
-};
 export type AdminProfile = Database["public"]["Tables"]["profiles"]["Row"];
 export type FactStatus = Database["public"]["Tables"]["facts"]["Row"]["status"];
+export type AdminFactAuthor = Pick<AdminProfile, "id" | "role" | "username">;
+export type AdminFact = Database["public"]["Tables"]["facts"]["Row"] & {
+  authorProfile?: AdminFactAuthor | null;
+  categories: Pick<AdminCategory, "name" | "slug"> | null;
+};
+
+export const FACT_STATUS_LABELS: Record<FactStatus, string> = {
+  archived: "Archive",
+  draft: "Brouillon",
+  pending_review: "En attente",
+  published: "Publie",
+  rejected: "Rejete",
+};
 
 export type AdminListResult<T> = {
   items: T[];
@@ -25,6 +35,8 @@ export type AdminDashboardData = {
     label: string;
     value: number;
   }[];
+  pendingFacts: AdminFact[];
+  pendingFactsCount: number;
   recentFacts: AdminFact[];
   recentProfiles: AdminProfile[];
 };
@@ -37,6 +49,8 @@ type AdminAuth = Awaited<ReturnType<typeof getAuthenticatedAdminClient>>;
 type AdminClient = Extract<AdminAuth, { ok: true }>["supabase"];
 
 const DEFAULT_PAGE_SIZE = 12;
+const ADMIN_FACT_SELECT =
+  "id,category_id,slug,title,hook,content,source,source_url,status,published_at,display_order,tone,accent_color,created_at,updated_at,categories(name,slug)";
 
 function normalizeSearchTerm(query?: string) {
   return query?.trim().replace(/[%,_]/g, " ").replace(/\s+/g, " ") ?? "";
@@ -136,6 +150,44 @@ async function getNextFactDisplayOrder(supabase: AdminClient) {
   return (data?.display_order ?? 0) + 10;
 }
 
+async function attachFactAuthors(
+  auth: Extract<AdminAuth, { ok: true }>,
+  facts: AdminFact[],
+) {
+  const factIds = facts.map((fact) => fact.id);
+
+  if (factIds.length === 0) {
+    return facts.map((fact) => ({ ...fact, authorProfile: null }));
+  }
+
+  const { data, error } = await auth.supabase
+    .rpc("get_admin_fact_authors", { p_fact_ids: factIds });
+
+  if (error) {
+    throwAdminError(error, "load fact authors", "profiles");
+  }
+
+  const authorsByFactId = new Map(
+    (data ?? []).map((author) => [author.fact_id, author]),
+  );
+
+  return facts.map((fact) => {
+    const author = authorsByFactId.get(fact.id);
+
+    return {
+      ...fact,
+      author_id: author?.author_id ?? null,
+      authorProfile: author?.author_id
+        ? {
+            id: author.author_id,
+            role: author.role ?? "membre",
+            username: author.username ?? "Auteur inconnu",
+          }
+        : null,
+    };
+  });
+}
+
 export async function getAdminDashboardData(): Promise<AdminDashboardData> {
   const auth = await getAuthenticatedAdminClient();
 
@@ -144,16 +196,49 @@ export async function getAdminDashboardData(): Promise<AdminDashboardData> {
   }
 
   const today = new Date().toISOString().slice(0, 10);
+  const adminRole = isAdmin(auth.role);
+  let factsCountRequest = auth.supabase
+    .from("facts")
+    .select("id", { count: "exact", head: true });
+  let pendingFactsCountRequest = auth.supabase
+    .from("facts")
+    .select("id", { count: "exact", head: true })
+    .eq("status", "pending_review");
+  let pendingFactsRequest = auth.supabase
+    .from("facts")
+    .select(ADMIN_FACT_SELECT)
+    .eq("status", "pending_review")
+    .order("created_at", { ascending: false })
+    .limit(5);
+  let recentFactsRequest = auth.supabase
+    .from("facts")
+    .select(ADMIN_FACT_SELECT)
+    .order("created_at", { ascending: false })
+    .limit(6);
+
+  if (!adminRole) {
+    factsCountRequest = factsCountRequest.eq("author_id", auth.user.id);
+    pendingFactsCountRequest = pendingFactsCountRequest.eq(
+      "author_id",
+      auth.user.id,
+    );
+    pendingFactsRequest = pendingFactsRequest.eq("author_id", auth.user.id);
+    recentFactsRequest = recentFactsRequest.eq("author_id", auth.user.id);
+  }
+
   const [
     factsCount,
+    pendingFactsCount,
     categoriesCount,
     viewsCount,
     goalsTodayCount,
+    pendingFacts,
     recentFacts,
     profilesCount,
     recentProfiles,
   ] = await Promise.all([
-    auth.supabase.from("facts").select("id", { count: "exact", head: true }),
+    factsCountRequest,
+    pendingFactsCountRequest,
     auth.supabase
       .from("categories")
       .select("id", { count: "exact", head: true }),
@@ -165,17 +250,14 @@ export async function getAdminDashboardData(): Promise<AdminDashboardData> {
       .select("id", { count: "exact", head: true })
       .eq("progress_date", today)
       .eq("goal_completed", true),
-    auth.supabase
-      .from("facts")
-      .select("*,categories(name,slug)")
-      .order("created_at", { ascending: false })
-      .limit(6),
-    isAdmin(auth.role)
+    pendingFactsRequest,
+    recentFactsRequest,
+    adminRole
       ? auth.supabase
           .from("profiles")
           .select("id", { count: "exact", head: true })
       : Promise.resolve({ count: 0, error: null }),
-    isAdmin(auth.role)
+    adminRole
       ? auth.supabase
           .from("profiles")
           .select("*")
@@ -186,9 +268,11 @@ export async function getAdminDashboardData(): Promise<AdminDashboardData> {
 
   const error =
     factsCount.error ??
+    pendingFactsCount.error ??
     categoriesCount.error ??
     viewsCount.error ??
     goalsTodayCount.error ??
+    pendingFacts.error ??
     recentFacts.error ??
     profilesCount.error ??
     recentProfiles.error;
@@ -197,18 +281,30 @@ export async function getAdminDashboardData(): Promise<AdminDashboardData> {
     throwAdminError(error, "load admin dashboard", "admin");
   }
 
+  const hydratedPendingFacts = await attachFactAuthors(
+    auth,
+    (pendingFacts.data ?? []) as AdminFact[],
+  );
+  const hydratedRecentFacts = await attachFactAuthors(
+    auth,
+    (recentFacts.data ?? []) as AdminFact[],
+  );
+
   return {
     role: auth.role,
     stats: [
       { label: "Faits", value: factsCount.count ?? 0 },
+      { label: "En attente", value: pendingFactsCount.count ?? 0 },
       { label: "Themes", value: categoriesCount.count ?? 0 },
       { label: "Vues uniques", value: viewsCount.count ?? 0 },
       { label: "Objectifs aujourd'hui", value: goalsTodayCount.count ?? 0 },
-      ...(isAdmin(auth.role)
+      ...(adminRole
         ? [{ label: "Utilisateurs", value: profilesCount.count ?? 0 }]
         : []),
     ],
-    recentFacts: (recentFacts.data ?? []) as AdminFact[],
+    pendingFacts: hydratedPendingFacts,
+    pendingFactsCount: pendingFactsCount.count ?? 0,
+    recentFacts: hydratedRecentFacts,
     recentProfiles: (recentProfiles.data ?? []) as AdminProfile[],
   };
 }
@@ -261,11 +357,15 @@ export async function getAdminFacts({
   page = 1,
   pageSize = DEFAULT_PAGE_SIZE,
   query,
+  status,
 }: {
   page?: number;
   pageSize?: number;
   query?: string;
-} = {}): Promise<AdminListResult<AdminFact> & { categories: AdminCategory[] }> {
+  status?: FactStatus | "all";
+} = {}): Promise<
+  AdminListResult<AdminFact> & { categories: AdminCategory[]; role: UserRole }
+> {
   const auth = await getAuthenticatedAdminClient();
 
   if (!auth.ok) {
@@ -279,7 +379,7 @@ export async function getAdminFacts({
   const searchTerm = normalizeSearchTerm(query);
   let factsRequest = auth.supabase
     .from("facts")
-    .select("*,categories(name,slug)", { count: "exact" })
+    .select(ADMIN_FACT_SELECT, { count: "exact" })
     .order("created_at", { ascending: false })
     .range(from, to);
 
@@ -287,6 +387,14 @@ export async function getAdminFacts({
     factsRequest = factsRequest.or(
       `title.ilike.%${searchTerm}%,hook.ilike.%${searchTerm}%,content.ilike.%${searchTerm}%,source.ilike.%${searchTerm}%,slug.ilike.%${searchTerm}%`,
     );
+  }
+
+  if (status && status !== "all") {
+    factsRequest = factsRequest.eq("status", status);
+  }
+
+  if (!isAdmin(auth.role)) {
+    factsRequest = factsRequest.eq("author_id", auth.user.id);
   }
 
   const [factsResult, categoriesResult] = await Promise.all([
@@ -303,11 +411,17 @@ export async function getAdminFacts({
     throwAdminError(error, "load admin facts", "facts");
   }
 
+  const facts = await attachFactAuthors(
+    auth,
+    (factsResult.data ?? []) as AdminFact[],
+  );
+
   return {
     categories: (categoriesResult.data ?? []) as AdminCategory[],
-    items: (factsResult.data ?? []) as AdminFact[],
+    items: facts,
     page: safePage,
     pageSize: safePageSize,
+    role: auth.role,
     total: factsResult.count ?? 0,
   };
 }
@@ -437,7 +551,7 @@ export async function saveAdminFact(input: {
   id?: string;
   source: string;
   source_url: string | null;
-  status: FactStatus;
+  status?: FactStatus;
   title: string;
 }): Promise<AdminMutationResult> {
   const auth = await getAuthenticatedAdminClient();
@@ -458,16 +572,17 @@ export async function saveAdminFact(input: {
 
   try {
     const slug = slugify(input.advancedSlug || title || hook);
+    const status = isAdmin(auth.role) ? input.status ?? "published" : "pending_review";
     const basePayload = {
       category_id: input.category_id,
       content: input.content.trim(),
       hook,
       published_at:
-        input.status === "published" ? new Date().toISOString() : null,
+        status === "published" ? new Date().toISOString() : null,
       slug,
       source: input.source.trim() || "Source non renseignee",
       source_url: input.source_url?.trim() || null,
-      status: input.status,
+      status,
       title,
     };
 
@@ -475,6 +590,7 @@ export async function saveAdminFact(input: {
       ? await auth.supabase.from("facts").update(basePayload).eq("id", input.id)
       : await auth.supabase.from("facts").insert({
           ...basePayload,
+          author_id: auth.user.id,
           display_order: await getNextFactDisplayOrder(auth.supabase),
         });
 
@@ -494,7 +610,12 @@ export async function saveAdminFact(input: {
     };
   }
 
-  return { ok: true, message: "Fait enregistre." };
+  return {
+    ok: true,
+    message: isAdmin(auth.role)
+      ? "Fait enregistre."
+      : "Ton fait a ete envoye pour validation.",
+  };
 }
 
 export async function deleteAdminFact(id: string): Promise<AdminMutationResult> {
@@ -502,6 +623,10 @@ export async function deleteAdminFact(id: string): Promise<AdminMutationResult> 
 
   if (!auth.ok) {
     return { ok: false, message: auth.message };
+  }
+
+  if (!isAdmin(auth.role)) {
+    return { ok: false, message: "Acces reserve aux administrateurs." };
   }
 
   const { error } = await auth.supabase.from("facts").delete().eq("id", id);
@@ -514,6 +639,45 @@ export async function deleteAdminFact(id: string): Promise<AdminMutationResult> 
   }
 
   return { ok: true, message: "Fait supprime." };
+}
+
+export async function updateAdminFactStatus(
+  id: string,
+  status: Extract<FactStatus, "published" | "rejected" | "draft" | "pending_review">,
+): Promise<AdminMutationResult> {
+  const auth = await getAuthenticatedAdminClient();
+
+  if (!auth.ok) {
+    return { ok: false, message: auth.message };
+  }
+
+  if (!isAdmin(auth.role)) {
+    return { ok: false, message: "Acces reserve aux administrateurs." };
+  }
+
+  const { error } = await auth.supabase
+    .from("facts")
+    .update({
+      published_at: status === "published" ? new Date().toISOString() : null,
+      status,
+    })
+    .eq("id", id);
+
+  if (error) {
+    return {
+      ok: false,
+      message: adminError(error, "update fact status", "facts"),
+    };
+  }
+
+  const messages: Record<typeof status, string> = {
+    draft: "Fait repasse en brouillon.",
+    pending_review: "Fait renvoye en validation.",
+    published: "Fait publie.",
+    rejected: "Fait rejete.",
+  };
+
+  return { ok: true, message: messages[status] };
 }
 
 export async function updateProfileRole(
