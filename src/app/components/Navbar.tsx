@@ -80,7 +80,7 @@ export default function Navbar({ fixed = false }: NavbarProps) {
     useAuth();
   const router = useRouter();
   const loginHref = "/login";
-  const visibleLinks = canAccessAdmin(profile?.role)
+  const visibleLinks = canAccessAdmin(profile)
     ? [...links, { label: "Admin", href: "/admin" }]
     : links;
 

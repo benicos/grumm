@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import Link from "next/link";
+import FactOfDay from "./components/FactOfDay";
 import HeroBackground from "./components/HeroBackground";
 import Navbar from "./components/Navbar";
 
@@ -49,6 +50,8 @@ export default function VeloraLanding() {
             </div>
           </div>
         </section>
+
+        <FactOfDay />
 
         <section className="py-[110px]">
           <div className="mx-auto max-w-[1180px] px-5">

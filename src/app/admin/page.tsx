@@ -103,7 +103,7 @@ export default function AdminDashboardPage() {
         description="Pilotage rapide des contenus, utilisateurs et signaux de progression."
         action={
           <Link
-            href="/admin/facts"
+            href="/admin/facts/create"
             className="rounded-md bg-amber-300 px-4 py-2 text-sm font-extrabold text-slate-950 hover:bg-amber-200"
           >
             Nouveau fait
@@ -179,7 +179,7 @@ export default function AdminDashboardPage() {
                       </div>
                       <div className="flex flex-wrap items-center gap-2 lg:justify-end">
                         <Link
-                          href="/admin/facts/pending"
+                          href={`/admin/facts/${fact.id}`}
                           className="rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-sm font-extrabold text-slate-200 hover:bg-slate-800"
                         >
                           Consulter
@@ -193,7 +193,7 @@ export default function AdminDashboardPage() {
                           Valider
                         </button>
                         <Link
-                          href="/admin/facts/pending"
+                          href={`/admin/facts/${fact.id}`}
                           className="rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-sm font-extrabold text-slate-200 hover:bg-slate-800"
                         >
                           Modifier
@@ -251,6 +251,7 @@ export default function AdminDashboardPage() {
                   ["Gerer les themes", "/admin/themes"],
                   ["Gerer les utilisateurs", "/admin/users"],
                   ["Roles et permissions", "/admin/roles"],
+                  ["Grades", "/admin/grades"],
                 ].map(([label, href]) => (
                   <Link
                     key={href}

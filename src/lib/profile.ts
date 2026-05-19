@@ -1,4 +1,5 @@
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import type { GradeDefinition } from "@/lib/badges";
 import { formatAppError, getConfiguredErrorMessage } from "@/lib/errors";
 import { FeedError, type FeedFact } from "@/lib/facts";
 import type { UserRole } from "@/lib/roles";
@@ -48,6 +49,7 @@ export type UserProfileSummary = {
   savedCount: number;
   uniqueViewsCount: number;
   completedDailyGoals: number;
+  grades: GradeDefinition[];
   todayReadCount: number;
   likedFacts: FeedFact[];
   savedFacts: FeedFact[];
@@ -136,6 +138,7 @@ export async function getUserProfileSummary(): Promise<UserProfileSummary> {
     savesResult,
     viewsResult,
     dailyProgressResult,
+    gradesResult,
   ] = await Promise.all([
     supabase
       .from("profiles")
@@ -161,6 +164,11 @@ export async function getUserProfileSummary(): Promise<UserProfileSummary> {
       .select("progress_date,facts_read_count,daily_goal,goal_completed")
       .eq("user_id", user.id)
       .order("progress_date", { ascending: false }),
+    supabase
+      .from("grades")
+      .select("id,slug,name,required_goals,description,badge,display_order")
+      .order("required_goals", { ascending: true })
+      .order("display_order", { ascending: true }),
   ]);
 
   const blockingError =
@@ -185,6 +193,17 @@ export async function getUserProfileSummary(): Promise<UserProfileSummary> {
     (viewsResult.data ?? []).map((view) => view.fact_id),
   );
   const dailyRows = dailyProgressResult.data ?? [];
+  const grades = gradesResult.error
+    ? []
+    : (gradesResult.data ?? []).map((grade) => ({
+        badge: grade.badge,
+        description: grade.description,
+        displayOrder: grade.display_order,
+        id: grade.id,
+        name: grade.name,
+        requiredGoals: grade.required_goals,
+        slug: grade.slug,
+      }));
   const today = todayKey();
   const todayRow = dailyRows.find((row) => row.progress_date === today);
 
@@ -201,6 +220,7 @@ export async function getUserProfileSummary(): Promise<UserProfileSummary> {
     savedCount: savedFacts.length,
     uniqueViewsCount: uniqueViews.size,
     completedDailyGoals: dailyRows.filter((row) => row.goal_completed).length,
+    grades,
     todayReadCount: todayRow?.facts_read_count ?? 0,
     likedFacts,
     savedFacts,

@@ -1,5 +1,5 @@
-import FactsManager from "./FactsManager";
+import FactsList from "./FactsList";
 
 export default function AdminFactsPage() {
-  return <FactsManager />;
+  return <FactsList />;
 }

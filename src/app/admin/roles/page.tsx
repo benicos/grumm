@@ -2,49 +2,48 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { getAdminProfiles, updateProfileRole } from "@/lib/admin";
-import type { AdminProfile } from "@/lib/admin";
-import { isAdmin, ROLE_LABELS, USER_ROLES } from "@/lib/roles";
-import type { UserRole } from "@/lib/roles";
+import { deleteAdminRole, getAdminRoles } from "@/lib/admin";
+import type { AdminRole } from "@/lib/admin";
+import { hasPermission, PERMISSION_LABELS } from "@/lib/roles";
 import { useAuth } from "../../auth/AuthProvider";
 import {
   AdminButton,
   AdminLoadingRows,
   AdminMessage,
   AdminPageHeader,
+  AdminPager,
   AdminPanel,
+  AdminSearch,
+  AdminTableEmpty,
 } from "../components";
 
-const permissions = [
-  {
-    role: "membre",
-    rows: ["Lire les contenus", "Liker et sauvegarder", "Gerer son profil"],
-  },
-  {
-    role: "redacteur",
-    rows: ["Permissions membre", "Creer des faits", "Modifier ses propres faits"],
-  },
-  {
-    role: "administrateur",
-    rows: ["Acces admin complet", "CRUD faits/themes", "Gestion utilisateurs et roles"],
-  },
-] as const;
+function rolePermissions(role: AdminRole) {
+  return Array.isArray(role.permissions)
+    ? role.permissions.filter((permission): permission is string => typeof permission === "string")
+    : [];
+}
 
 export default function AdminRolesPage() {
   const { profile } = useAuth();
-  const [profiles, setProfiles] = useState<AdminProfile[]>([]);
+  const [roles, setRoles] = useState<AdminRole[]>([]);
+  const [query, setQuery] = useState("");
+  const [page, setPage] = useState(1);
+  const [pageSize] = useState(20);
+  const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [isBusy, setIsBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const canManageRoles = isAdmin(profile?.role);
+  const canManageRoles = hasPermission(profile, "roles.manage");
 
-  async function loadProfiles() {
+  async function loadRoles(nextPage = page) {
     setIsLoading(true);
 
     try {
-      const result = await getAdminProfiles({ pageSize: 8 });
-      setProfiles(result.items);
+      const result = await getAdminRoles({ page: nextPage, pageSize, query });
+      setRoles(result.items);
+      setTotal(result.total);
+      setPage(result.page);
     } catch (loadError) {
       setError(
         loadError instanceof Error
@@ -63,13 +62,17 @@ export default function AdminRolesPage() {
 
     let isMounted = true;
 
-    async function loadInitialProfiles() {
+    async function loadInitialRoles() {
       try {
-        const result = await getAdminProfiles({ pageSize: 8 });
+        const result = await getAdminRoles({ page, pageSize, query });
 
-        if (isMounted) {
-          setProfiles(result.items);
+        if (!isMounted) {
+          return;
         }
+
+        setRoles(result.items);
+        setTotal(result.total);
+        setPage(result.page);
       } catch (loadError) {
         if (isMounted) {
           setError(
@@ -85,24 +88,28 @@ export default function AdminRolesPage() {
       }
     }
 
-    void loadInitialProfiles();
+    void loadInitialRoles();
 
     return () => {
       isMounted = false;
     };
-  }, [canManageRoles]);
+  }, [canManageRoles, page, pageSize, query]);
 
-  async function changeRole(profileId: string, nextRole: UserRole) {
+  async function removeRole(role: AdminRole) {
+    if (!window.confirm(`Supprimer le role "${role.name}" ?`)) {
+      return;
+    }
+
     setIsBusy(true);
     setMessage(null);
     setError(null);
 
-    const result = await updateProfileRole(profileId, nextRole);
+    const result = await deleteAdminRole(role.slug);
 
     setIsBusy(false);
     setMessage(result.ok ? result.message : null);
     setError(result.ok ? null : result.message);
-    await loadProfiles();
+    await loadRoles();
   }
 
   if (!canManageRoles) {
@@ -120,13 +127,13 @@ export default function AdminRolesPage() {
       <AdminPageHeader
         eyebrow="Securite"
         title="Roles et permissions"
-        description="Vue claire des droits applicatifs. Les permissions critiques restent enforcees par Supabase RLS."
+        description="Roles applicatifs configurables. Les permissions sont aussi verifiees par les fonctions et policies Supabase."
         action={
           <Link
-            href="/admin/users"
-            className="rounded-md border border-slate-700 bg-slate-900 px-4 py-2 text-sm font-extrabold text-slate-200 hover:bg-slate-800"
+            href="/admin/roles/create"
+            className="rounded-md bg-amber-300 px-4 py-2 text-sm font-extrabold text-slate-950 hover:bg-amber-200"
           >
-            Tous les utilisateurs
+            Creer un role
           </Link>
         }
       />
@@ -134,70 +141,103 @@ export default function AdminRolesPage() {
       <AdminMessage message={message} tone="success" />
       <AdminMessage message={error} tone="error" />
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_420px]">
-        <section className="grid gap-4 md:grid-cols-3">
-          {permissions.map((item) => (
-            <AdminPanel key={item.role} className="p-5">
-              <h2 className="text-lg font-extrabold text-white">
-                {ROLE_LABELS[item.role]}
-              </h2>
-              <ul className="mt-4 space-y-2 text-sm text-slate-300">
-                {item.rows.map((row) => (
-                  <li key={row} className="rounded-md bg-slate-900 px-3 py-2">
-                    {row}
-                  </li>
-                ))}
-              </ul>
-            </AdminPanel>
-          ))}
-        </section>
+      <AdminPanel>
+        <div className="grid gap-3 border-b border-slate-800 p-4 lg:grid-cols-[minmax(0,1fr)_auto]">
+          <AdminSearch
+            value={query}
+            onChange={(value) => {
+              setQuery(value);
+              setPage(1);
+              setIsLoading(true);
+            }}
+            placeholder="Rechercher un role..."
+          />
+          <span className="rounded-md bg-slate-900 px-3 py-2 text-sm font-bold text-slate-300">
+            {total} roles
+          </span>
+        </div>
 
-        <AdminPanel>
-          <div className="border-b border-slate-800 px-5 py-4">
-            <h2 className="text-lg font-extrabold">Attribution rapide</h2>
-          </div>
+        {isLoading ? (
+          <AdminLoadingRows />
+        ) : roles.length > 0 ? (
+          <div className="divide-y divide-slate-800">
+            {roles.map((role) => {
+              const permissions = rolePermissions(role);
 
-          {isLoading ? (
-            <AdminLoadingRows rows={4} />
-          ) : (
-            <div className="divide-y divide-slate-800">
-              {profiles.map((userProfile) => (
+              return (
                 <div
-                  key={userProfile.id}
-                  className="flex items-center justify-between gap-4 px-5 py-4"
+                  key={role.slug}
+                  className="grid gap-4 px-5 py-4 lg:grid-cols-[minmax(0,1fr)_auto]"
                 >
-                  <div className="min-w-0">
-                    <p className="truncate font-bold text-white">
-                      {userProfile.username}
-                    </p>
-                    <p className="text-xs text-slate-500">{userProfile.role}</p>
+                  <div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h2 className="font-extrabold text-white">{role.name}</h2>
+                      {role.is_system && (
+                        <span className="rounded bg-amber-300/10 px-2 py-1 text-xs font-bold text-amber-200">
+                          systeme
+                        </span>
+                      )}
+                    </div>
+                    <p className="mt-1 text-xs text-slate-500">{role.slug}</p>
+                    {role.description && (
+                      <p className="mt-2 text-sm text-slate-400">
+                        {role.description}
+                      </p>
+                    )}
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {permissions.slice(0, 6).map((permission) => (
+                        <span
+                          key={permission}
+                          className="rounded bg-slate-900 px-2 py-1 text-xs font-bold text-slate-300"
+                        >
+                          {PERMISSION_LABELS[permission as keyof typeof PERMISSION_LABELS] ??
+                            permission}
+                        </span>
+                      ))}
+                      {permissions.length > 6 && (
+                        <span className="rounded bg-slate-900 px-2 py-1 text-xs font-bold text-slate-500">
+                          +{permissions.length - 6}
+                        </span>
+                      )}
+                    </div>
                   </div>
-                  <select
-                    value={userProfile.role}
-                    disabled={isBusy}
-                    onChange={(event) =>
-                      changeRole(userProfile.id, event.target.value as UserRole)
-                    }
-                    className="rounded-md border border-slate-800 bg-slate-900 px-3 py-2 text-sm font-bold text-white"
-                  >
-                    {USER_ROLES.map((roleItem) => (
-                      <option key={roleItem} value={roleItem}>
-                        {ROLE_LABELS[roleItem]}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="flex flex-wrap items-start justify-end gap-2">
+                    <Link
+                      href={`/admin/roles/${role.slug}`}
+                      className="rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-sm font-extrabold text-slate-200 hover:bg-slate-800"
+                    >
+                      Modifier
+                    </Link>
+                    {!role.is_system && (
+                      <AdminButton
+                        tone="danger"
+                        disabled={isBusy}
+                        onClick={() => removeRole(role)}
+                      >
+                        Supprimer
+                      </AdminButton>
+                    )}
+                  </div>
                 </div>
-              ))}
-            </div>
-          )}
-
-          <div className="border-t border-slate-800 p-4">
-            <AdminButton tone="secondary" onClick={loadProfiles}>
-              Rafraichir
-            </AdminButton>
+              );
+            })}
           </div>
-        </AdminPanel>
-      </div>
+        ) : (
+          <div className="p-4">
+            <AdminTableEmpty label="Aucun role trouve." />
+          </div>
+        )}
+
+        <AdminPager
+          page={page}
+          pageSize={pageSize}
+          total={total}
+          onPageChange={(nextPage) => {
+            setPage(nextPage);
+            setIsLoading(true);
+          }}
+        />
+      </AdminPanel>
     </>
   );
 }

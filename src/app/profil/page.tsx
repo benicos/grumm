@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import { getBadgeInfo } from "@/lib/badges";
 import { getUserProfileSummary } from "@/lib/profile";
 import type { UserProfileSummary } from "@/lib/profile";
-import { ROLE_LABELS } from "@/lib/roles";
+import { getRoleLabel } from "@/lib/roles";
 import RequireAuth from "../auth/RequireAuth";
 import { AppState } from "../components/AppState";
 import HeroBackground from "../components/HeroBackground";
@@ -36,7 +36,7 @@ function ProfileSkeleton() {
 }
 
 function ProgressPanel({ profile }: { profile: UserProfileSummary }) {
-  const badge = getBadgeInfo(profile.completedDailyGoals);
+  const badge = getBadgeInfo(profile.completedDailyGoals, profile.grades);
   const nextThreshold = badge.nextThreshold ?? badge.currentThreshold;
   const gradeValue = badge.nextThreshold
     ? `${profile.completedDailyGoals} / ${badge.nextThreshold} objectifs atteints`
@@ -237,7 +237,9 @@ function ProfileContent() {
     );
   }
 
-  const badge = profile ? getBadgeInfo(profile.completedDailyGoals) : null;
+  const badge = profile
+    ? getBadgeInfo(profile.completedDailyGoals, profile.grades)
+    : null;
 
   return (
     <div
@@ -259,7 +261,7 @@ function ProfileContent() {
                       {profile.username ?? "Profil"}
                     </h1>
                     <span className="rounded-full border border-white/10 bg-white/[0.055] px-3 py-1 text-sm font-bold text-white/62">
-                      {ROLE_LABELS[profile.role]}
+                      {getRoleLabel(profile.role)}
                     </span>
                   </div>
                   <p className="mt-3 text-lg font-bold text-[#ffd166]">

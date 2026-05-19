@@ -110,7 +110,7 @@ export type Database = {
           username: string;
           avatar_url: string | null;
           daily_goal: number;
-          role: "membre" | "redacteur" | "administrateur";
+          role: string;
           created_at: string;
           updated_at: string;
         };
@@ -119,7 +119,7 @@ export type Database = {
           username: string;
           avatar_url?: string | null;
           daily_goal?: number;
-          role?: "membre" | "redacteur" | "administrateur";
+          role?: string;
           created_at?: string;
           updated_at?: string;
         };
@@ -128,7 +128,7 @@ export type Database = {
           username?: string;
           avatar_url?: string | null;
           daily_goal?: number;
-          role?: "membre" | "redacteur" | "administrateur";
+          role?: string;
           created_at?: string;
           updated_at?: string;
         };
@@ -289,6 +289,75 @@ export type Database = {
         };
         Relationships: [];
       };
+      roles: {
+        Row: {
+          slug: string;
+          name: string;
+          description: string | null;
+          permissions: Json;
+          is_system: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          slug: string;
+          name: string;
+          description?: string | null;
+          permissions?: Json;
+          is_system?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          slug?: string;
+          name?: string;
+          description?: string | null;
+          permissions?: Json;
+          is_system?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      grades: {
+        Row: {
+          id: string;
+          slug: string;
+          name: string;
+          required_goals: number;
+          description: string | null;
+          badge: string | null;
+          display_order: number;
+          is_system: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          slug: string;
+          name: string;
+          required_goals: number;
+          description?: string | null;
+          badge?: string | null;
+          display_order?: number;
+          is_system?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          slug?: string;
+          name?: string;
+          required_goals?: number;
+          description?: string | null;
+          badge?: string | null;
+          display_order?: number;
+          is_system?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: {
@@ -345,8 +414,90 @@ export type Database = {
           fact_id: string;
           author_id: string | null;
           username: string | null;
-          role: "membre" | "redacteur" | "administrateur" | null;
+          role: string | null;
         }[];
+      };
+      get_explorer_themes: {
+        Args: {
+          p_limit?: number;
+          p_query?: string | null;
+        };
+        Returns: {
+          id: string;
+          name: string;
+          slug: string;
+          tone: string;
+          accent_color: string;
+          published_facts_count: number;
+        }[];
+      };
+      search_published_facts: {
+        Args: {
+          p_query: string;
+          p_limit?: number;
+        };
+        Returns: {
+          id: string;
+          slug: string;
+          title: string;
+          hook: string;
+          content: string;
+          source: string;
+          source_url: string | null;
+          tone: string | null;
+          accent_color: string | null;
+          category_id: string;
+          category_name: string;
+          category_slug: string;
+          category_tone: string;
+          category_accent_color: string;
+          rank: number;
+        }[];
+      };
+      get_fact_of_the_day: {
+        Args: Record<string, never>;
+        Returns: {
+          id: string;
+          slug: string;
+          title: string;
+          hook: string;
+          content: string;
+          source: string;
+          source_url: string | null;
+          tone: string | null;
+          accent_color: string | null;
+          category_id: string;
+          category_name: string;
+          category_slug: string;
+          category_tone: string;
+          category_accent_color: string;
+          interaction_count: number;
+        }[];
+      };
+      get_admin_profiles: {
+        Args: {
+          p_query?: string | null;
+          p_role?: string | null;
+          p_limit?: number;
+          p_offset?: number;
+        };
+        Returns: {
+          id: string;
+          email: string | null;
+          username: string;
+          avatar_url: string | null;
+          daily_goal: number;
+          role: string;
+          created_at: string;
+          updated_at: string;
+          total_count: number;
+        }[];
+      };
+      delete_admin_user: {
+        Args: {
+          p_user_id: string;
+        };
+        Returns: boolean;
       };
     };
     Enums: Record<string, never>;

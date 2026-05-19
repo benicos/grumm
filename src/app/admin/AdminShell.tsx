@@ -4,7 +4,12 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Inter } from "next/font/google";
 import { signOut } from "@/lib/auth";
-import { canAccessAdmin, ROLE_LABELS } from "@/lib/roles";
+import {
+  canAccessAdmin,
+  getRoleLabel,
+  hasPermission,
+  type PermissionKey,
+} from "@/lib/roles";
 import { useAuth } from "../auth/AuthProvider";
 
 const inter = Inter({
@@ -13,12 +18,13 @@ const inter = Inter({
 });
 
 const baseLinks = [
-  { href: "/admin", label: "Dashboard", roles: ["redacteur", "administrateur"] },
-  { href: "/admin/facts", label: "Faits", roles: ["redacteur", "administrateur"] },
-  { href: "/admin/facts/pending", label: "Validation", roles: ["administrateur"] },
-  { href: "/admin/themes", label: "Themes", roles: ["administrateur"] },
-  { href: "/admin/users", label: "Utilisateurs", roles: ["administrateur"] },
-  { href: "/admin/roles", label: "Roles", roles: ["administrateur"] },
+  { href: "/admin", label: "Dashboard", permission: "admin.access" },
+  { href: "/admin/facts", label: "Faits", permission: "facts.create" },
+  { href: "/admin/facts/pending", label: "Validation", permission: "facts.publish" },
+  { href: "/admin/themes", label: "Themes", permission: "themes.manage" },
+  { href: "/admin/users", label: "Utilisateurs", permission: "users.manage" },
+  { href: "/admin/roles", label: "Roles", permission: "roles.manage" },
+  { href: "/admin/grades", label: "Grades", permission: "grades.manage" },
 ] as const;
 
 function AdminGate({
@@ -96,9 +102,10 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
   const { displayName, isAuthenticated, isLoading, profile, refreshUser } =
     useAuth();
   const role = profile?.role ?? "membre";
-  const canOpenAdmin = canAccessAdmin(role);
+  const roleLabel = getRoleLabel(role, profile?.roleName);
+  const canOpenAdmin = canAccessAdmin(profile);
   const navLinks = baseLinks.filter((link) =>
-    (link.roles as readonly string[]).includes(role),
+    hasPermission(profile, link.permission as PermissionKey),
   );
 
   async function handleLogout() {
@@ -174,7 +181,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
 
             <div className="mt-auto rounded-lg border border-slate-800 bg-slate-900/60 p-4">
               <p className="truncate text-sm font-bold">{displayName ?? "Compte"}</p>
-              <p className="mt-1 text-xs text-slate-400">{ROLE_LABELS[role]}</p>
+              <p className="mt-1 text-xs text-slate-400">{roleLabel}</p>
               <div className="mt-4 grid gap-2">
                 <Link
                   href="/discover"
@@ -201,7 +208,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
                 Velora Admin
               </Link>
               <span className="rounded-full border border-slate-700 px-3 py-1 text-xs font-bold text-slate-300">
-                {ROLE_LABELS[role]}
+                {roleLabel}
               </span>
             </div>
             <nav className="mt-3 flex gap-2 overflow-x-auto pb-1">

@@ -1,12 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getAdminProfiles, updateProfileRole } from "@/lib/admin";
-import type { AdminProfile } from "@/lib/admin";
-import { isAdmin, ROLE_LABELS, USER_ROLES } from "@/lib/roles";
+import {
+  deleteAdminUser,
+  getAdminProfiles,
+  getAllAdminRoles,
+  updateProfileRole,
+} from "@/lib/admin";
+import type { AdminProfile, AdminRole } from "@/lib/admin";
+import { getRoleLabel, hasPermission } from "@/lib/roles";
 import type { UserRole } from "@/lib/roles";
 import { useAuth } from "../../auth/AuthProvider";
 import {
+  AdminButton,
   AdminLoadingRows,
   AdminMessage,
   AdminPageHeader,
@@ -19,29 +25,37 @@ import {
 export default function AdminUsersPage() {
   const { profile } = useAuth();
   const [profiles, setProfiles] = useState<AdminProfile[]>([]);
+  const [roles, setRoles] = useState<AdminRole[]>([]);
   const [query, setQuery] = useState("");
+  const [roleFilter, setRoleFilter] = useState("all");
   const [page, setPage] = useState(1);
-  const [pageSize] = useState(12);
+  const [pageSize] = useState(20);
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [isBusy, setIsBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const canManageUsers = isAdmin(profile?.role);
+  const canManageUsers = hasPermission(profile, "users.manage");
+  const canDeleteUsers = hasPermission(profile, "users.delete");
 
-  async function loadProfiles(nextPage = page, nextQuery = query) {
+  async function loadProfiles(nextPage = page) {
     setIsLoading(true);
     setError(null);
 
     try {
-      const result = await getAdminProfiles({
-        page: nextPage,
-        pageSize,
-        query: nextQuery,
-      });
-      setProfiles(result.items);
-      setTotal(result.total);
-      setPage(result.page);
+      const [profilesResult, rolesResult] = await Promise.all([
+        getAdminProfiles({
+          page: nextPage,
+          pageSize,
+          query,
+          role: roleFilter,
+        }),
+        getAllAdminRoles(),
+      ]);
+      setProfiles(profilesResult.items);
+      setRoles(rolesResult);
+      setTotal(profilesResult.total);
+      setPage(profilesResult.page);
     } catch (loadError) {
       setError(
         loadError instanceof Error
@@ -62,15 +76,19 @@ export default function AdminUsersPage() {
 
     async function loadInitialProfiles() {
       try {
-        const result = await getAdminProfiles({ page, pageSize, query });
+        const [profilesResult, rolesResult] = await Promise.all([
+          getAdminProfiles({ page, pageSize, query, role: roleFilter }),
+          getAllAdminRoles(),
+        ]);
 
         if (!isMounted) {
           return;
         }
 
-        setProfiles(result.items);
-        setTotal(result.total);
-        setPage(result.page);
+        setProfiles(profilesResult.items);
+        setRoles(rolesResult);
+        setTotal(profilesResult.total);
+        setPage(profilesResult.page);
       } catch (loadError) {
         if (isMounted) {
           setError(
@@ -91,7 +109,7 @@ export default function AdminUsersPage() {
     return () => {
       isMounted = false;
     };
-  }, [canManageUsers, page, pageSize, query]);
+  }, [canManageUsers, page, pageSize, query, roleFilter]);
 
   async function changeRole(profileId: string, nextRole: UserRole) {
     setIsBusy(true);
@@ -99,6 +117,27 @@ export default function AdminUsersPage() {
     setError(null);
 
     const result = await updateProfileRole(profileId, nextRole);
+
+    setIsBusy(false);
+    setMessage(result.ok ? result.message : null);
+    setError(result.ok ? null : result.message);
+    await loadProfiles();
+  }
+
+  async function removeUser(userProfile: AdminProfile) {
+    const confirmed = window.confirm(
+      `Supprimer definitivement ${userProfile.username} ? Likes, enregistrements, vues uniques, progression, objectifs et profil seront supprimes. Cette action est irreversible.`,
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setIsBusy(true);
+    setMessage(null);
+    setError(null);
+
+    const result = await deleteAdminUser(userProfile.id);
 
     setIsBusy(false);
     setMessage(result.ok ? result.message : null);
@@ -121,14 +160,14 @@ export default function AdminUsersPage() {
       <AdminPageHeader
         eyebrow="Comptes"
         title="Utilisateurs"
-        description="Consulte les profils et modifie les roles sans exposer les donnees sensibles d'authentification."
+        description="Recherche, filtre par role, attribution rapide et suppression propre des comptes."
       />
 
       <AdminMessage message={message} tone="success" />
       <AdminMessage message={error} tone="error" />
 
       <AdminPanel>
-        <div className="grid gap-3 border-b border-slate-800 p-4 lg:grid-cols-[minmax(0,1fr)_auto]">
+        <div className="grid gap-3 border-b border-slate-800 p-4 lg:grid-cols-[minmax(0,1fr)_220px_auto]">
           <AdminSearch
             value={query}
             onChange={(value) => {
@@ -136,8 +175,24 @@ export default function AdminUsersPage() {
               setPage(1);
               setIsLoading(true);
             }}
-            placeholder="Rechercher un pseudo..."
+            placeholder="Rechercher pseudo, email ou ID..."
           />
+          <select
+            value={roleFilter}
+            onChange={(event) => {
+              setRoleFilter(event.target.value);
+              setPage(1);
+              setIsLoading(true);
+            }}
+            className="rounded-md border border-slate-800 bg-slate-950 px-3 py-2.5 text-sm font-bold text-slate-200 outline-none focus:border-amber-300"
+          >
+            <option value="all">Tous les roles</option>
+            {roles.map((role) => (
+              <option key={role.slug} value={role.slug}>
+                {role.name}
+              </option>
+            ))}
+          </select>
           <span className="rounded-md bg-slate-900 px-3 py-2 text-sm font-bold text-slate-300">
             {total} utilisateurs
           </span>
@@ -150,10 +205,11 @@ export default function AdminUsersPage() {
             <table className="min-w-full divide-y divide-slate-800 text-sm">
               <thead className="bg-slate-900/70 text-left text-xs uppercase tracking-wide text-slate-500">
                 <tr>
-                  <th className="px-4 py-3">Pseudo</th>
+                  <th className="px-4 py-3">Utilisateur</th>
                   <th className="px-4 py-3">Objectif</th>
                   <th className="px-4 py-3">Role</th>
                   <th className="px-4 py-3">Creation</th>
+                  <th className="px-4 py-3 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800">
@@ -161,7 +217,9 @@ export default function AdminUsersPage() {
                   <tr key={userProfile.id}>
                     <td className="px-4 py-3">
                       <p className="font-bold text-white">{userProfile.username}</p>
-                      <p className="mt-1 text-xs text-slate-500">{userProfile.id}</p>
+                      <p className="mt-1 text-xs text-slate-500">
+                        {userProfile.email ?? userProfile.id}
+                      </p>
                     </td>
                     <td className="px-4 py-3 text-slate-300">
                       {userProfile.daily_goal}/jour
@@ -171,19 +229,32 @@ export default function AdminUsersPage() {
                         value={userProfile.role}
                         disabled={isBusy}
                         onChange={(event) =>
-                          changeRole(userProfile.id, event.target.value as UserRole)
+                          changeRole(userProfile.id, event.target.value)
                         }
                         className="rounded-md border border-slate-800 bg-slate-900 px-3 py-2 text-sm font-bold text-white outline-none focus:border-amber-300"
                       >
-                        {USER_ROLES.map((roleItem) => (
-                          <option key={roleItem} value={roleItem}>
-                            {ROLE_LABELS[roleItem]}
+                        {roles.map((role) => (
+                          <option key={role.slug} value={role.slug}>
+                            {getRoleLabel(role.slug, role.name)}
                           </option>
                         ))}
                       </select>
                     </td>
                     <td className="px-4 py-3 text-slate-400">
                       {new Date(userProfile.created_at).toLocaleDateString("fr-FR")}
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex justify-end">
+                        {canDeleteUsers && (
+                          <AdminButton
+                            tone="danger"
+                            disabled={isBusy}
+                            onClick={() => removeUser(userProfile)}
+                          >
+                            Supprimer
+                          </AdminButton>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}

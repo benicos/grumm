@@ -93,6 +93,21 @@ type FeedRpcRow = {
   category_accent_color: string;
 };
 
+type ExplorerThemeRpcRow = FactCategory & {
+  published_facts_count: number;
+};
+
+type SearchFactRpcRow = FeedRpcRow & {
+  rank?: number;
+};
+
+export type ExplorerData = {
+  categories: CategorySummary[];
+  facts: FeedFact[];
+  recentFacts: FeedFact[];
+  source: "supabase" | "unavailable";
+};
+
 type RawDailyProgressRow = {
   facts_read_count: number;
   daily_goal: number;
@@ -148,6 +163,13 @@ function mapFeedRpcFact(fact: FeedRpcRow): FeedFact {
       fact.category_tone ??
       "from-[#0b1424] via-[#132744] to-[#f0a95a]",
     accent: fact.accent_color ?? fact.category_accent_color ?? "#ffd166",
+  };
+}
+
+function mapExplorerTheme(category: ExplorerThemeRpcRow): CategorySummary {
+  return {
+    ...mapCategory(category),
+    count: category.published_facts_count,
   };
 }
 
@@ -332,16 +354,19 @@ function normalizeSearchTerm(query?: string) {
   return query?.trim().replace(/[%,_]/g, " ").replace(/\s+/g, " ") ?? "";
 }
 
-export async function getExplorerData(options?: { query?: string }) {
-  const supabase = createSupabaseBrowserClient();
-  const searchTerm = normalizeSearchTerm(options?.query);
+async function getExplorerThemesWithCounts(
+  supabase: NonNullable<ReturnType<typeof createSupabaseBrowserClient>>,
+  searchTerm: string,
+) {
+  const rpcResult = await supabase.rpc("get_explorer_themes", {
+    p_limit: searchTerm ? 60 : 18,
+    p_query: searchTerm || null,
+  });
 
-  if (!supabase) {
-    return {
-      categories: [] as CategorySummary[],
-      facts: [] as FeedFact[],
-      source: "unavailable" as const,
-    };
+  if (!rpcResult.error) {
+    return ((rpcResult.data ?? []) as ExplorerThemeRpcRow[]).map(
+      mapExplorerTheme,
+    );
   }
 
   const categoriesQuery = supabase
@@ -350,7 +375,9 @@ export async function getExplorerData(options?: { query?: string }) {
     .order("name", { ascending: true });
 
   const categoriesResult = searchTerm
-    ? await categoriesQuery.or(`name.ilike.%${searchTerm}%,slug.ilike.%${searchTerm}%`)
+    ? await categoriesQuery.or(
+        `name.ilike.%${searchTerm}%,slug.ilike.%${searchTerm}%`,
+      )
     : await categoriesQuery.limit(18);
 
   if (categoriesResult.error) {
@@ -362,31 +389,84 @@ export async function getExplorerData(options?: { query?: string }) {
     );
   }
 
-  const matchingCategories = (categoriesResult.data ?? []) as FactCategory[];
-  const matchingCategoryIds = matchingCategories.map((category) => category.id);
+  const categories = (categoriesResult.data ?? []) as FactCategory[];
+  const counts = await Promise.all(
+    categories.map(async (category) => {
+      const { count, error } = await supabase
+        .from("facts")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "published")
+        .eq("category_id", category.id);
 
+      if (error) {
+        throw new FeedError(
+          getSupabaseDataErrorMessage(error, {
+            operation: "count explorer theme facts",
+            table: "facts",
+          }),
+        );
+      }
+
+      return [category.id, count ?? 0] as const;
+    }),
+  );
+  const countByCategoryId = new Map(counts);
+
+  return categories.map((category) => ({
+    ...mapCategory(category),
+    count: countByCategoryId.get(category.id) ?? 0,
+  }));
+}
+
+async function searchExplorerFacts(
+  supabase: NonNullable<ReturnType<typeof createSupabaseBrowserClient>>,
+  searchTerm: string,
+) {
+  const rpcResult = await supabase.rpc("search_published_facts", {
+    p_limit: 36,
+    p_query: searchTerm,
+  });
+
+  if (!rpcResult.error) {
+    return uniqueFactsById(
+      ((rpcResult.data ?? []) as SearchFactRpcRow[]).map(mapFeedRpcFact),
+    );
+  }
+
+  const matchingCategoriesResult = await supabase
+    .from("categories")
+    .select("id,name,slug,tone,accent_color")
+    .or(`name.ilike.%${searchTerm}%,slug.ilike.%${searchTerm}%`);
+
+  if (matchingCategoriesResult.error) {
+    throw new FeedError(
+      getSupabaseDataErrorMessage(matchingCategoriesResult.error, {
+        operation: "search explorer themes",
+        table: "categories",
+      }),
+    );
+  }
+
+  const matchingCategoryIds = ((matchingCategoriesResult.data ?? []) as FactCategory[])
+    .map((category) => category.id);
   const directFactsQuery = supabase
     .from("facts")
     .select(FACT_SELECT)
     .eq("status", "published")
     .order("published_at", { ascending: false })
-    .limit(searchTerm ? 30 : 24);
-
-  const factsResult = searchTerm
-    ? await directFactsQuery.or(
-        `title.ilike.%${searchTerm}%,hook.ilike.%${searchTerm}%,content.ilike.%${searchTerm}%,source.ilike.%${searchTerm}%`,
-      )
-    : await directFactsQuery;
-
+    .limit(36);
+  const factsResult = await directFactsQuery.or(
+    `title.ilike.%${searchTerm}%,hook.ilike.%${searchTerm}%,content.ilike.%${searchTerm}%,source.ilike.%${searchTerm}%,source_url.ilike.%${searchTerm}%`,
+  );
   const categoryFactsResult =
-    searchTerm && matchingCategoryIds.length > 0
+    matchingCategoryIds.length > 0
       ? await supabase
           .from("facts")
           .select(FACT_SELECT)
           .eq("status", "published")
           .in("category_id", matchingCategoryIds)
           .order("published_at", { ascending: false })
-          .limit(30)
+          .limit(36)
       : null;
 
   if (factsResult.error) {
@@ -407,32 +487,98 @@ export async function getExplorerData(options?: { query?: string }) {
     );
   }
 
-  const categoriesForCounts = searchTerm
-    ? matchingCategories
-    : ((await supabase
-      .from("categories")
-      .select("id,name,slug,tone,accent_color")
-      .order("name", { ascending: true })
-      .limit(18)).data ?? []) as FactCategory[];
-  const facts = uniqueFactsById(
+  return uniqueFactsById(
     [
       ...(((factsResult.data ?? []) as FactRow[]).map(mapFact)),
       ...(((categoryFactsResult?.data ?? []) as FactRow[]).map(mapFact)),
     ],
   );
-  const counts = new Map<string, number>();
+}
 
-  for (const fact of facts) {
-    counts.set(fact.categorySlug, (counts.get(fact.categorySlug) ?? 0) + 1);
+async function getRecentPublishedFacts(
+  supabase: NonNullable<ReturnType<typeof createSupabaseBrowserClient>>,
+) {
+  const { data, error } = await supabase
+    .from("facts")
+    .select(FACT_SELECT)
+    .eq("status", "published")
+    .order("published_at", { ascending: false, nullsFirst: false })
+    .order("created_at", { ascending: false })
+    .limit(6);
+
+  if (error) {
+    throw new FeedError(
+      getSupabaseDataErrorMessage(error, {
+        operation: "read recent explorer facts",
+        table: "facts",
+      }),
+    );
   }
 
+  return ((data ?? []) as FactRow[]).map(mapFact);
+}
+
+export async function getExplorerData(options?: { query?: string }): Promise<ExplorerData> {
+  const supabase = createSupabaseBrowserClient();
+  const searchTerm = normalizeSearchTerm(options?.query);
+
+  if (!supabase) {
+    return {
+      categories: [] as CategorySummary[],
+      facts: [] as FeedFact[],
+      recentFacts: [] as FeedFact[],
+      source: "unavailable" as const,
+    };
+  }
+
+  const [categories, facts, recentFacts] = await Promise.all([
+    getExplorerThemesWithCounts(supabase, searchTerm),
+    searchTerm
+      ? searchExplorerFacts(supabase, searchTerm)
+      : getFeedFacts({ limit: 10 }).then((result) => result.facts),
+    searchTerm ? Promise.resolve([] as FeedFact[]) : getRecentPublishedFacts(supabase),
+  ]);
+
   return {
-    categories: categoriesForCounts.map((category) => ({
-        ...mapCategory(category),
-        count: counts.get(category.slug) ?? 0,
-      })),
+    categories,
     facts,
+    recentFacts,
     source: "supabase" as const,
+  };
+}
+
+export async function getFactOfTheDay() {
+  const supabase = createSupabaseBrowserClient();
+
+  if (!supabase) {
+    return {
+      fact: null as FeedFact | null,
+      interactionCount: 0,
+      source: "unavailable" as const,
+    };
+  }
+
+  const { data, error } = await supabase.rpc("get_fact_of_the_day", {});
+
+  if (!error) {
+    const row = Array.isArray(data) ? data[0] : null;
+
+    if (row) {
+      return {
+        fact: mapFeedRpcFact(row as FeedRpcRow),
+        interactionCount:
+          typeof row.interaction_count === "number" ? row.interaction_count : 0,
+        source: "supabase" as const,
+      };
+    }
+  }
+
+  const fallback = await getFeedFacts({ limit: 1 });
+
+  return {
+    fact: fallback.facts[0] ?? null,
+    interactionCount: 0,
+    source: fallback.source,
   };
 }
 

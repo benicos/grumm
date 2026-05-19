@@ -17,7 +17,7 @@ export function AppState({
   primaryHref = "/",
   primaryLabel = "Retour accueil",
   secondaryHref = "/discover",
-  secondaryLabel = "Ouvrir Découvrir",
+  secondaryLabel = "Découvrir",
 }: AppStateProps) {
   return (
     <main className="grid min-h-screen place-items-center bg-[#132338] px-6 py-20 text-white">

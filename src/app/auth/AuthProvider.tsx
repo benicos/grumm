@@ -13,7 +13,11 @@ import {
   createSupabaseBrowserClient,
   isSupabaseConfigured,
 } from "@/lib/supabase/client";
-import type { UserRole } from "@/lib/roles";
+import {
+  getDefaultRolePermissions,
+  type PermissionKey,
+  type UserRole,
+} from "@/lib/roles";
 
 type AuthContextValue = {
   user: User | null;
@@ -30,6 +34,8 @@ type UserProfile = {
   daily_goal: number;
   avatar_url: string | null;
   role: UserRole;
+  roleName?: string | null;
+  permissions: PermissionKey[];
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -72,7 +78,42 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         { data: null, error: null },
       );
 
-      setProfile(data ?? null);
+      if (!data) {
+        setProfile(null);
+        return;
+      }
+
+      let permissions = getDefaultRolePermissions(data.role) as PermissionKey[];
+      let roleName: string | null = null;
+
+      try {
+        const { data: roleData } = await withTimeout(
+          supabase
+            .from("roles")
+            .select("name,permissions")
+            .eq("slug", data.role)
+            .maybeSingle(),
+          { data: null, error: null },
+        );
+
+        if (roleData) {
+          roleName = roleData.name;
+          permissions = Array.isArray(roleData.permissions)
+            ? (roleData.permissions.filter(
+                (permission): permission is PermissionKey =>
+                  typeof permission === "string",
+              ) as PermissionKey[])
+            : permissions;
+        }
+      } catch {
+        permissions = getDefaultRolePermissions(data.role) as PermissionKey[];
+      }
+
+      setProfile({
+        ...data,
+        permissions,
+        roleName,
+      });
     },
     [],
   );

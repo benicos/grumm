@@ -1,12 +1,19 @@
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { formatAppError, getConfiguredErrorMessage } from "@/lib/errors";
-import type { UserRole } from "@/lib/roles";
-import { isAdmin } from "@/lib/roles";
+import type { PermissionKey, UserRole } from "@/lib/roles";
+import {
+  getDefaultRolePermissions,
+  hasPermission,
+} from "@/lib/roles";
 import { slugify } from "@/lib/slug";
 import type { Database } from "@/types/database";
 
 export type AdminCategory = Database["public"]["Tables"]["categories"]["Row"];
-export type AdminProfile = Database["public"]["Tables"]["profiles"]["Row"];
+export type AdminProfile = Database["public"]["Tables"]["profiles"]["Row"] & {
+  email?: string | null;
+};
+export type AdminRole = Database["public"]["Tables"]["roles"]["Row"];
+export type AdminGrade = Database["public"]["Tables"]["grades"]["Row"];
 export type FactStatus = Database["public"]["Tables"]["facts"]["Row"]["status"];
 export type AdminFactAuthor = Pick<AdminProfile, "id" | "role" | "username">;
 export type AdminFact = Database["public"]["Tables"]["facts"]["Row"] & {
@@ -48,7 +55,7 @@ type AdminMutationResult =
 type AdminAuth = Awaited<ReturnType<typeof getAuthenticatedAdminClient>>;
 type AdminClient = Extract<AdminAuth, { ok: true }>["supabase"];
 
-const DEFAULT_PAGE_SIZE = 12;
+const DEFAULT_PAGE_SIZE = 20;
 const ADMIN_FACT_SELECT =
   "id,category_id,slug,title,hook,content,source,source_url,status,published_at,display_order,tone,accent_color,created_at,updated_at,categories(name,slug)";
 
@@ -106,12 +113,25 @@ async function getAuthenticatedAdminClient() {
   }
 
   const role = (profile?.role ?? "membre") as UserRole;
+  let permissions = getDefaultRolePermissions(role) as PermissionKey[];
 
-  if (role !== "administrateur" && role !== "redacteur") {
+  const { data: roleData } = await supabase
+    .from("roles")
+    .select("permissions")
+    .eq("slug", role)
+    .maybeSingle();
+
+  if (Array.isArray(roleData?.permissions)) {
+    permissions = roleData.permissions.filter(
+      (permission): permission is PermissionKey => typeof permission === "string",
+    ) as PermissionKey[];
+  }
+
+  if (!hasPermission({ permissions, role }, "admin.access")) {
     return { ok: false as const, message: "Acces reserve." };
   }
 
-  return { ok: true as const, role, supabase, user };
+  return { ok: true as const, permissions, role, supabase, user };
 }
 
 function adminError(error: unknown, operation: string, table: string) {
@@ -129,9 +149,12 @@ function throwAdminError(error: unknown, operation: string, table: string) {
   throw new Error(adminError(error, operation, table));
 }
 
-function requireAdmin(auth: Extract<AdminAuth, { ok: true }>) {
-  if (!isAdmin(auth.role)) {
-    throw new Error("Acces reserve aux administrateurs.");
+function requirePermission(
+  auth: Extract<AdminAuth, { ok: true }>,
+  permission: PermissionKey,
+) {
+  if (!hasPermission(auth, permission)) {
+    throw new Error("Permission insuffisante.");
   }
 }
 
@@ -196,7 +219,7 @@ export async function getAdminDashboardData(): Promise<AdminDashboardData> {
   }
 
   const today = new Date().toISOString().slice(0, 10);
-  const adminRole = isAdmin(auth.role);
+  const adminRole = hasPermission(auth, "users.manage");
   let factsCountRequest = auth.supabase
     .from("facts")
     .select("id", { count: "exact", head: true });
@@ -209,7 +232,7 @@ export async function getAdminDashboardData(): Promise<AdminDashboardData> {
     .select(ADMIN_FACT_SELECT)
     .eq("status", "pending_review")
     .order("created_at", { ascending: false })
-    .limit(5);
+    .limit(6);
   let recentFactsRequest = auth.supabase
     .from("facts")
     .select(ADMIN_FACT_SELECT)
@@ -354,11 +377,15 @@ export async function getAdminCategories({
 }
 
 export async function getAdminFacts({
+  authorId,
+  categoryId,
   page = 1,
   pageSize = DEFAULT_PAGE_SIZE,
   query,
   status,
 }: {
+  authorId?: string;
+  categoryId?: string;
   page?: number;
   pageSize?: number;
   query?: string;
@@ -393,7 +420,15 @@ export async function getAdminFacts({
     factsRequest = factsRequest.eq("status", status);
   }
 
-  if (!isAdmin(auth.role)) {
+  if (categoryId && categoryId !== "all") {
+    factsRequest = factsRequest.eq("category_id", categoryId);
+  }
+
+  if (authorId && authorId !== "all" && hasPermission(auth, "facts.manage")) {
+    factsRequest = factsRequest.eq("author_id", authorId);
+  }
+
+  if (!hasPermission(auth, "facts.manage")) {
     factsRequest = factsRequest.eq("author_id", auth.user.id);
   }
 
@@ -430,10 +465,12 @@ export async function getAdminProfiles({
   page = 1,
   pageSize = DEFAULT_PAGE_SIZE,
   query,
+  role,
 }: {
   page?: number;
   pageSize?: number;
   query?: string;
+  role?: string;
 } = {}): Promise<AdminListResult<AdminProfile>> {
   const auth = await getAuthenticatedAdminClient();
 
@@ -441,7 +478,119 @@ export async function getAdminProfiles({
     throw new Error(auth.message);
   }
 
-  requireAdmin(auth);
+  requirePermission(auth, "users.manage");
+
+  const { from, page: safePage, pageSize: safePageSize } = getRange(
+    page,
+    pageSize,
+  );
+  const searchTerm = normalizeSearchTerm(query);
+  const { data, error } = await auth.supabase.rpc("get_admin_profiles", {
+    p_limit: safePageSize,
+    p_offset: from,
+    p_query: searchTerm || null,
+    p_role: role && role !== "all" ? role : null,
+  });
+
+  if (error) {
+    throwAdminError(error, "load admin profiles", "profiles");
+  }
+
+  const rows = (data ?? []) as (AdminProfile & { total_count?: number })[];
+
+  return {
+    items: rows.map((row) => ({
+      avatar_url: row.avatar_url,
+      created_at: row.created_at,
+      daily_goal: row.daily_goal,
+      email: row.email,
+      id: row.id,
+      role: row.role,
+      updated_at: row.updated_at,
+      username: row.username,
+    })),
+    page: safePage,
+    pageSize: safePageSize,
+    total: Number(rows[0]?.total_count ?? 0),
+  };
+}
+
+export async function getAdminCategory(id: string): Promise<AdminCategory | null> {
+  const auth = await getAuthenticatedAdminClient();
+
+  if (!auth.ok) {
+    throw new Error(auth.message);
+  }
+
+  requirePermission(auth, "themes.manage");
+
+  const { data, error } = await auth.supabase
+    .from("categories")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (error) {
+    throwAdminError(error, "load admin theme", "categories");
+  }
+
+  return data as AdminCategory | null;
+}
+
+export async function getAdminFact(id: string): Promise<
+  { categories: AdminCategory[]; fact: AdminFact | null; role: UserRole }
+> {
+  const auth = await getAuthenticatedAdminClient();
+
+  if (!auth.ok) {
+    throw new Error(auth.message);
+  }
+
+  const [factResult, categoriesResult] = await Promise.all([
+    auth.supabase
+      .from("facts")
+      .select(ADMIN_FACT_SELECT)
+      .eq("id", id)
+      .maybeSingle(),
+    auth.supabase
+      .from("categories")
+      .select("*")
+      .order("name", { ascending: true }),
+  ]);
+
+  const error = factResult.error ?? categoriesResult.error;
+
+  if (error) {
+    throwAdminError(error, "load admin fact", "facts");
+  }
+
+  const hydrated = factResult.data
+    ? (await attachFactAuthors(auth, [factResult.data as AdminFact]))[0]
+    : null;
+
+  return {
+    categories: (categoriesResult.data ?? []) as AdminCategory[],
+    fact: hydrated,
+    role: auth.role,
+  };
+}
+
+export async function getAdminRoles({
+  page = 1,
+  pageSize = DEFAULT_PAGE_SIZE,
+  query,
+}: {
+  page?: number;
+  pageSize?: number;
+  query?: string;
+} = {}): Promise<AdminListResult<AdminRole>> {
+  const auth = await getAuthenticatedAdminClient();
+
+  if (!auth.ok) {
+    throw new Error(auth.message);
+  }
+
+  requirePermission(auth, "roles.manage");
 
   const { from, page: safePage, pageSize: safePageSize, to } = getRange(
     page,
@@ -449,27 +598,141 @@ export async function getAdminProfiles({
   );
   const searchTerm = normalizeSearchTerm(query);
   let request = auth.supabase
-    .from("profiles")
+    .from("roles")
     .select("*", { count: "exact" })
-    .order("created_at", { ascending: false })
+    .order("is_system", { ascending: false })
+    .order("created_at", { ascending: true })
     .range(from, to);
 
   if (searchTerm) {
-    request = request.ilike("username", `%${searchTerm}%`);
+    request = request.or(`name.ilike.%${searchTerm}%,slug.ilike.%${searchTerm}%`);
   }
 
   const { data, count, error } = await request;
 
   if (error) {
-    throwAdminError(error, "load admin profiles", "profiles");
+    throwAdminError(error, "load admin roles", "roles");
   }
 
   return {
-    items: (data ?? []) as AdminProfile[],
+    items: (data ?? []) as AdminRole[],
     page: safePage,
     pageSize: safePageSize,
     total: count ?? 0,
   };
+}
+
+export async function getAllAdminRoles(): Promise<AdminRole[]> {
+  const auth = await getAuthenticatedAdminClient();
+
+  if (!auth.ok) {
+    throw new Error(auth.message);
+  }
+
+  requirePermission(auth, "users.manage");
+
+  const { data, error } = await auth.supabase
+    .from("roles")
+    .select("*")
+    .order("is_system", { ascending: false })
+    .order("name", { ascending: true });
+
+  if (error) {
+    throwAdminError(error, "load role options", "roles");
+  }
+
+  return (data ?? []) as AdminRole[];
+}
+
+export async function getAdminRole(slug: string): Promise<AdminRole | null> {
+  const auth = await getAuthenticatedAdminClient();
+
+  if (!auth.ok) {
+    throw new Error(auth.message);
+  }
+
+  requirePermission(auth, "roles.manage");
+
+  const { data, error } = await auth.supabase
+    .from("roles")
+    .select("*")
+    .eq("slug", slug)
+    .maybeSingle();
+
+  if (error) {
+    throwAdminError(error, "load admin role", "roles");
+  }
+
+  return data as AdminRole | null;
+}
+
+export async function getAdminGrades({
+  page = 1,
+  pageSize = DEFAULT_PAGE_SIZE,
+  query,
+}: {
+  page?: number;
+  pageSize?: number;
+  query?: string;
+} = {}): Promise<AdminListResult<AdminGrade>> {
+  const auth = await getAuthenticatedAdminClient();
+
+  if (!auth.ok) {
+    throw new Error(auth.message);
+  }
+
+  requirePermission(auth, "grades.manage");
+
+  const { from, page: safePage, pageSize: safePageSize, to } = getRange(
+    page,
+    pageSize,
+  );
+  const searchTerm = normalizeSearchTerm(query);
+  let request = auth.supabase
+    .from("grades")
+    .select("*", { count: "exact" })
+    .order("required_goals", { ascending: true })
+    .order("display_order", { ascending: true })
+    .range(from, to);
+
+  if (searchTerm) {
+    request = request.or(`name.ilike.%${searchTerm}%,slug.ilike.%${searchTerm}%`);
+  }
+
+  const { data, count, error } = await request;
+
+  if (error) {
+    throwAdminError(error, "load admin grades", "grades");
+  }
+
+  return {
+    items: (data ?? []) as AdminGrade[],
+    page: safePage,
+    pageSize: safePageSize,
+    total: count ?? 0,
+  };
+}
+
+export async function getAdminGrade(id: string): Promise<AdminGrade | null> {
+  const auth = await getAuthenticatedAdminClient();
+
+  if (!auth.ok) {
+    throw new Error(auth.message);
+  }
+
+  requirePermission(auth, "grades.manage");
+
+  const { data, error } = await auth.supabase
+    .from("grades")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (error) {
+    throwAdminError(error, "load admin grade", "grades");
+  }
+
+  return data as AdminGrade | null;
 }
 
 export async function saveAdminCategory(input: {
@@ -485,8 +748,8 @@ export async function saveAdminCategory(input: {
     return { ok: false, message: auth.message };
   }
 
-  if (!isAdmin(auth.role)) {
-    return { ok: false, message: "Acces reserve aux administrateurs." };
+  if (!hasPermission(auth, "themes.manage")) {
+    return { ok: false, message: "Permission insuffisante." };
   }
 
   const name = input.name.trim();
@@ -527,8 +790,8 @@ export async function deleteAdminCategory(
     return { ok: false, message: auth.message };
   }
 
-  if (!isAdmin(auth.role)) {
-    return { ok: false, message: "Acces reserve aux administrateurs." };
+  if (!hasPermission(auth, "themes.manage")) {
+    return { ok: false, message: "Permission insuffisante." };
   }
 
   const { error } = await auth.supabase.from("categories").delete().eq("id", id);
@@ -572,7 +835,8 @@ export async function saveAdminFact(input: {
 
   try {
     const slug = slugify(input.advancedSlug || title || hook);
-    const status = isAdmin(auth.role) ? input.status ?? "published" : "pending_review";
+    const canPublish = hasPermission(auth, "facts.publish");
+    const status = canPublish ? input.status ?? "published" : "pending_review";
     const basePayload = {
       category_id: input.category_id,
       content: input.content.trim(),
@@ -612,7 +876,7 @@ export async function saveAdminFact(input: {
 
   return {
     ok: true,
-    message: isAdmin(auth.role)
+    message: hasPermission(auth, "facts.publish")
       ? "Fait enregistre."
       : "Ton fait a ete envoye pour validation.",
   };
@@ -625,8 +889,8 @@ export async function deleteAdminFact(id: string): Promise<AdminMutationResult> 
     return { ok: false, message: auth.message };
   }
 
-  if (!isAdmin(auth.role)) {
-    return { ok: false, message: "Acces reserve aux administrateurs." };
+  if (!hasPermission(auth, "facts.manage")) {
+    return { ok: false, message: "Permission insuffisante." };
   }
 
   const { error } = await auth.supabase.from("facts").delete().eq("id", id);
@@ -651,8 +915,8 @@ export async function updateAdminFactStatus(
     return { ok: false, message: auth.message };
   }
 
-  if (!isAdmin(auth.role)) {
-    return { ok: false, message: "Acces reserve aux administrateurs." };
+  if (!hasPermission(auth, "facts.publish")) {
+    return { ok: false, message: "Permission insuffisante." };
   }
 
   const { error } = await auth.supabase
@@ -690,8 +954,8 @@ export async function updateProfileRole(
     return { ok: false, message: auth.message };
   }
 
-  if (!isAdmin(auth.role)) {
-    return { ok: false, message: "Acces reserve aux administrateurs." };
+  if (!hasPermission(auth, "users.manage")) {
+    return { ok: false, message: "Permission insuffisante." };
   }
 
   const { error } = await auth.supabase
@@ -707,4 +971,169 @@ export async function updateProfileRole(
   }
 
   return { ok: true, message: "Role mis a jour." };
+}
+
+export async function deleteAdminUser(id: string): Promise<AdminMutationResult> {
+  const auth = await getAuthenticatedAdminClient();
+
+  if (!auth.ok) {
+    return { ok: false, message: auth.message };
+  }
+
+  if (!hasPermission(auth, "users.delete")) {
+    return { ok: false, message: "Permission insuffisante." };
+  }
+
+  const { error } = await auth.supabase.rpc("delete_admin_user", {
+    p_user_id: id,
+  });
+
+  if (error) {
+    return {
+      ok: false,
+      message: adminError(error, "delete admin user", "profiles"),
+    };
+  }
+
+  return { ok: true, message: "Utilisateur supprime." };
+}
+
+export async function saveAdminRole(input: {
+  description?: string | null;
+  name: string;
+  permissions: PermissionKey[];
+  slug: string;
+}): Promise<AdminMutationResult> {
+  const auth = await getAuthenticatedAdminClient();
+
+  if (!auth.ok) {
+    return { ok: false, message: auth.message };
+  }
+
+  if (!hasPermission(auth, "roles.manage")) {
+    return { ok: false, message: "Permission insuffisante." };
+  }
+
+  const slug = slugify(input.slug || input.name).replace(/-/g, "_");
+  const name = input.name.trim();
+
+  if (!slug || !name) {
+    return { ok: false, message: "Nom et identifiant du role sont requis." };
+  }
+
+  const permissions = [...new Set(input.permissions)];
+  const payload = {
+    description: input.description?.trim() || null,
+    name,
+    permissions,
+    slug,
+  };
+
+  const { error } = await auth.supabase
+    .from("roles")
+    .upsert(payload, { onConflict: "slug" });
+
+  if (error) {
+    return {
+      ok: false,
+      message: adminError(error, "save role", "roles"),
+    };
+  }
+
+  return { ok: true, message: "Role enregistre." };
+}
+
+export async function deleteAdminRole(slug: string): Promise<AdminMutationResult> {
+  const auth = await getAuthenticatedAdminClient();
+
+  if (!auth.ok) {
+    return { ok: false, message: auth.message };
+  }
+
+  if (!hasPermission(auth, "roles.manage")) {
+    return { ok: false, message: "Permission insuffisante." };
+  }
+
+  const { error } = await auth.supabase.from("roles").delete().eq("slug", slug);
+
+  if (error) {
+    return {
+      ok: false,
+      message: adminError(error, "delete role", "roles"),
+    };
+  }
+
+  return { ok: true, message: "Role supprime." };
+}
+
+export async function saveAdminGrade(input: {
+  badge?: string | null;
+  description?: string | null;
+  display_order?: number;
+  id?: string;
+  name: string;
+  required_goals: number;
+  slug?: string;
+}): Promise<AdminMutationResult> {
+  const auth = await getAuthenticatedAdminClient();
+
+  if (!auth.ok) {
+    return { ok: false, message: auth.message };
+  }
+
+  if (!hasPermission(auth, "grades.manage")) {
+    return { ok: false, message: "Permission insuffisante." };
+  }
+
+  const name = input.name.trim();
+  const requiredGoals = Math.max(0, Math.floor(input.required_goals));
+
+  if (!name) {
+    return { ok: false, message: "Le nom du grade est requis." };
+  }
+
+  const payload = {
+    badge: input.badge?.trim() || null,
+    description: input.description?.trim() || null,
+    display_order: input.display_order ?? requiredGoals,
+    name,
+    required_goals: requiredGoals,
+    slug: slugify(input.slug || name),
+  };
+
+  const result = input.id
+    ? await auth.supabase.from("grades").update(payload).eq("id", input.id)
+    : await auth.supabase.from("grades").insert(payload);
+
+  if (result.error) {
+    return {
+      ok: false,
+      message: adminError(result.error, "save grade", "grades"),
+    };
+  }
+
+  return { ok: true, message: "Grade enregistre." };
+}
+
+export async function deleteAdminGrade(id: string): Promise<AdminMutationResult> {
+  const auth = await getAuthenticatedAdminClient();
+
+  if (!auth.ok) {
+    return { ok: false, message: auth.message };
+  }
+
+  if (!hasPermission(auth, "grades.manage")) {
+    return { ok: false, message: "Permission insuffisante." };
+  }
+
+  const { error } = await auth.supabase.from("grades").delete().eq("id", id);
+
+  if (error) {
+    return {
+      ok: false,
+      message: adminError(error, "delete grade", "grades"),
+    };
+  }
+
+  return { ok: true, message: "Grade supprime." };
 }
