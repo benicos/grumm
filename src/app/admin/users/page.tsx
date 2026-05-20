@@ -126,7 +126,7 @@ export default function AdminUsersPage() {
 
   async function removeUser(userProfile: AdminProfile) {
     const confirmed = window.confirm(
-      `Supprimer definitivement ${userProfile.username} ? Likes, enregistrements, vues uniques, progression, objectifs et profil seront supprimes. Cette action est irreversible.`,
+      `Supprimer définitivement ${userProfile.username} ? Likes, enregistrements, vues uniques, progression, objectifs et profil seront supprimés. Cette action est irréversible.`,
     );
 
     if (!confirmed) {
@@ -149,8 +149,8 @@ export default function AdminUsersPage() {
     return (
       <AdminPageHeader
         eyebrow="Utilisateurs"
-        title="Acces reserve"
-        description="La gestion des utilisateurs est reservee aux administrateurs."
+        title="Accès réservé"
+        description="La gestion des utilisateurs est réservée aux administrateurs."
       />
     );
   }
@@ -160,14 +160,14 @@ export default function AdminUsersPage() {
       <AdminPageHeader
         eyebrow="Comptes"
         title="Utilisateurs"
-        description="Recherche, filtre par role, attribution rapide et suppression propre des comptes."
+        description="Recherche, filtre par rôle, attribution rapide et suppression propre des comptes."
       />
 
       <AdminMessage message={message} tone="success" />
       <AdminMessage message={error} tone="error" />
 
       <AdminPanel>
-        <div className="grid gap-3 border-b border-slate-800 p-4 lg:grid-cols-[minmax(0,1fr)_220px_auto]">
+        <div className="grid gap-3 border-b border-slate-800 p-4 md:grid-cols-[minmax(0,1fr)_220px] xl:grid-cols-[minmax(0,1fr)_220px_auto]">
           <AdminSearch
             value={query}
             onChange={(value) => {
@@ -186,14 +186,14 @@ export default function AdminUsersPage() {
             }}
             className="rounded-md border border-slate-800 bg-slate-950 px-3 py-2.5 text-sm font-bold text-slate-200 outline-none focus:border-amber-300"
           >
-            <option value="all">Tous les roles</option>
+            <option value="all">Tous les rôles</option>
             {roles.map((role) => (
               <option key={role.slug} value={role.slug}>
                 {role.name}
               </option>
             ))}
           </select>
-          <span className="rounded-md bg-slate-900 px-3 py-2 text-sm font-bold text-slate-300">
+          <span className="rounded-md bg-slate-900 px-3 py-2 text-sm font-bold text-slate-300 md:col-span-2 xl:col-span-1">
             {total} utilisateurs
           </span>
         </div>
@@ -202,12 +202,12 @@ export default function AdminUsersPage() {
           <AdminLoadingRows />
         ) : profiles.length > 0 ? (
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-slate-800 text-sm">
+            <table className="min-w-[760px] divide-y divide-slate-800 text-sm">
               <thead className="bg-slate-900/70 text-left text-xs uppercase tracking-wide text-slate-500">
                 <tr>
                   <th className="px-4 py-3">Utilisateur</th>
                   <th className="px-4 py-3">Objectif</th>
-                  <th className="px-4 py-3">Role</th>
+                  <th className="px-4 py-3">Rôle</th>
                   <th className="px-4 py-3">Creation</th>
                   <th className="px-4 py-3 text-right">Actions</th>
                 </tr>
@@ -263,7 +263,7 @@ export default function AdminUsersPage() {
           </div>
         ) : (
           <div className="p-4">
-            <AdminTableEmpty label="Aucun utilisateur trouve." />
+            <AdminTableEmpty label="Aucun utilisateur trouvé." />
           </div>
         )}
 

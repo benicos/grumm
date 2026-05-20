@@ -1,4 +1,5 @@
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { dailyGoalConfig } from "@/config/app";
 import type { GradeDefinition } from "@/lib/badges";
 import { formatAppError, getConfiguredErrorMessage } from "@/lib/errors";
 import { FeedError, type FeedFact } from "@/lib/facts";
@@ -40,6 +41,36 @@ type RelatedFactRow = {
     | null;
 };
 
+type ViewedFactRow = {
+  fact_id: string;
+  facts:
+    | {
+        categories:
+          | {
+              name: string;
+              slug: string;
+              tone: string;
+              accent_color: string;
+            }
+          | {
+              name: string;
+              slug: string;
+              tone: string;
+              accent_color: string;
+            }[]
+          | null;
+      }
+    | null;
+};
+
+export type ThemeViewStat = {
+  accent: string;
+  count: number;
+  name: string;
+  percent: number;
+  slug: string;
+};
+
 export type UserProfileSummary = {
   username: string | null;
   email: string | null;
@@ -53,6 +84,7 @@ export type UserProfileSummary = {
   todayReadCount: number;
   likedFacts: FeedFact[];
   savedFacts: FeedFact[];
+  topThemes: ThemeViewStat[];
 };
 
 export type ProfileField = "username" | "email" | "password" | "dailyGoal" | "global";
@@ -115,6 +147,47 @@ function getProfileErrorMessage(error: unknown) {
 
 const RELATED_FACT_SELECT =
   "fact_id,facts(id,slug,title,hook,content,source,source_url,tone,accent_color,categories(name,slug,tone,accent_color))";
+const VIEWED_FACT_SELECT =
+  "fact_id,facts(categories(name,slug,tone,accent_color))";
+
+function getTopViewedThemes(rows: ViewedFactRow[]): ThemeViewStat[] {
+  const themesBySlug = new Map<string, Omit<ThemeViewStat, "percent">>();
+
+  rows.forEach((row) => {
+    const fact = row.facts;
+
+    if (!fact) {
+      return;
+    }
+
+    const category = Array.isArray(fact.categories)
+      ? fact.categories[0]
+      : fact.categories;
+
+    if (!category?.slug) {
+      return;
+    }
+
+    const current = themesBySlug.get(category.slug);
+
+    themesBySlug.set(category.slug, {
+      accent: category.accent_color || "#ffd166",
+      count: (current?.count ?? 0) + 1,
+      name: category.name,
+      slug: category.slug,
+    });
+  });
+
+  const themes = [...themesBySlug.values()]
+    .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, "fr"))
+    .slice(0, 5);
+  const maxCount = Math.max(...themes.map((theme) => theme.count), 1);
+
+  return themes.map((theme) => ({
+    ...theme,
+    percent: Math.round((theme.count / maxCount) * 100),
+  }));
+}
 
 export async function getUserProfileSummary(): Promise<UserProfileSummary> {
   const supabase = createSupabaseBrowserClient();
@@ -157,7 +230,7 @@ export async function getUserProfileSummary(): Promise<UserProfileSummary> {
       .order("created_at", { ascending: false }),
     supabase
       .from("user_fact_views")
-      .select("fact_id")
+      .select(VIEWED_FACT_SELECT)
       .eq("user_id", user.id),
     supabase
       .from("user_daily_progress")
@@ -192,6 +265,9 @@ export async function getUserProfileSummary(): Promise<UserProfileSummary> {
   const uniqueViews = new Set(
     (viewsResult.data ?? []).map((view) => view.fact_id),
   );
+  const topThemes = getTopViewedThemes(
+    (viewsResult.data ?? []) as ViewedFactRow[],
+  );
   const dailyRows = dailyProgressResult.data ?? [];
   const grades = gradesResult.error
     ? []
@@ -214,7 +290,7 @@ export async function getUserProfileSummary(): Promise<UserProfileSummary> {
         ? user.user_metadata.username
         : null),
     email: user.email ?? null,
-    dailyGoal: profileResult.data?.daily_goal ?? 10,
+    dailyGoal: profileResult.data?.daily_goal ?? dailyGoalConfig.defaultGoal,
     role: (profileResult.data?.role ?? "membre") as UserRole,
     likedCount: likedFacts.length,
     savedCount: savedFacts.length,
@@ -224,6 +300,7 @@ export async function getUserProfileSummary(): Promise<UserProfileSummary> {
     todayReadCount: todayRow?.facts_read_count ?? 0,
     likedFacts,
     savedFacts,
+    topThemes,
   };
 }
 
@@ -291,11 +368,15 @@ export async function updateProfileSettings({
     return { ok: false, field: "username", message: usernameMessage };
   }
 
-  if (!Number.isInteger(dailyGoal) || dailyGoal < 1 || dailyGoal > 100) {
+  if (
+    !Number.isInteger(dailyGoal) ||
+    dailyGoal < dailyGoalConfig.minGoal ||
+    dailyGoal > dailyGoalConfig.maxGoal
+  ) {
     return {
       ok: false,
       field: "dailyGoal",
-      message: "Choisis un objectif entre 1 et 100.",
+      message: `Choisis un objectif entre ${dailyGoalConfig.minGoal} et ${dailyGoalConfig.maxGoal}.`,
     };
   }
 

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { siteConfig } from "@/config/app";
 import { getSiteUrl } from "@/lib/serverMetadata";
 import { AuthProvider } from "./auth/AuthProvider";
 import "./globals.css";
@@ -17,10 +18,10 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   metadataBase: new URL(getSiteUrl()),
   title: {
-    default: "Velora",
-    template: "%s | Velora",
+    default: siteConfig.name,
+    template: `%s | ${siteConfig.name}`,
   },
-  description: "Scroll ta culture",
+  description: siteConfig.description,
 };
 
 export default function RootLayout({

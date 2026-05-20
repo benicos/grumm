@@ -1,4 +1,5 @@
 export type BadgeInfo = {
+  badge: string | null;
   currentThreshold: number;
   nextThreshold: number | null;
   progress: number;
@@ -17,11 +18,11 @@ export type GradeDefinition = {
 };
 
 export const DEFAULT_GRADES: GradeDefinition[] = [
-  { slug: "curieux-debutant", requiredGoals: 0, name: "Curieux debutant" },
-  { slug: "explorateur-regulier", requiredGoals: 2, name: "Explorateur regulier" },
+  { slug: "curieux-debutant", requiredGoals: 0, name: "Curieux débutant", badge: "sparkles" },
+  { slug: "explorateur-regulier", requiredGoals: 2, name: "Explorateur régulier", badge: "compass" },
   { slug: "esprit-assidu", requiredGoals: 10, name: "Esprit assidu" },
-  { slug: "maitre-curiosite", requiredGoals: 50, name: "Maitre de la curiosite" },
-  { slug: "legende-savoir", requiredGoals: 100, name: "Legende du savoir" },
+  { slug: "maitre-curiosite", requiredGoals: 50, name: "Maître de la curiosité", badge: "trophy" },
+  { slug: "legende-savoir", requiredGoals: 100, name: "Légende du savoir", badge: "crown" },
 ];
 
 function normalizeGrades(grades?: GradeDefinition[] | null) {
@@ -54,6 +55,7 @@ export function getBadgeInfo(
 
   if (!next) {
     return {
+      badge: current.badge ?? null,
       currentThreshold: current.requiredGoals,
       nextThreshold: null,
       progress: 100,
@@ -63,6 +65,7 @@ export function getBadgeInfo(
   }
 
   return {
+    badge: current.badge ?? null,
     currentThreshold: current.requiredGoals,
     nextThreshold: next.requiredGoals,
     progress:
@@ -76,7 +79,7 @@ export function getBadgeInfo(
 
 export function getGoalCelebrationMessage(completedDailyGoals: number) {
   if (completedDailyGoals >= 100) {
-    return "Maitrise totale.";
+    return "Maîtrise totale.";
   }
 
   if (completedDailyGoals >= 50) {
@@ -84,7 +87,7 @@ export function getGoalCelebrationMessage(completedDailyGoals: number) {
   }
 
   if (completedDailyGoals >= 10) {
-    return "Belle regularite.";
+    return "Belle régularité.";
   }
 
   if (completedDailyGoals >= 2) {

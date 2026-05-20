@@ -41,7 +41,7 @@ export function getSupabaseErrorMessage(message: string) {
   }
 
   if (normalizedMessage.includes("email not confirmed")) {
-    return "Ton email n'est pas encore confirme. Verifie ta boite mail.";
+    return "Ton email n’est pas encore confirmé. Vérifie ta boîte mail.";
   }
 
   if (normalizedMessage.includes("signup is disabled")) {
@@ -56,11 +56,11 @@ export function getSupabaseErrorMessage(message: string) {
     normalizedMessage.includes("network") ||
     normalizedMessage.includes("failed to fetch")
   ) {
-    return "Connexion impossible. Verifie ta connexion internet.";
+    return "Connexion impossible. Vérifie ta connexion internet.";
   }
 
   if (normalizedMessage.includes("password")) {
-    return "Le mot de passe doit contenir au moins 6 caracteres.";
+    return "Le mot de passe doit contenir au moins 6 caractères.";
   }
 
   if (normalizedMessage.includes("email")) {
@@ -237,7 +237,7 @@ export async function signUpWithEmail(
     return {
       ok: true,
       requiresEmailConfirmation: true,
-      message: "Compte cree. Confirme ton email avant de te connecter.",
+      message: "Compte créé. Confirme ton email avant de te connecter.",
     };
   }
 

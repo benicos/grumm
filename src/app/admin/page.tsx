@@ -163,7 +163,7 @@ export default function AdminDashboardPage() {
                       <div>
                         <div className="flex flex-wrap items-center gap-2">
                           <span className="rounded bg-slate-900 px-2 py-1 text-xs font-bold text-slate-300">
-                            {fact.categories?.name ?? "Sans theme"}
+                            {fact.categories?.name ?? "Sans thème"}
                           </span>
                           <span className="rounded bg-slate-900 px-2 py-1 text-xs font-bold text-slate-400">
                             {getAuthorLabel(fact)}
@@ -224,7 +224,7 @@ export default function AdminDashboardPage() {
                     <div key={fact.id} className="px-5 py-4">
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="rounded bg-slate-900 px-2 py-1 text-xs font-bold text-slate-300">
-                          {fact.categories?.name ?? "Sans theme"}
+                          {fact.categories?.name ?? "Sans thème"}
                         </span>
                         <span className="rounded bg-slate-900 px-2 py-1 text-xs font-bold text-slate-400">
                           {FACT_STATUS_LABELS[fact.status]}
@@ -242,15 +242,15 @@ export default function AdminDashboardPage() {
 
             <AdminPanel>
               <div className="flex items-center justify-between border-b border-slate-800 px-5 py-4">
-                <h2 className="text-lg font-extrabold">Acces rapides</h2>
+                <h2 className="text-lg font-extrabold">Accès rapides</h2>
               </div>
               <div className="grid gap-3 p-5">
                 {[
-                  ["Gerer les faits", "/admin/facts"],
+                  ["Gérer les faits", "/admin/facts"],
                   ["Valider les faits", "/admin/facts/pending"],
-                  ["Gerer les themes", "/admin/themes"],
-                  ["Gerer les utilisateurs", "/admin/users"],
-                  ["Roles et permissions", "/admin/roles"],
+                  ["Gérer les thèmes", "/admin/themes"],
+                  ["Gérer les utilisateurs", "/admin/users"],
+                  ["Rôles et permissions", "/admin/roles"],
                   ["Grades", "/admin/grades"],
                 ].map(([label, href]) => (
                   <Link

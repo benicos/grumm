@@ -845,23 +845,23 @@ begin
   return query
   select
     profiles.id,
-    users.email,
-    profiles.username,
-    profiles.avatar_url,
+    users.email::text,
+    profiles.username::text,
+    profiles.avatar_url::text,
     profiles.daily_goal,
-    profiles.role,
+    profiles.role::text,
     profiles.created_at,
     profiles.updated_at,
-    count(*) over() as total_count
+    count(*) over()::bigint as total_count
   from public.profiles as profiles
   left join auth.users as users
     on users.id = profiles.id
   where
     (nullif(trim(coalesce(p_query, '')), '') is null
-      or profiles.username ilike '%' || trim(p_query) || '%'
-      or users.email ilike '%' || trim(p_query) || '%'
+      or profiles.username::text ilike '%' || trim(p_query) || '%'
+      or users.email::text ilike '%' || trim(p_query) || '%'
       or profiles.id::text ilike '%' || trim(p_query) || '%')
-    and (nullif(trim(coalesce(p_role, '')), '') is null or profiles.role = p_role)
+    and (nullif(trim(coalesce(p_role, '')), '') is null or profiles.role::text = p_role)
   order by profiles.created_at desc
   limit greatest(1, least(coalesce(p_limit, 20), 100))
   offset greatest(0, coalesce(p_offset, 0));

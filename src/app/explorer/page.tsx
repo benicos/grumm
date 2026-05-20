@@ -7,6 +7,7 @@ import { getExplorerData } from "@/lib/facts";
 import type { CategorySummary, FeedFact } from "@/lib/facts";
 import { getToneBackground } from "@/lib/gradients";
 import { AppState } from "../components/AppState";
+import Footer from "../components/Footer";
 import HeroBackground from "../components/HeroBackground";
 import Navbar from "../components/Navbar";
 
@@ -128,8 +129,8 @@ function ThemeCard({ theme }: { theme: CategorySummary }) {
         </div>
         <p className="mt-12 max-w-[220px] text-sm font-medium text-white/78">
           {count > 0
-            ? `${count} faits publies`
-            : "Theme pret a accueillir de nouveaux faits"}
+            ? `${count} faits publiés`
+            : "Thème prêt à accueillir de nouveaux faits"}
         </p>
       </div>
     </Link>
@@ -208,7 +209,7 @@ export default function ExplorerPage() {
         title="Impossible de charger Explorer."
         description={error}
         primaryHref="/discover"
-        primaryLabel="Ouvrir Decouvrir"
+        primaryLabel="Ouvrir Découvrir"
         secondaryHref="/"
         secondaryLabel="Accueil"
       />
@@ -230,7 +231,7 @@ export default function ExplorerPage() {
             </div>
 
             <h1 className="text-[clamp(2.5rem,6vw,5.2rem)] font-semibold leading-[0.96] tracking-[-0.055em] text-white">
-              Trouve le fait qui va te rester en tete.
+              Trouve le fait qui va te rester en tête.
             </h1>
 
             <label className="mx-auto mt-10 flex max-w-3xl items-center gap-3 rounded-md bg-white/[0.07] px-5 py-4 text-left text-white shadow-sm ring-1 ring-white/10 backdrop-blur-xl">
@@ -249,10 +250,10 @@ export default function ExplorerPage() {
           <div className="mb-6 flex items-end justify-between gap-6">
             <div>
               <p className="text-xs font-bold uppercase tracking-[0.22em] text-[#ffd166]">
-                {normalizedQuery ? "Recherche" : "A decouvrir"}
+                {normalizedQuery ? "Recherche" : "À découvrir"}
               </p>
               <h2 className="mt-2 text-3xl font-extrabold tracking-[-0.04em]">
-                {normalizedQuery ? "Resultats pertinents" : "Faits aleatoires"}
+                {normalizedQuery ? "Résultats pertinents" : "Faits aléatoires"}
               </h2>
             </div>
             {!normalizedQuery && (
@@ -272,7 +273,7 @@ export default function ExplorerPage() {
             </div>
           ) : (
             <div className="rounded-lg border border-white/10 bg-white/[0.055] p-6 text-sm text-white/62">
-              Aucun fait ne correspond a cette recherche.
+              Aucun fait ne correspond à cette recherche.
             </div>
           )}
         </section>
@@ -281,10 +282,10 @@ export default function ExplorerPage() {
           <div className="mb-6 flex items-end justify-between gap-6">
             <div>
               <p className="text-xs font-bold uppercase tracking-[0.22em] text-[#ffd166]">
-                Themes
+                Thèmes
               </p>
               <h2 className="mt-2 text-3xl font-extrabold tracking-[-0.04em]">
-                {normalizedQuery ? "Themes lies" : "Themes a explorer"}
+                {normalizedQuery ? "Thèmes liés" : "Thèmes à explorer"}
               </h2>
             </div>
           </div>
@@ -299,7 +300,7 @@ export default function ExplorerPage() {
             </div>
           ) : (
             <div className="rounded-lg border border-white/10 bg-white/[0.055] p-6 text-sm text-white/62">
-              Aucun theme ne correspond a cette recherche.
+              Aucun thème ne correspond à cette recherche.
             </div>
           )}
         </section>
@@ -309,10 +310,10 @@ export default function ExplorerPage() {
             <div className="mb-6 flex items-end justify-between gap-6">
               <div>
                 <p className="text-xs font-bold uppercase tracking-[0.22em] text-[#ffd166]">
-                  Recemment ajoutes
+                  Récemment ajoutés
                 </p>
                 <h2 className="mt-2 text-3xl font-extrabold tracking-[-0.04em]">
-                  Les derniers faits publies
+                  Les derniers faits publiés
                 </h2>
               </div>
             </div>
@@ -327,12 +328,13 @@ export default function ExplorerPage() {
               </div>
             ) : (
               <div className="rounded-lg border border-white/10 bg-white/[0.055] p-6 text-sm text-white/62">
-                Aucun fait publie pour le moment.
+                Aucun fait publié pour le moment.
               </div>
             )}
           </section>
         )}
       </main>
+      <Footer />
     </div>
   );
 }

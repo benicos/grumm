@@ -72,7 +72,7 @@ export default function RoleEditor({ roleSlug }: { roleSlug?: string }) {
           setError(
             loadError instanceof Error
               ? loadError.message
-              : "Impossible de charger le role.",
+              : "Impossible de charger le rôle.",
           );
         }
       } finally {
@@ -123,15 +123,15 @@ export default function RoleEditor({ roleSlug }: { roleSlug?: string }) {
   return (
     <>
       <AdminPageHeader
-        eyebrow="Securite"
-        title={isEditing ? "Modifier un role" : "Creer un role"}
-        description="Les permissions cochees sont utilisees par l'admin et les policies Supabase."
+        eyebrow="Sécurité"
+        title={isEditing ? "Modifier un rôle" : "Créer un rôle"}
+        description="Les permissions cochées sont utilisées par l'admin et les politiques de sécurité."
         action={
           <Link
             href="/admin/roles"
             className="rounded-md border border-slate-700 bg-slate-900 px-4 py-2 text-sm font-extrabold text-slate-200 hover:bg-slate-800"
           >
-            Retour aux roles
+            Retour aux rôles
           </Link>
         }
       />
@@ -146,7 +146,7 @@ export default function RoleEditor({ roleSlug }: { roleSlug?: string }) {
           <form onSubmit={submitRole} className="grid gap-5">
             {isSystem && (
               <div className="rounded-md border border-amber-300/20 bg-amber-300/10 p-3 text-sm font-semibold text-amber-100">
-                Role systeme protege. Le role administrateur doit conserver les permissions critiques.
+                Rôle système protégé. Le rôle administrateur doit conserver les permissions critiques.
               </div>
             )}
 

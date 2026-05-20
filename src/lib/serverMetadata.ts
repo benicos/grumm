@@ -1,7 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
+import { siteConfig } from "@/config/app";
 import type { Database } from "@/types/database";
-
-const FALLBACK_SITE_URL = "https://velora.app";
 
 function createSupabaseMetadataClient() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -31,9 +30,9 @@ export function getSiteUrl() {
       : null);
 
   try {
-    return new URL(configuredUrl ?? FALLBACK_SITE_URL).origin;
+    return new URL(configuredUrl ?? siteConfig.fallbackUrl).origin;
   } catch {
-    return FALLBACK_SITE_URL;
+    return siteConfig.fallbackUrl;
   }
 }
 

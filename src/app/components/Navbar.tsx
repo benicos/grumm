@@ -6,6 +6,7 @@ import { useState } from "react";
 import { signOut } from "@/lib/auth";
 import { canAccessAdmin } from "@/lib/roles";
 import { useAuth } from "../auth/AuthProvider";
+import GradeIcon from "./GradeIcon";
 
 type NavbarProps = {
   fixed?: boolean;
@@ -95,9 +96,14 @@ export default function Navbar({ fixed = false }: NavbarProps) {
     <div className="hidden items-center gap-2 sm:flex">
       <Link
         href="/profile"
-        className="max-w-[160px] truncate rounded-md px-3 py-2 text-sm font-bold text-white transition hover:bg-white/5"
+        className="flex max-w-[190px] items-center gap-2 rounded-md px-3 py-2 text-sm font-bold text-white transition hover:bg-white/5"
+        title={profile?.gradeName ?? undefined}
       >
-        {displayName ?? "Profil"}
+        <span className="truncate">{displayName ?? "Profil"}</span>
+        <GradeIcon
+          badge={profile?.gradeBadge}
+          className="h-4 w-4 shrink-0 text-[#ffd166]"
+        />
       </Link>
       <button
         type="button"
@@ -205,9 +211,13 @@ export default function Navbar({ fixed = false }: NavbarProps) {
                       <Link
                         href="/profile"
                         onClick={() => setIsOpen(false)}
-                        className="-mx-3 block rounded-lg px-3 py-2.5 text-base/7 font-semibold text-white hover:bg-white/5"
+                        className="-mx-3 flex items-center gap-3 rounded-lg px-3 py-2.5 text-base/7 font-semibold text-white hover:bg-white/5"
                       >
-                        {displayName ?? "Profil"}
+                        <GradeIcon
+                          badge={profile?.gradeBadge}
+                          className="h-5 w-5 shrink-0 text-[#ffd166]"
+                        />
+                        <span>{displayName ?? "Profil"}</span>
                       </Link>
                       <button
                         type="button"

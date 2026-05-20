@@ -48,7 +48,7 @@ export default function AdminRolesPage() {
       setError(
         loadError instanceof Error
           ? loadError.message
-          : "Impossible de charger les roles.",
+          : "Impossible de charger les rôles.",
       );
     } finally {
       setIsLoading(false);
@@ -78,7 +78,7 @@ export default function AdminRolesPage() {
           setError(
             loadError instanceof Error
               ? loadError.message
-              : "Impossible de charger les roles.",
+              : "Impossible de charger les rôles.",
           );
         }
       } finally {
@@ -96,7 +96,7 @@ export default function AdminRolesPage() {
   }, [canManageRoles, page, pageSize, query]);
 
   async function removeRole(role: AdminRole) {
-    if (!window.confirm(`Supprimer le role "${role.name}" ?`)) {
+    if (!window.confirm(`Supprimer le rôle "${role.name}" ?`)) {
       return;
     }
 
@@ -115,9 +115,9 @@ export default function AdminRolesPage() {
   if (!canManageRoles) {
     return (
       <AdminPageHeader
-        eyebrow="Roles"
-        title="Acces reserve"
-        description="La gestion des roles est reservee aux administrateurs."
+        eyebrow="Rôles"
+        title="Accès réservé"
+        description="La gestion des rôles est réservée aux administrateurs."
       />
     );
   }
@@ -125,15 +125,15 @@ export default function AdminRolesPage() {
   return (
     <>
       <AdminPageHeader
-        eyebrow="Securite"
-        title="Roles et permissions"
-        description="Roles applicatifs configurables. Les permissions sont aussi verifiees par les fonctions et policies Supabase."
+        eyebrow="Sécurité"
+        title="Rôles et permissions"
+        description="Rôles applicatifs configurables. Les permissions sont aussi vérifiées par les fonctions et les politiques de sécurité."
         action={
           <Link
             href="/admin/roles/create"
             className="rounded-md bg-amber-300 px-4 py-2 text-sm font-extrabold text-slate-950 hover:bg-amber-200"
           >
-            Creer un role
+            Créer un rôle
           </Link>
         }
       />
@@ -150,10 +150,10 @@ export default function AdminRolesPage() {
               setPage(1);
               setIsLoading(true);
             }}
-            placeholder="Rechercher un role..."
+            placeholder="Rechercher un rôle..."
           />
           <span className="rounded-md bg-slate-900 px-3 py-2 text-sm font-bold text-slate-300">
-            {total} roles
+            {total} rôles
           </span>
         </div>
 
@@ -224,7 +224,7 @@ export default function AdminRolesPage() {
           </div>
         ) : (
           <div className="p-4">
-            <AdminTableEmpty label="Aucun role trouve." />
+            <AdminTableEmpty label="Aucun rôle trouvé." />
           </div>
         )}
 

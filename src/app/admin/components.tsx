@@ -13,13 +13,13 @@ export function AdminPageHeader({
 }) {
   return (
     <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
-      <div>
+      <div className="min-w-0">
         {eyebrow && (
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-amber-300">
             {eyebrow}
           </p>
         )}
-        <h1 className="mt-2 text-3xl font-extrabold tracking-tight text-white">
+        <h1 className="mt-2 text-2xl font-extrabold tracking-tight text-white sm:text-3xl">
           {title}
         </h1>
         {description && (
@@ -41,7 +41,7 @@ export function AdminPanel({
   className?: string;
 }) {
   return (
-    <section className={`rounded-lg border border-slate-800 bg-slate-950 shadow-xl ${className}`}>
+    <section className={`overflow-hidden rounded-lg border border-slate-800 bg-slate-950 shadow-xl ${className}`}>
       {children}
     </section>
   );
@@ -137,17 +137,17 @@ export function AdminPager({
   const pageCount = Math.max(1, Math.ceil(total / pageSize));
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-800 px-4 py-3 text-sm text-slate-400">
+    <div className="flex flex-col gap-3 border-t border-slate-800 px-4 py-3 text-sm text-slate-400 sm:flex-row sm:items-center sm:justify-between">
       <span>
-        Page {page} / {pageCount} - {total} resultats
+        Page {page} / {pageCount} - {total} résultats
       </span>
-      <div className="flex gap-2">
+      <div className="grid grid-cols-2 gap-2 sm:flex">
         <AdminButton
           tone="secondary"
           disabled={page <= 1}
           onClick={() => onPageChange(page - 1)}
         >
-          Precedent
+          Précédent
         </AdminButton>
         <AdminButton
           tone="secondary"

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import GradeIcon, { getGradeIconLabel } from "@/app/components/GradeIcon";
 import { deleteAdminGrade, getAdminGrades } from "@/lib/admin";
 import type { AdminGrade } from "@/lib/admin";
 import { hasPermission } from "@/lib/roles";
@@ -107,8 +108,8 @@ export default function AdminGradesPage() {
     return (
       <AdminPageHeader
         eyebrow="Grades"
-        title="Acces reserve"
-        description="La gestion des grades est reservee aux administrateurs."
+        title="Accès réservé"
+        description="La gestion des grades est réservée aux administrateurs."
       />
     );
   }
@@ -118,13 +119,13 @@ export default function AdminGradesPage() {
       <AdminPageHeader
         eyebrow="Progression"
         title="Grades"
-        description="Paliers de progression utilises automatiquement sur le profil."
+        description="Paliers de progression utilisés automatiquement sur le profil."
         action={
           <Link
             href="/admin/grades/create"
             className="rounded-md bg-amber-300 px-4 py-2 text-sm font-extrabold text-slate-950 hover:bg-amber-200"
           >
-            Creer un grade
+            Créer un grade
           </Link>
         }
       />
@@ -152,7 +153,7 @@ export default function AdminGradesPage() {
           <AdminLoadingRows />
         ) : grades.length > 0 ? (
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-slate-800 text-sm">
+            <table className="min-w-[720px] divide-y divide-slate-800 text-sm">
               <thead className="bg-slate-900/70 text-left text-xs uppercase tracking-wide text-slate-500">
                 <tr>
                   <th className="px-4 py-3">Grade</th>
@@ -165,8 +166,17 @@ export default function AdminGradesPage() {
                 {grades.map((grade) => (
                   <tr key={grade.id}>
                     <td className="px-4 py-3">
-                      <p className="font-bold text-white">{grade.name}</p>
-                      <p className="mt-1 text-xs text-slate-500">{grade.slug}</p>
+                      <div className="flex items-start gap-3">
+                        <span className="mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-md border border-slate-800 bg-slate-900 text-amber-300">
+                          <GradeIcon badge={grade.badge} className="h-4 w-4" />
+                        </span>
+                        <div className="min-w-0">
+                          <p className="font-bold text-white">{grade.name}</p>
+                          <p className="mt-1 text-xs text-slate-500">
+                            {grade.slug} · {getGradeIconLabel(grade.badge)}
+                          </p>
+                        </div>
+                      </div>
                       {grade.description && (
                         <p className="mt-2 text-sm text-slate-400">
                           {grade.description}
@@ -203,7 +213,7 @@ export default function AdminGradesPage() {
           </div>
         ) : (
           <div className="p-4">
-            <AdminTableEmpty label="Aucun grade trouve." />
+            <AdminTableEmpty label="Aucun grade trouvé." />
           </div>
         )}
 

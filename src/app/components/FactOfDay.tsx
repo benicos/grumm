@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { getFactOfTheDay } from "@/lib/facts";
 import type { FeedFact } from "@/lib/facts";
+import { premiumPrimaryCtaClassName } from "./buttonStyles";
 
 function FactOfDaySkeleton() {
   return (
@@ -88,7 +89,7 @@ export default function FactOfDay() {
 
             <Link
               href={`/fact/${fact.slug}`}
-              className="w-fit rounded-md bg-[#ffd166] px-5 py-3 text-sm font-extrabold text-[#07111f] transition hover:bg-[#ffe08f]"
+              className={premiumPrimaryCtaClassName}
             >
               Lire le fait
             </Link>

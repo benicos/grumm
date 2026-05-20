@@ -90,7 +90,7 @@ export default function ThemeEditor({ themeId }: { themeId?: string }) {
           setError(
             loadError instanceof Error
               ? loadError.message
-              : "Impossible de charger le theme.",
+              : "Impossible de charger le thème.",
           );
         }
       } finally {
@@ -139,14 +139,14 @@ export default function ThemeEditor({ themeId }: { themeId?: string }) {
     <>
       <AdminPageHeader
         eyebrow="Taxonomie"
-        title={isEditing ? "Modifier un theme" : "Creer un theme"}
-        description="Couleurs, slug et gradient du theme."
+        title={isEditing ? "Modifier un thème" : "Créer un thème"}
+        description="Couleurs, slug et gradient du thème."
         action={
           <Link
             href="/admin/themes"
             className="rounded-md border border-slate-700 bg-slate-900 px-4 py-2 text-sm font-extrabold text-slate-200 hover:bg-slate-800"
           >
-            Retour aux themes
+            Retour aux thèmes
           </Link>
         }
       />

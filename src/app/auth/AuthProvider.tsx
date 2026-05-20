@@ -18,6 +18,7 @@ import {
   type PermissionKey,
   type UserRole,
 } from "@/lib/roles";
+import { getBadgeInfo, type GradeDefinition } from "@/lib/badges";
 
 type AuthContextValue = {
   user: User | null;
@@ -33,6 +34,8 @@ type UserProfile = {
   username: string | null;
   daily_goal: number;
   avatar_url: string | null;
+  gradeBadge?: string | null;
+  gradeName?: string | null;
   role: UserRole;
   roleName?: string | null;
   permissions: PermissionKey[];
@@ -60,13 +63,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(isSupabaseConfigured());
 
-  const loadProfile = useCallback(
-    async (nextSession: Session | null) => {
+  const resolveProfile = useCallback(
+    async (nextSession: Session | null): Promise<UserProfile | null> => {
       const supabase = createSupabaseBrowserClient();
 
       if (!supabase || !nextSession?.user) {
-        setProfile(null);
-        return;
+        return null;
       }
 
       const { data } = await withTimeout(
@@ -79,22 +81,44 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       );
 
       if (!data) {
-        setProfile(null);
-        return;
+        return null;
       }
 
       let permissions = getDefaultRolePermissions(data.role) as PermissionKey[];
       let roleName: string | null = null;
+      let gradeBadge: string | null = null;
+      let gradeName: string | null = null;
 
       try {
-        const { data: roleData } = await withTimeout(
-          supabase
-            .from("roles")
-            .select("name,permissions")
-            .eq("slug", data.role)
-            .maybeSingle(),
-          { data: null, error: null },
-        );
+        const [roleResult, completedGoalsResult, gradesResult] =
+          await Promise.all([
+            withTimeout(
+              supabase
+                .from("roles")
+                .select("name,permissions")
+                .eq("slug", data.role)
+                .maybeSingle(),
+              { data: null, error: null },
+            ),
+            withTimeout(
+              supabase
+                .from("user_daily_progress")
+                .select("id", { count: "exact", head: true })
+                .eq("user_id", nextSession.user.id)
+                .eq("goal_completed", true),
+              { count: 0, error: null },
+            ),
+            withTimeout(
+              supabase
+                .from("grades")
+                .select("id,slug,name,required_goals,description,badge,display_order")
+                .order("required_goals", { ascending: true })
+                .order("display_order", { ascending: true }),
+              { data: [], error: null },
+            ),
+          ]);
+
+        const roleData = roleResult.data;
 
         if (roleData) {
           roleName = roleData.name;
@@ -105,15 +129,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               ) as PermissionKey[])
             : permissions;
         }
+
+        const grades = (gradesResult.data ?? []).map((grade) => ({
+          badge: grade.badge,
+          description: grade.description,
+          displayOrder: grade.display_order,
+          id: grade.id,
+          name: grade.name,
+          requiredGoals: grade.required_goals,
+          slug: grade.slug,
+        })) satisfies GradeDefinition[];
+        const badge = getBadgeInfo(completedGoalsResult.count ?? 0, grades);
+        gradeBadge = badge.badge;
+        gradeName = badge.title;
       } catch {
         permissions = getDefaultRolePermissions(data.role) as PermissionKey[];
       }
 
-      setProfile({
+      return {
         ...data,
+        gradeBadge,
+        gradeName,
         permissions,
         roleName,
-      });
+      };
     },
     [],
   );
@@ -132,54 +171,65 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       data: { session: null },
       error: null,
     });
+    const nextProfile = await resolveProfile(data.session);
     setSession(data.session);
-    await loadProfile(data.session);
+    setProfile(nextProfile);
     setIsLoading(false);
-  }, [loadProfile]);
+  }, [resolveProfile]);
 
   useEffect(() => {
+    let isMounted = true;
+    let requestId = 0;
     const supabase = createSupabaseBrowserClient();
 
     if (!supabase) {
       window.setTimeout(() => setIsLoading(false), 0);
-      return;
+      return () => {
+        isMounted = false;
+      };
+    }
+
+    async function applySession(nextSession: Session | null, showLoading = false) {
+      const currentRequestId = ++requestId;
+
+      if (showLoading) {
+        setIsLoading(true);
+      }
+
+      const nextProfile = await resolveProfile(nextSession);
+
+      if (!isMounted || currentRequestId !== requestId) {
+        return;
+      }
+
+      setSession(nextSession);
+      setProfile(nextProfile);
+      setIsLoading(false);
     }
 
     withTimeout(supabase.auth.getSession(), {
       data: { session: null },
       error: null,
     }).then(async ({ data }) => {
-      setSession(data.session);
-      await loadProfile(data.session);
-      setIsLoading(false);
+      await applySession(data.session);
     });
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, nextSession) => {
-      setSession(nextSession);
-      void loadProfile(nextSession);
-      setIsLoading(false);
+    } = supabase.auth.onAuthStateChange((event, nextSession) => {
+      if (event === "INITIAL_SESSION") {
+        return;
+      }
+
+      void applySession(nextSession, true);
     });
 
     return () => {
+      isMounted = false;
+      requestId += 1;
       subscription.unsubscribe();
     };
-  }, [loadProfile]);
-
-  useEffect(() => {
-    if (!isLoading) {
-      return;
-    }
-
-    const timeout = window.setTimeout(() => {
-      setIsLoading(false);
-    }, AUTH_TIMEOUT_MS + 500);
-
-    return () => {
-      window.clearTimeout(timeout);
-    };
-  }, [isLoading]);
+  }, [resolveProfile]);
 
   const value = useMemo(
     () => ({

@@ -4,6 +4,7 @@ import type { Dispatch, SetStateAction } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Inter } from "next/font/google";
 import { useRouter } from "next/navigation";
+import { discoverConfig, userMessages } from "@/config/app";
 import {
   DEFAULT_DAILY_GOAL,
   DISCOVER_FEED_BATCH_SIZE,
@@ -23,6 +24,7 @@ import { logAppError } from "@/lib/errors";
 import { getToneBackground } from "@/lib/gradients";
 import { useAuth } from "../auth/AuthProvider";
 import { AppState, FeedSkeleton } from "../components/AppState";
+import FactShareModal from "../components/share/FactShareModal";
 import Navbar from "../components/Navbar";
 
 const inter = Inter({
@@ -98,7 +100,7 @@ type FactFeedProps = {
   themeSlug?: string;
 };
 
-const RECENT_FEED_STORAGE_LIMIT = 120;
+const RECENT_FEED_STORAGE_LIMIT = discoverConfig.recentFeedStorageLimit;
 
 function getFeedStorageKey(scope: string) {
   return `velora:recentFeedFacts:${scope}`;
@@ -180,6 +182,7 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
   const [hasMoreFacts, setHasMoreFacts] = useState(true);
   const [feedError, setFeedError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [sharedFact, setSharedFact] = useState<FeedFact | null>(null);
   const [currentStep, setCurrentStep] = useState(0);
   const [dragOffset, setDragOffset] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
@@ -276,7 +279,7 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
       }
     } catch {
       toggleAction(factId, setter);
-      showTemporaryNotice("Cette action n'a pas pu etre synchronisee.");
+      showTemporaryNotice("Cette action n’a pas pu être synchronisée.");
     }
   };
 
@@ -284,37 +287,12 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
     router.push(`/fact/${fact.slug || fact.id}`);
   };
 
-  const shareFact = async () => {
+  const shareFact = () => {
     if (!activeFact) {
       return;
     }
 
-    const url =
-      typeof window === "undefined"
-        ? `/fact/${activeFact.slug}`
-        : `${window.location.origin}/fact/${activeFact.slug}`;
-    const text = `${activeFact.title} Source: ${activeFact.source}`;
-
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: activeFact.title,
-          text,
-          url,
-        });
-      } catch {
-        return;
-      }
-      return;
-    }
-
-    if (navigator.clipboard) {
-      await navigator.clipboard.writeText(`${text} ${url}`);
-      showTemporaryNotice("Lien copié.");
-      return;
-    }
-
-    showTemporaryNotice("Copie indisponible sur ce navigateur.");
+    setSharedFact(activeFact);
   };
 
   const loadFeedBatch = useCallback(
@@ -404,7 +382,7 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
           setFeedError(
             error instanceof Error
               ? error.message
-              : "Decouvrir est indisponible pour le moment.",
+              : "Découvrir est indisponible pour le moment.",
           );
         }
       } finally {
@@ -626,11 +604,11 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
   if (isUnknownTheme) {
     return (
       <AppState
-        eyebrow="Theme introuvable"
-        title="Ce theme n'existe pas encore."
-        description="Le slug demande ne correspond a aucun theme publie dans Supabase."
+        eyebrow="Thème introuvable"
+        title="Ce thème n’existe pas encore."
+        description="Ce lien ne correspond à aucun thème publié."
         primaryHref="/explorer"
-        primaryLabel="Explorer les themes"
+        primaryLabel="Explorer les thèmes"
         secondaryHref="/discover"
         secondaryLabel="Découvrir"
       />
@@ -641,7 +619,7 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
     return (
       <AppState
         eyebrow="Découvrir indisponible"
-        title="Les faits ne peuvent pas etre charges."
+        title="Les faits ne peuvent pas être chargés."
         description={feedError}
         primaryHref="/discover"
         primaryLabel="Recharger Découvrir"
@@ -744,7 +722,7 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
                   </div>
                   {theme && (
                     <div className="w-fit rounded-full border border-white/10 bg-black/16 px-4 py-2 text-xs font-bold uppercase tracking-[0.18em] text-white/62 backdrop-blur-xl">
-                      Theme
+                      Thème
                     </div>
                   )}
                 </div>
@@ -943,11 +921,12 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
                 Découvrir est vide
               </p>
               <h1 className="mt-4 text-3xl font-extrabold tracking-[-0.04em]">
-                Aucun fait publie pour le moment.
+                Aucun fait publié pour le moment.
               </h1>
               <p className="mt-4 text-sm leading-6 text-white/62">
-                Ajoute des contenus publies dans Supabase pour alimenter cette
-                page.
+                {process.env.NODE_ENV === "production"
+                  ? userMessages.emptyFactsPublic
+                  : userMessages.emptyFactsDebug}
               </p>
             </div>
           </div>
@@ -1091,6 +1070,8 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
           }
         }
       `}</style>
+
+      <FactShareModal fact={sharedFact} onClose={() => setSharedFact(null)} />
     </main>
   );
 }

@@ -1,13 +1,16 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import Link from "next/link";
+import { siteConfig } from "@/config/app";
+import { premiumPrimaryCtaClassName } from "./components/buttonStyles";
 import FactOfDay from "./components/FactOfDay";
+import Footer from "./components/Footer";
 import HeroBackground from "./components/HeroBackground";
 import Navbar from "./components/Navbar";
 
 export const metadata: Metadata = {
   title: {
-    absolute: "Velora",
+    absolute: siteConfig.name,
   },
 };
 
@@ -43,7 +46,7 @@ export default function VeloraLanding() {
             <div className="mt-10 flex flex-wrap items-center gap-6">
               <Link
                 href="/discover"
-                className="rounded-[14px] bg-gradient-to-br from-[#ffd166] to-[#ffb347] px-[18px] py-3 font-bold text-[#09111d] transition hover:-translate-y-[2px]"
+                className={premiumPrimaryCtaClassName}
               >
                 Découvrir
               </Link>
@@ -121,6 +124,8 @@ export default function VeloraLanding() {
           </div>
         </section>
       </main>
+
+      <Footer />
     </div>
   );
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { notFound, usePathname, useRouter } from "next/navigation";
 import { Inter } from "next/font/google";
 import { signOut } from "@/lib/auth";
 import {
@@ -18,58 +18,14 @@ const inter = Inter({
 });
 
 const baseLinks = [
-  { href: "/admin", label: "Dashboard", permission: "admin.access" },
+  { href: "/admin", label: "Tableau de bord", permission: "admin.access" },
   { href: "/admin/facts", label: "Faits", permission: "facts.create" },
   { href: "/admin/facts/pending", label: "Validation", permission: "facts.publish" },
-  { href: "/admin/themes", label: "Themes", permission: "themes.manage" },
+  { href: "/admin/themes", label: "Thèmes", permission: "themes.manage" },
   { href: "/admin/users", label: "Utilisateurs", permission: "users.manage" },
-  { href: "/admin/roles", label: "Roles", permission: "roles.manage" },
+  { href: "/admin/roles", label: "Rôles", permission: "roles.manage" },
   { href: "/admin/grades", label: "Grades", permission: "grades.manage" },
 ] as const;
-
-function AdminGate({
-  actionHref,
-  actionLabel,
-  description,
-  title,
-}: {
-  actionHref: string;
-  actionLabel: string;
-  description: string;
-  title: string;
-}) {
-  return (
-    <div className={`${inter.className} min-h-screen bg-[#0a0f1a] px-6 py-10 text-slate-100`}>
-      <div className="mx-auto flex min-h-[calc(100vh-80px)] max-w-md items-center">
-        <section className="w-full rounded-lg border border-slate-800 bg-slate-950 p-6 shadow-2xl">
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-amber-300">
-            Admin Velora
-          </p>
-          <h1 className="mt-4 text-2xl font-extrabold tracking-tight">
-            {title}
-          </h1>
-          <p className="mt-3 text-sm leading-6 text-slate-400">
-            {description}
-          </p>
-          <div className="mt-6 flex flex-wrap gap-3">
-            <Link
-              href={actionHref}
-              className="rounded-md bg-amber-300 px-4 py-2 text-sm font-extrabold text-slate-950"
-            >
-              {actionLabel}
-            </Link>
-            <Link
-              href="/discover"
-              className="rounded-md border border-slate-800 px-4 py-2 text-sm font-bold text-slate-200 hover:bg-slate-900"
-            >
-              Retour au site
-            </Link>
-          </div>
-        </section>
-      </div>
-    </div>
-  );
-}
 
 function AdminShellSkeleton() {
   return (
@@ -119,25 +75,11 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
   }
 
   if (!isAuthenticated) {
-    return (
-      <AdminGate
-        title="Connexion requise."
-        description="Connecte-toi avec un compte redacteur ou administrateur pour ouvrir cet espace."
-        actionHref="/login"
-        actionLabel="Se connecter"
-      />
-    );
+    notFound();
   }
 
   if (!canOpenAdmin) {
-    return (
-      <AdminGate
-        title="Acces reserve."
-        description="Ton role actuel ne donne pas acces a l'administration."
-        actionHref="/profile"
-        actionLabel="Voir mon profil"
-      />
-    );
+    notFound();
   }
 
   return (
@@ -194,7 +136,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
                   onClick={handleLogout}
                   className="rounded-md border border-red-400/30 px-3 py-2 text-xs font-bold text-red-100 hover:bg-red-500/10"
                 >
-                  Deconnexion
+                  Déconnexion
                 </button>
               </div>
             </div>
@@ -234,7 +176,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
             </nav>
           </header>
 
-          <main className="mx-auto w-full max-w-[1440px] px-4 py-6 lg:px-8 lg:py-8">
+          <main className="mx-auto w-full max-w-[1440px] min-w-0 px-4 py-6 lg:px-8 lg:py-8">
             {children}
           </main>
         </section>

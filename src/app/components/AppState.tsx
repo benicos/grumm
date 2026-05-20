@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { premiumPrimaryCtaClassName } from "./buttonStyles";
 
 type AppStateProps = {
   eyebrow?: string;
@@ -36,7 +37,7 @@ export function AppState({
           <div className="mt-8 flex flex-wrap justify-center gap-3">
             <Link
               href={primaryHref}
-              className="rounded-[14px] bg-[#ffd166] px-5 py-3 text-sm font-extrabold text-[#07111f] transition hover:bg-[#ffe08f]"
+              className={premiumPrimaryCtaClassName}
             >
               {primaryLabel}
             </Link>

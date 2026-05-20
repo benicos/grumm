@@ -1,9 +1,10 @@
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { dailyGoalConfig, discoverConfig } from "@/config/app";
 import { formatAppError, logAppError } from "@/lib/errors";
 import { slugify } from "@/lib/slug";
 
-export const DEFAULT_DAILY_GOAL = 10;
-export const DISCOVER_FEED_BATCH_SIZE = 18;
+export const DEFAULT_DAILY_GOAL: number = dailyGoalConfig.defaultGoal;
+export const DISCOVER_FEED_BATCH_SIZE: number = discoverConfig.feedBatchSize;
 
 export type FeedFact = {
   id: string;
@@ -230,7 +231,10 @@ function todayKey() {
 }
 
 function getBoundedDailyGoal(dailyGoal: number) {
-  return Math.max(1, Math.min(dailyGoal, 100));
+  return Math.max(
+    dailyGoalConfig.minGoal,
+    Math.min(dailyGoal, dailyGoalConfig.maxGoal),
+  );
 }
 
 function emptyDailyProgress(

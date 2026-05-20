@@ -42,7 +42,7 @@ export default function RequireAuth({ children }: { children: React.ReactNode })
             Redirection vers ton compte.
           </h1>
           <p className="mt-3 text-sm leading-6 text-white/62">
-            Cette page contient des donnees personnelles.
+            Cette page contient des données personnelles.
           </p>
         </div>
       </div>

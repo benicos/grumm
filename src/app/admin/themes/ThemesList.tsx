@@ -48,7 +48,7 @@ export default function ThemesList() {
       setError(
         loadError instanceof Error
           ? loadError.message
-          : "Impossible de charger les themes.",
+          : "Impossible de charger les thèmes.",
       );
     } finally {
       setIsLoading(false);
@@ -78,7 +78,7 @@ export default function ThemesList() {
           setError(
             loadError instanceof Error
               ? loadError.message
-              : "Impossible de charger les themes.",
+              : "Impossible de charger les thèmes.",
           );
         }
       } finally {
@@ -96,7 +96,7 @@ export default function ThemesList() {
   }, [canManageThemes, page, pageSize, query]);
 
   async function removeCategory(category: AdminCategory) {
-    if (!window.confirm(`Supprimer le theme "${category.name}" ?`)) {
+    if (!window.confirm(`Supprimer le thème "${category.name}" ?`)) {
       return;
     }
 
@@ -111,9 +111,9 @@ export default function ThemesList() {
   if (!canManageThemes) {
     return (
       <AdminPageHeader
-        eyebrow="Themes"
-        title="Acces reserve"
-        description="La gestion des themes est reservee aux administrateurs."
+        eyebrow="Thèmes"
+        title="Accès réservé"
+        description="La gestion des thèmes est réservée aux administrateurs."
       />
     );
   }
@@ -122,14 +122,14 @@ export default function ThemesList() {
     <>
       <AdminPageHeader
         eyebrow="Taxonomie"
-        title="Themes"
-        description="Liste paginee des themes, couleurs et gradients."
+        title="Thèmes"
+        description="Liste paginée des thèmes, couleurs et gradients."
         action={
           <Link
             href="/admin/themes/create"
             className="rounded-md bg-amber-300 px-4 py-2 text-sm font-extrabold text-slate-950 hover:bg-amber-200"
           >
-            Creer un theme
+            Créer un thème
           </Link>
         }
       />
@@ -146,10 +146,10 @@ export default function ThemesList() {
               setPage(1);
               setIsLoading(true);
             }}
-            placeholder="Rechercher un theme..."
+            placeholder="Rechercher un thème..."
           />
           <span className="rounded-md bg-slate-900 px-3 py-2 text-sm font-bold text-slate-300">
-            {total} themes
+            {total} thèmes
           </span>
         </div>
 
@@ -206,7 +206,7 @@ export default function ThemesList() {
           </div>
         ) : (
           <div className="p-4">
-            <AdminTableEmpty label="Aucun theme trouve." />
+            <AdminTableEmpty label="Aucun thème trouvé." />
           </div>
         )}
 

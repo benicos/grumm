@@ -10,7 +10,7 @@ export default function NotFound() {
     <AppState
       eyebrow="404"
       title="Cette page n'existe pas."
-      description="Le lien est peut-etre ancien ou le contenu a ete deplace. Découvrir reste disponible."
+      description="Le lien est peut-être ancien ou le contenu a été déplacé. Découvrir reste disponible."
       primaryHref="/"
       primaryLabel="Retour accueil"
       secondaryHref="/discover"

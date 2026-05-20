@@ -33,19 +33,19 @@ export const PERMISSIONS = [
 export type PermissionKey = (typeof PERMISSIONS)[number];
 
 export const PERMISSION_LABELS: Record<PermissionKey, string> = {
-  "admin.access": "Acces admin dashboard",
-  "facts.create": "Creer des faits",
-  "facts.manage": "Gerer tous les faits",
-  "facts.manage_own": "Gerer ses faits",
+  "admin.access": "Accès tableau de bord admin",
+  "facts.create": "Créer des faits",
+  "facts.manage": "Gérer tous les faits",
+  "facts.manage_own": "Gérer ses faits",
   "facts.publish": "Publier / rejeter des faits",
   "facts.read": "Lire les faits",
-  "grades.manage": "Gerer les grades",
+  "grades.manage": "Gérer les grades",
   "interactions.manage": "Likes et enregistrements",
-  "profile.manage": "Gerer son profil",
-  "roles.manage": "Gerer les roles",
-  "themes.manage": "Gerer les themes",
+  "profile.manage": "Gérer son profil",
+  "roles.manage": "Gérer les rôles",
+  "themes.manage": "Gérer les thèmes",
   "users.delete": "Supprimer des utilisateurs",
-  "users.manage": "Gerer les utilisateurs",
+  "users.manage": "Gérer les utilisateurs",
 };
 
 export const SYSTEM_ROLE_PERMISSIONS: Record<string, PermissionKey[]> = {

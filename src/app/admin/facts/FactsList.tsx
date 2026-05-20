@@ -48,7 +48,7 @@ function formatDate(value: string) {
 }
 
 export default function FactsList({
-  description = "Liste paginee des faits, avec recherche et filtres.",
+  description = "Liste paginée des faits, avec recherche et filtres.",
   eyebrow = "Contenu",
   initialStatusFilter = "all",
   title = "Faits",
@@ -201,7 +201,7 @@ export default function FactsList({
               href="/admin/facts/create"
               className="rounded-md bg-amber-300 px-4 py-2 text-sm font-extrabold text-slate-950 hover:bg-amber-200"
             >
-              Creer un fait
+              Créer un fait
             </Link>
           </div>
         }
@@ -246,7 +246,7 @@ export default function FactsList({
             }}
             className="rounded-md border border-slate-800 bg-slate-950 px-3 py-2.5 text-sm font-bold text-slate-200 outline-none focus:border-amber-300"
           >
-            <option value="all">Tous les themes</option>
+            <option value="all">Tous les thèmes</option>
             {categories.map((category) => (
               <option key={category.id} value={category.id}>
                 {category.name}
@@ -262,11 +262,11 @@ export default function FactsList({
           <AdminLoadingRows />
         ) : facts.length > 0 ? (
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-slate-800 text-sm">
+            <table className="min-w-[920px] divide-y divide-slate-800 text-sm">
               <thead className="bg-slate-900/70 text-left text-xs uppercase tracking-wide text-slate-500">
                 <tr>
                   <th className="px-4 py-3">Titre</th>
-                  <th className="px-4 py-3">Theme</th>
+                  <th className="px-4 py-3">Thème</th>
                   <th className="px-4 py-3">Statut</th>
                   {canReview && <th className="px-4 py-3">Auteur</th>}
                   <th className="px-4 py-3">Creation</th>
@@ -285,7 +285,7 @@ export default function FactsList({
                     <td className="px-4 py-3 text-slate-300">
                       {categoryNameById.get(fact.category_id) ??
                         fact.categories?.name ??
-                        "Sans theme"}
+                        "Sans thème"}
                     </td>
                     <td className="px-4 py-3">
                       <span className="rounded bg-slate-900 px-2 py-1 text-xs font-bold text-slate-300">
@@ -357,7 +357,7 @@ export default function FactsList({
               label={
                 statusFilter === "pending_review"
                   ? "Aucun fait en attente."
-                  : "Aucun fait trouve."
+                  : "Aucun fait trouvé."
               }
             />
           </div>

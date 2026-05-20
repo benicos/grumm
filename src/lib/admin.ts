@@ -1,4 +1,5 @@
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { gradeIconOptions, paginationConfig } from "@/config/app";
 import { formatAppError, getConfiguredErrorMessage } from "@/lib/errors";
 import type { PermissionKey, UserRole } from "@/lib/roles";
 import {
@@ -22,11 +23,11 @@ export type AdminFact = Database["public"]["Tables"]["facts"]["Row"] & {
 };
 
 export const FACT_STATUS_LABELS: Record<FactStatus, string> = {
-  archived: "Archive",
+  archived: "Archivé",
   draft: "Brouillon",
   pending_review: "En attente",
-  published: "Publie",
-  rejected: "Rejete",
+  published: "Publié",
+  rejected: "Rejeté",
 };
 
 export type AdminListResult<T> = {
@@ -55,7 +56,7 @@ type AdminMutationResult =
 type AdminAuth = Awaited<ReturnType<typeof getAuthenticatedAdminClient>>;
 type AdminClient = Extract<AdminAuth, { ok: true }>["supabase"];
 
-const DEFAULT_PAGE_SIZE = 20;
+const DEFAULT_PAGE_SIZE: number = paginationConfig.adminDefaultPageSize;
 const ADMIN_FACT_SELECT =
   "id,category_id,slug,title,hook,content,source,source_url,status,published_at,display_order,tone,accent_color,created_at,updated_at,categories(name,slug)";
 
@@ -65,7 +66,10 @@ function normalizeSearchTerm(query?: string) {
 
 function getRange(page = 1, pageSize = DEFAULT_PAGE_SIZE) {
   const safePage = Math.max(1, page);
-  const safePageSize = Math.max(1, Math.min(pageSize, 50));
+  const safePageSize = Math.max(
+    1,
+    Math.min(pageSize, paginationConfig.adminMaxPageSize),
+  );
   const from = (safePage - 1) * safePageSize;
 
   return {
@@ -128,7 +132,7 @@ async function getAuthenticatedAdminClient() {
   }
 
   if (!hasPermission({ permissions, role }, "admin.access")) {
-    return { ok: false as const, message: "Acces reserve." };
+    return { ok: false as const, message: "Accès réservé." };
   }
 
   return { ok: true as const, permissions, role, supabase, user };
@@ -141,7 +145,7 @@ function adminError(error: unknown, operation: string, table: string) {
       source: "Supabase",
       table,
     },
-    prodMessage: "Cette action n'a pas pu etre effectuee.",
+    prodMessage: "Cette action n’a pas pu être effectuée.",
   });
 }
 
@@ -318,7 +322,7 @@ export async function getAdminDashboardData(): Promise<AdminDashboardData> {
     stats: [
       { label: "Faits", value: factsCount.count ?? 0 },
       { label: "En attente", value: pendingFactsCount.count ?? 0 },
-      { label: "Themes", value: categoriesCount.count ?? 0 },
+      { label: "Thèmes", value: categoriesCount.count ?? 0 },
       { label: "Vues uniques", value: viewsCount.count ?? 0 },
       { label: "Objectifs aujourd'hui", value: goalsTodayCount.count ?? 0 },
       ...(adminRole
@@ -755,7 +759,7 @@ export async function saveAdminCategory(input: {
   const name = input.name.trim();
 
   if (!name) {
-    return { ok: false, message: "Le nom du theme est requis." };
+    return { ok: false, message: "Le nom du thème est requis." };
   }
 
   const payload = {
@@ -778,7 +782,7 @@ export async function saveAdminCategory(input: {
     };
   }
 
-  return { ok: true, message: "Theme enregistre." };
+  return { ok: true, message: "Thème enregistré." };
 }
 
 export async function deleteAdminCategory(
@@ -803,7 +807,7 @@ export async function deleteAdminCategory(
     };
   }
 
-  return { ok: true, message: "Theme supprime." };
+  return { ok: true, message: "Thème supprimé." };
 }
 
 export async function saveAdminFact(input: {
@@ -829,7 +833,7 @@ export async function saveAdminFact(input: {
   if (!input.category_id || !title || !hook || !input.content.trim()) {
     return {
       ok: false,
-      message: "Titre, hook, contenu et theme sont requis.",
+      message: "Titre, hook, contenu et thème sont requis.",
     };
   }
 
@@ -870,14 +874,14 @@ export async function saveAdminFact(input: {
       message:
         error instanceof Error
           ? error.message
-          : "Ce fait n'a pas pu etre enregistre.",
+          : "Ce fait n’a pas pu être enregistré.",
     };
   }
 
   return {
     ok: true,
     message: hasPermission(auth, "facts.publish")
-      ? "Fait enregistre."
+      ? "Fait enregistré."
       : "Ton fait a ete envoye pour validation.",
   };
 }
@@ -937,7 +941,7 @@ export async function updateAdminFactStatus(
   const messages: Record<typeof status, string> = {
     draft: "Fait repasse en brouillon.",
     pending_review: "Fait renvoye en validation.",
-    published: "Fait publie.",
+    published: "Fait publié.",
     rejected: "Fait rejete.",
   };
 
@@ -970,7 +974,7 @@ export async function updateProfileRole(
     };
   }
 
-  return { ok: true, message: "Role mis a jour." };
+  return { ok: true, message: "Rôle mis à jour." };
 }
 
 export async function deleteAdminUser(id: string): Promise<AdminMutationResult> {
@@ -1018,7 +1022,7 @@ export async function saveAdminRole(input: {
   const name = input.name.trim();
 
   if (!slug || !name) {
-    return { ok: false, message: "Nom et identifiant du role sont requis." };
+    return { ok: false, message: "Nom et identifiant du rôle sont requis." };
   }
 
   const permissions = [...new Set(input.permissions)];
@@ -1040,7 +1044,7 @@ export async function saveAdminRole(input: {
     };
   }
 
-  return { ok: true, message: "Role enregistre." };
+  return { ok: true, message: "Rôle enregistré." };
 }
 
 export async function deleteAdminRole(slug: string): Promise<AdminMutationResult> {
@@ -1063,7 +1067,7 @@ export async function deleteAdminRole(slug: string): Promise<AdminMutationResult
     };
   }
 
-  return { ok: true, message: "Role supprime." };
+  return { ok: true, message: "Rôle supprimé." };
 }
 
 export async function saveAdminGrade(input: {
@@ -1087,13 +1091,17 @@ export async function saveAdminGrade(input: {
 
   const name = input.name.trim();
   const requiredGoals = Math.max(0, Math.floor(input.required_goals));
+  const requestedBadge = input.badge?.trim() || "sparkles";
+  const badge = gradeIconOptions.some((option) => option.value === requestedBadge)
+    ? requestedBadge
+    : "sparkles";
 
   if (!name) {
     return { ok: false, message: "Le nom du grade est requis." };
   }
 
   const payload = {
-    badge: input.badge?.trim() || null,
+    badge,
     description: input.description?.trim() || null,
     display_order: input.display_order ?? requiredGoals,
     name,
@@ -1112,7 +1120,7 @@ export async function saveAdminGrade(input: {
     };
   }
 
-  return { ok: true, message: "Grade enregistre." };
+  return { ok: true, message: "Grade enregistré." };
 }
 
 export async function deleteAdminGrade(id: string): Promise<AdminMutationResult> {

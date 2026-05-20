@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import FactFeed from "./FactFeed";
+import FactFeed from "../discover/FactFeed";
 
 export const metadata: Metadata = {
   title: "Découvrir",

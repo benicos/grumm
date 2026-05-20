@@ -203,7 +203,7 @@ export default function FactEditor({ factId }: { factId?: string }) {
     <>
       <AdminPageHeader
         eyebrow="Contenu"
-        title={isEditing ? "Modifier un fait" : "Creer un fait"}
+        title={isEditing ? "Modifier un fait" : "Créer un fait"}
         description={
           canPublish
             ? "Edition complete avec statut de publication."
@@ -264,7 +264,7 @@ export default function FactEditor({ factId }: { factId?: string }) {
 
             <div className="grid gap-4 lg:grid-cols-2">
               <label className="block">
-                <span className="text-sm font-bold text-slate-300">Theme</span>
+                <span className="text-sm font-bold text-slate-300">Thème</span>
                 <select
                   value={form.category_id}
                   onChange={(event) =>

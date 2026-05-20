@@ -8,6 +8,7 @@ import {
   getUsernameValidationMessage,
   normalizeUsername,
 } from "@/lib/slug";
+import { premiumPrimaryCtaClassName } from "../components/buttonStyles";
 import { useAuth } from "./AuthProvider";
 
 type AuthFormProps = {
@@ -67,7 +68,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
 
     if (password.length < 6) {
       nextFieldErrors.password =
-        "Le mot de passe doit contenir au moins 6 caracteres.";
+        "Le mot de passe doit contenir au moins 6 caractères.";
     }
 
     if (!isLogin && usernameValidationMessage) {
@@ -96,7 +97,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
     }
 
     if (result.requiresEmailConfirmation) {
-      setMessage(result.message ?? "Compte cree. Confirme ton email.");
+      setMessage(result.message ?? "Compte créé. Confirme ton email.");
       return;
     }
 
@@ -186,7 +187,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
             required
             minLength={6}
             className="mt-2 w-full rounded-md border border-white/10 bg-black/20 px-4 py-3 text-white outline-none transition placeholder:text-white/35 focus:border-[#ffd166]"
-            placeholder="6 caracteres minimum"
+            placeholder="6 caractères minimum"
           />
           <FieldError message={fieldErrors.password} />
         </label>
@@ -201,13 +202,13 @@ export default function AuthForm({ mode }: AuthFormProps) {
       <button
         type="submit"
         disabled={isSubmitting}
-        className="mt-6 w-full rounded-md bg-[#ffd166] px-4 py-3 text-sm font-extrabold text-[#07111f] transition hover:bg-[#ffe08f] disabled:cursor-not-allowed disabled:opacity-60"
+        className={`${premiumPrimaryCtaClassName} mt-6 w-full`}
       >
         {isSubmitting
           ? "Chargement..."
           : isLogin
             ? "Se connecter"
-            : "Creer mon compte"}
+            : "Créer mon compte"}
       </button>
 
       <p className="mt-5 text-center text-sm text-white/62">

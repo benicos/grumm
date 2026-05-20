@@ -26,11 +26,11 @@ export function getUsernameValidationMessage(value: string) {
   }
 
   if (value.length < 3) {
-    return "Le nom d'utilisateur doit contenir au moins 3 caracteres.";
+    return "Le nom d'utilisateur doit contenir au moins 3 caractères.";
   }
 
   if (value.length > 24) {
-    return "Le nom d'utilisateur doit contenir 24 caracteres maximum.";
+    return "Le nom d'utilisateur doit contenir 24 caractères maximum.";
   }
 
   if (!/^[a-z0-9_]+$/.test(value)) {
