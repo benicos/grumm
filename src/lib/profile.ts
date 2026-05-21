@@ -17,7 +17,7 @@ type RelatedFactRow = {
         id: string;
         slug?: string | null;
         title: string;
-        hook: string;
+        hook: string | null;
         content: string;
         source: string;
         source_url?: string | null;
@@ -114,7 +114,7 @@ function mapRelatedFact(row: RelatedFactRow): FeedFact | null {
     category: category?.name ?? "General",
     categorySlug: category?.slug ?? "general",
     title: fact.title,
-    hook: fact.hook,
+    hook: fact.hook?.trim() || null,
     detail: fact.content,
     source: fact.source || "Source non renseignee",
     sourceUrl: fact.source_url ?? null,

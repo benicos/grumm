@@ -3,6 +3,7 @@
 import type { Dispatch, SetStateAction } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Inter } from "next/font/google";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { discoverConfig, userMessages } from "@/config/app";
 import {
@@ -24,6 +25,7 @@ import { logAppError } from "@/lib/errors";
 import { getToneBackground } from "@/lib/gradients";
 import { useAuth } from "../auth/AuthProvider";
 import { AppState, FeedSkeleton } from "../components/AppState";
+import FactSource from "../components/FactSource";
 import FactShareModal from "../components/share/FactShareModal";
 import Navbar from "../components/Navbar";
 
@@ -173,6 +175,7 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
     isAuthenticated,
     isLoading: isLoadingAuth,
     profile,
+    user,
   } = useAuth();
   const [facts, setFacts] = useState<FeedFact[]>([]);
   const [theme, setTheme] = useState<CategorySummary | null>(null);
@@ -205,6 +208,7 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
   const loadedFactIdsRef = useRef<string[]>([]);
   const feedRequestIdRef = useRef(0);
   const isMountedRef = useRef(false);
+  const loadedResetKeyRef = useRef<string | null>(null);
 
   const hasFacts = facts.length > 0;
   const activeFactIndex = hasFacts ? Math.min(currentStep, facts.length - 1) : 0;
@@ -411,13 +415,20 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
       return;
     }
 
+    const resetKey = `${themeSlug ?? "all"}:${user?.id ?? "anonymous"}`;
+
+    if (loadedResetKeyRef.current === resetKey) {
+      return;
+    }
+
+    loadedResetKeyRef.current = resetKey;
     reportedFactsRef.current = new Set<string>();
     goalAnimationShownRef.current = false;
 
     queueMicrotask(() => {
       void loadFeedBatch("reset");
     });
-  }, [isAuthenticated, isLoadingAuth, loadFeedBatch]);
+  }, [isAuthenticated, isLoadingAuth, loadFeedBatch, themeSlug, user?.id]);
 
   useEffect(() => {
     if (
@@ -717,9 +728,12 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
 
               <div className="relative z-10 flex h-full w-full max-w-6xl flex-col pb-24 pt-36 sm:pb-20">
                 <div className="flex flex-wrap items-center gap-3">
-                  <div className="w-fit rounded-full border border-white/15 bg-white/10 px-4 py-2 text-xs font-bold uppercase tracking-[0.22em] text-white/85 backdrop-blur-xl">
+                  <Link
+                    href={`/discover/theme/${fact.categorySlug}`}
+                    className="w-fit rounded-full border border-white/15 bg-white/10 px-4 py-2 text-xs font-bold uppercase tracking-[0.22em] text-white/85 backdrop-blur-xl transition hover:-translate-y-0.5 hover:border-white/25 hover:bg-white/15"
+                  >
                     {fact.category}
-                  </div>
+                  </Link>
                   {theme && (
                     <div className="w-fit rounded-full border border-white/10 bg-black/16 px-4 py-2 text-xs font-bold uppercase tracking-[0.18em] text-white/62 backdrop-blur-xl">
                       Thème
@@ -833,15 +847,12 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
                     </div>
                   )}
 
-                  <div
-                    className="flex flex-wrap items-center gap-3 text-sm text-white/70"
-                    data-fact-source
-                  >
-                    <span
-                      className="h-2.5 w-2.5 rounded-full"
-                      style={{ backgroundColor: fact.accent }}
+                  <div data-fact-source>
+                    <FactSource
+                      accent={fact.accent}
+                      source={fact.source}
+                      sourceUrl={fact.sourceUrl}
                     />
-                    <span>Source: {fact.source}</span>
                   </div>
                 </div>
 

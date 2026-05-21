@@ -2,6 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { appRoutes } from "@/config/app";
 import { signInWithEmail, signUpWithEmail } from "@/lib/auth";
 import { consumeAuthRedirect, getLegacyNextParam } from "@/lib/authRedirect";
 import {
@@ -170,8 +172,16 @@ export default function AuthForm({ mode }: AuthFormProps) {
         </label>
 
         <label className="block">
-          <span className="text-sm font-semibold text-white/72">
+          <span className="flex items-center justify-between gap-4 text-sm font-semibold text-white/72">
             Mot de passe
+            {isLogin ? (
+              <Link
+                href={appRoutes.forgotPassword}
+                className="text-xs font-bold text-[#ffd166] transition hover:text-white"
+              >
+                Mot de passe oublié ?
+              </Link>
+            ) : null}
           </span>
           <input
             value={password}

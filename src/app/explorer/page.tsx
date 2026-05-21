@@ -7,6 +7,7 @@ import { getExplorerData } from "@/lib/facts";
 import type { CategorySummary, FeedFact } from "@/lib/facts";
 import { getToneBackground } from "@/lib/gradients";
 import { AppState } from "../components/AppState";
+import FactSource from "../components/FactSource";
 import Footer from "../components/Footer";
 import HeroBackground from "../components/HeroBackground";
 import Navbar from "../components/Navbar";
@@ -87,23 +88,27 @@ function shuffleItems<T>(items: T[], seedKey: string) {
 
 function FactCard({ fact }: { fact: FeedFact }) {
   return (
-    <Link
-      href={`/fact/${fact.slug}`}
-      className="rounded-lg border border-white/10 bg-white/[0.055] p-5 shadow-sm backdrop-blur-xl transition hover:-translate-y-1 hover:border-white/20"
-    >
+    <article className="rounded-lg border border-white/10 bg-white/[0.055] p-5 shadow-sm backdrop-blur-xl transition hover:-translate-y-1 hover:border-white/20">
       <div className="mb-4 flex items-center justify-between gap-3">
         <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.16em] text-[#ffd166]">
           {fact.category}
         </span>
-        <span className="truncate text-xs text-white/42">{fact.source}</span>
+        <FactSource
+          className="max-w-[48%] text-xs text-white/42"
+          label=""
+          source={fact.source}
+          sourceUrl={fact.sourceUrl}
+        />
       </div>
-      <h3 className="text-xl font-extrabold leading-snug tracking-[-0.04em]">
-        {fact.title}
-      </h3>
-      <p className="mt-3 line-clamp-3 text-sm leading-6 text-white/62">
-        {fact.detail}
-      </p>
-    </Link>
+      <Link href={`/fact/${fact.slug}`} className="block">
+        <h3 className="text-xl font-extrabold leading-snug tracking-[-0.04em]">
+          {fact.title}
+        </h3>
+        <p className="mt-3 line-clamp-3 text-sm leading-6 text-white/62">
+          {fact.detail}
+        </p>
+      </Link>
+    </article>
   );
 }
 

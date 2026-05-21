@@ -33,6 +33,21 @@ const nextConfig: NextConfig = {
         destination: "/register",
         permanent: false,
       },
+      {
+        source: "/a-propos",
+        destination: "/about",
+        permanent: false,
+      },
+      {
+        source: "/politique-confidentialite",
+        destination: "/privacy-policy",
+        permanent: false,
+      },
+      {
+        source: "/mot-de-passe-oublie",
+        destination: "/forgot-password",
+        permanent: false,
+      },
     ];
   },
 };

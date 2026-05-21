@@ -1,0 +1,316 @@
+import * as Haptics from "expo-haptics";
+import { Flame } from "lucide-react-native";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Animated, FlatList, Pressable, StyleSheet, Text, View, type LayoutChangeEvent, type ViewToken } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+
+import { FactCard } from "../components/FactCard";
+import { GoalCelebration } from "../components/GoalCelebration";
+import { LoadingState, ScreenState } from "../components/ScreenState";
+import { mobileConfig, userMessages } from "../config/app";
+import { useAuth } from "../context/AuthContext";
+import { getFactActions, getFeedFacts, getTodayDailyProgress, recordFactView, toggleLike, toggleSave } from "../lib/facts";
+import { useFactImageShare } from "../lib/share";
+import { colors } from "../theme/colors";
+import type { FactActions, FeedFact } from "../types/domain";
+
+type DiscoverScreenProps = {
+  initialFact?: FeedFact | null;
+  onRequireAuth: () => void;
+};
+
+export function DiscoverScreen({ initialFact, onRequireAuth }: DiscoverScreenProps) {
+  const { profile, session } = useAuth();
+  const { shareFactImage, shareStoryNode } = useFactImageShare();
+  const [facts, setFacts] = useState<FeedFact[]>([]);
+  const [actions, setActions] = useState<Record<string, FactActions>>({});
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [todayCount, setTodayCount] = useState(0);
+  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(!initialFact);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [screenHeight, setScreenHeight] = useState(0);
+  const [goalCelebration, setGoalCelebration] = useState<{
+    completedGoals: number;
+    message: string;
+    visible: boolean;
+  }>({ completedGoals: 0, message: "Premier pas.", visible: false });
+  const recordedIds = useRef(new Set<string>());
+  const celebrationShownRef = useRef(false);
+  const cardHeight = Math.max(560, screenHeight);
+  const initialFactId = initialFact?.id ?? null;
+
+  const viewabilityConfig = useMemo(() => ({ itemVisiblePercentThreshold: 72 }), []);
+  const onViewableItemsChanged = useCallback(({ viewableItems }: { viewableItems: ViewToken[] }) => {
+    const visibleIndex = viewableItems[0]?.index;
+
+    if (typeof visibleIndex === "number") {
+      setCurrentIndex(visibleIndex);
+    }
+  }, []);
+
+  const mergeActions = useCallback((nextActions: Map<string, FactActions>) => {
+    setActions((current) => {
+      const merged = { ...current };
+      nextActions.forEach((value, key) => {
+        merged[key] = value;
+      });
+      return merged;
+    });
+  }, []);
+
+  const loadInitial = useCallback(async () => {
+    if (initialFact) {
+      setFacts([initialFact]);
+      setCurrentIndex(0);
+      setIsLoading(false);
+    } else {
+      setIsLoading(true);
+    }
+
+    setError(null);
+    recordedIds.current = new Set<string>();
+    celebrationShownRef.current = false;
+
+    try {
+      const nextFacts = await getFeedFacts({
+        excludeIds: initialFact ? [initialFact.id] : [],
+        limit: mobileConfig.feedBatchSize,
+      });
+      const mergedFacts = initialFact
+        ? [initialFact, ...nextFacts.filter((fact) => fact.id !== initialFact.id)]
+        : nextFacts;
+      setFacts(mergedFacts);
+      setCurrentIndex(0);
+      mergeActions(await getFactActions(mergedFacts.map((fact) => fact.id)));
+    } catch (nextError) {
+      setError(nextError instanceof Error ? nextError.message : userMessages.genericLoadError);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [initialFact, mergeActions]);
+
+  const loadMore = useCallback(async () => {
+    if (isLoadingMore || facts.length === 0) {
+      return;
+    }
+
+    setIsLoadingMore(true);
+
+    try {
+      const nextFacts = await getFeedFacts({
+        excludeIds: facts.map((fact) => fact.id),
+        limit: mobileConfig.feedBatchSize,
+      });
+      const uniqueFacts = nextFacts.filter((fact) => !facts.some((current) => current.id === fact.id));
+      setFacts((current) => [...current, ...uniqueFacts]);
+      mergeActions(await getFactActions(uniqueFacts.map((fact) => fact.id)));
+    } finally {
+      setIsLoadingMore(false);
+    }
+  }, [facts, isLoadingMore, mergeActions]);
+
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => {
+      loadInitial();
+    });
+
+    return () => cancelAnimationFrame(frame);
+  }, [initialFactId, loadInitial, session?.user.id]);
+
+  useEffect(() => {
+    if (!session) {
+      return;
+    }
+
+    getTodayDailyProgress(profile?.dailyGoal)
+      .then((result) => {
+        if (result.ok) {
+          setTodayCount(result.viewedTodayCount);
+        }
+      })
+      .catch(() => undefined);
+  }, [profile?.dailyGoal, session]);
+
+  useEffect(() => {
+    const fact = facts[currentIndex];
+
+    if (!fact || recordedIds.current.has(fact.id)) {
+      return;
+    }
+
+    recordedIds.current.add(fact.id);
+    recordFactView(fact.id, profile?.dailyGoal)
+      .then(async (result) => {
+        if (!result.ok) {
+          return;
+        }
+
+        setTodayCount(result.viewedTodayCount);
+
+        if (!result.completedToday || celebrationShownRef.current) {
+          return;
+        }
+
+        celebrationShownRef.current = true;
+        setGoalCelebration({
+          completedGoals: result.completedDailyGoals,
+          message: result.message,
+          visible: true,
+        });
+        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        setTimeout(() => {
+          setGoalCelebration((current) => ({ ...current, visible: false }));
+        }, 1900);
+      })
+      .catch(() => undefined);
+  }, [currentIndex, facts, profile?.dailyGoal]);
+
+  async function handleToggleLike(fact: FeedFact) {
+    if (!session) {
+      onRequireAuth();
+      return;
+    }
+
+    const current = actions[fact.id] ?? { liked: false, saved: false };
+    setActions((value) => ({ ...value, [fact.id]: { ...current, liked: !current.liked } }));
+
+    try {
+      await toggleLike(fact.id, current.liked);
+      await Haptics.selectionAsync();
+    } catch {
+      setActions((value) => ({ ...value, [fact.id]: current }));
+    }
+  }
+
+  async function handleToggleSave(fact: FeedFact) {
+    if (!session) {
+      onRequireAuth();
+      return;
+    }
+
+    const current = actions[fact.id] ?? { liked: false, saved: false };
+    setActions((value) => ({ ...value, [fact.id]: { ...current, saved: !current.saved } }));
+
+    try {
+      await toggleSave(fact.id, current.saved);
+      await Haptics.selectionAsync();
+    } catch {
+      setActions((value) => ({ ...value, [fact.id]: current }));
+    }
+  }
+
+  function handleLayout(event: LayoutChangeEvent) {
+    setScreenHeight(event.nativeEvent.layout.height);
+  }
+
+  if (isLoading) {
+    return <LoadingState />;
+  }
+
+  if (error) {
+    return <ScreenState actionLabel="Réessayer" message={error} onAction={loadInitial} title="Découvrir est indisponible" />;
+  }
+
+  if (facts.length === 0) {
+    return <ScreenState actionLabel="Actualiser" message={userMessages.emptyFeed} onAction={loadInitial} title="Aucun fait disponible" />;
+  }
+
+  return (
+    <View onLayout={handleLayout} style={styles.wrap}>
+      <FlatList
+        data={facts}
+        decelerationRate="fast"
+        keyExtractor={(item) => item.id}
+        onEndReached={loadMore}
+        onEndReachedThreshold={0.55}
+        onViewableItemsChanged={onViewableItemsChanged}
+        pagingEnabled
+        renderItem={({ item }) => (
+          <FactCard
+            actions={actions[item.id] ?? { liked: false, saved: false }}
+            fact={item}
+            height={cardHeight}
+            onShare={() => void shareFactImage(item)}
+            onToggleLike={() => void handleToggleLike(item)}
+            onToggleSave={() => void handleToggleSave(item)}
+          />
+        )}
+        showsVerticalScrollIndicator={false}
+        snapToInterval={cardHeight}
+        snapToAlignment="start"
+        viewabilityConfig={viewabilityConfig}
+      />
+      <TodayCounter count={session ? todayCount : 0} onPress={!session ? onRequireAuth : undefined} />
+      {shareStoryNode}
+      <GoalCelebration
+        completedGoals={goalCelebration.completedGoals}
+        message={goalCelebration.message}
+        visible={goalCelebration.visible}
+      />
+    </View>
+  );
+}
+
+function TodayCounter({ count, onPress }: { count: number; onPress?: () => void }) {
+  const insets = useSafeAreaInsets();
+  const scale = useMemo(() => new Animated.Value(1), []);
+
+  useEffect(() => {
+    Animated.sequence([
+      Animated.timing(scale, {
+        duration: 130,
+        toValue: 1.08,
+        useNativeDriver: true,
+      }),
+      Animated.timing(scale, {
+        duration: 220,
+        toValue: 1,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [count, scale]);
+
+  return (
+    <Animated.View style={[styles.todayCounter, { top: insets.top + 16, transform: [{ scale }] }]}>
+      <Pressable accessibilityRole="button" disabled={!onPress} onPress={onPress} style={styles.todayPressable}>
+      <Flame color={colors.accent} fill={colors.accent} size={16} strokeWidth={2.2} />
+      <Text style={styles.todayText}>{count}</Text>
+      </Pressable>
+    </Animated.View>
+  );
+}
+
+const styles = StyleSheet.create({
+  todayCounter: {
+    alignItems: "center",
+    backgroundColor: "rgba(5,8,18,0.38)",
+    borderColor: "rgba(255,209,102,0.24)",
+    borderRadius: 999,
+    borderWidth: 1,
+    minHeight: 34,
+    position: "absolute",
+    right: 18,
+    shadowColor: colors.accent,
+    shadowOffset: { height: 8, width: 0 },
+    shadowOpacity: 0.18,
+    shadowRadius: 16,
+    zIndex: 10,
+  },
+  todayText: {
+    color: colors.text,
+    fontSize: 13,
+    fontWeight: "900",
+  },
+  todayPressable: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 6,
+    minHeight: 34,
+    paddingHorizontal: 12,
+  },
+  wrap: {
+    backgroundColor: colors.background,
+    flex: 1,
+  },
+});

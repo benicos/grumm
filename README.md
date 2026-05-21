@@ -93,3 +93,21 @@ Parcours critiques :
 - Badges et progression quotidienne.
 - `/admin` avec membre, rédacteur et administrateur.
 - Anciennes routes françaises, qui doivent rediriger proprement.
+
+## Version iOS de test
+
+Une première application iOS Expo/React Native est disponible dans `apps/ios`.
+Elle réutilise Supabase et les mécaniques Velora sans embarquer le site dans une
+WebView.
+
+Commandes principales :
+
+```bash
+cd apps/ios
+npm install
+npm start
+```
+
+Voir `apps/ios/README.md` pour la configuration Supabase, le test sur simulateur
+iOS, le test sur iPhone physique avec Expo Go et les prochaines étapes App
+Store.

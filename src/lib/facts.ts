@@ -12,7 +12,7 @@ export type FeedFact = {
   category: string;
   categorySlug: string;
   title: string;
-  hook: string;
+  hook: string | null;
   detail: string;
   source: string;
   sourceUrl: string | null;
@@ -68,7 +68,7 @@ type FactRow = {
   id: string;
   slug?: string | null;
   title: string;
-  hook: string;
+  hook: string | null;
   content: string;
   source: string;
   source_url?: string | null;
@@ -81,7 +81,7 @@ type FeedRpcRow = {
   id: string;
   slug: string;
   title: string;
-  hook: string;
+  hook: string | null;
   content: string;
   source: string;
   source_url: string | null;
@@ -136,7 +136,7 @@ function mapFact(fact: FactRow): FeedFact {
     category: category?.name ?? "General",
     categorySlug: category?.slug ?? "general",
     title: fact.title,
-    hook: fact.hook,
+    hook: fact.hook?.trim() || null,
     detail: fact.content,
     source: fact.source || "Source non renseignee",
     sourceUrl: fact.source_url ?? null,
@@ -155,7 +155,7 @@ function mapFeedRpcFact(fact: FeedRpcRow): FeedFact {
     category: fact.category_name ?? "General",
     categorySlug: fact.category_slug ?? "general",
     title: fact.title,
-    hook: fact.hook,
+    hook: fact.hook?.trim() || null,
     detail: fact.content,
     source: fact.source || "Source non renseignee",
     sourceUrl: fact.source_url ?? null,

@@ -57,7 +57,7 @@ function factToForm(fact: AdminFact): FactFormState {
     advancedSlug: fact.slug,
     category_id: fact.category_id,
     content: fact.content,
-    hook: fact.hook,
+    hook: fact.hook ?? "",
     id: fact.id,
     source: fact.source,
     source_url: fact.source_url ?? "",

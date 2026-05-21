@@ -7,6 +7,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import {
@@ -62,6 +63,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(isSupabaseConfigured());
+  const sessionRef = useRef<Session | null>(null);
+
+  const commitAuthState = useCallback(
+    (nextSession: Session | null, nextProfile: UserProfile | null) => {
+      sessionRef.current = nextSession;
+      setSession(nextSession);
+      setProfile(nextProfile);
+    },
+    [],
+  );
 
   const resolveProfile = useCallback(
     async (nextSession: Session | null): Promise<UserProfile | null> => {
@@ -160,9 +171,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const refreshUser = useCallback(async () => {
     const supabase = createSupabaseBrowserClient();
 
-    if (!supabase) {
-      setSession(null);
-      setProfile(null);
+      if (!supabase) {
+      commitAuthState(null, null);
       setIsLoading(false);
       return;
     }
@@ -172,10 +182,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       error: null,
     });
     const nextProfile = await resolveProfile(data.session);
-    setSession(data.session);
-    setProfile(nextProfile);
+    commitAuthState(data.session, nextProfile);
     setIsLoading(false);
-  }, [resolveProfile]);
+  }, [commitAuthState, resolveProfile]);
 
   useEffect(() => {
     let isMounted = true;
@@ -202,8 +211,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      setSession(nextSession);
-      setProfile(nextProfile);
+      commitAuthState(nextSession, nextProfile);
       setIsLoading(false);
     }
 
@@ -221,7 +229,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      void applySession(nextSession, true);
+      const currentSession = sessionRef.current;
+      const isSameUser =
+        Boolean(currentSession?.user?.id) &&
+        currentSession?.user?.id === nextSession?.user?.id;
+
+      if (event === "TOKEN_REFRESHED" || (event === "SIGNED_IN" && isSameUser)) {
+        setIsLoading(false);
+        return;
+      }
+
+      void applySession(nextSession, event === "SIGNED_IN" || event === "SIGNED_OUT");
     });
 
     return () => {
@@ -229,7 +247,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       requestId += 1;
       subscription.unsubscribe();
     };
-  }, [resolveProfile]);
+  }, [commitAuthState, resolveProfile]);
 
   const value = useMemo(
     () => ({

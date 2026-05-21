@@ -20,6 +20,7 @@ import { getToneBackground } from "@/lib/gradients";
 import { useAuth } from "../../auth/AuthProvider";
 import { AppState } from "../../components/AppState";
 import FactShareModal from "../../components/share/FactShareModal";
+import FactSource from "../../components/FactSource";
 import Navbar from "../../components/Navbar";
 import { premiumPrimaryCtaClassName } from "../../components/buttonStyles";
 
@@ -238,9 +239,11 @@ export default function FactDetailPage() {
             {fact.detail}
           </p>
 
-          <div className="mt-8 max-w-3xl rounded-[18px] border border-white/10 bg-white/[0.055] p-5 text-sm font-semibold leading-6 text-white/68">
-            À retenir : {fact.hook}
-          </div>
+          {fact.hook ? (
+            <div className="mt-8 max-w-3xl rounded-[18px] border border-white/10 bg-white/[0.055] p-5 text-sm font-semibold leading-6 text-white/68">
+              À retenir : {fact.hook}
+            </div>
+          ) : null}
 
           <div className="mt-10 flex flex-wrap items-center gap-3">
             <button
@@ -280,23 +283,12 @@ export default function FactDetailPage() {
             </Link>
           </div>
 
-          <div className="mt-10 flex flex-wrap items-center gap-3 text-sm text-white/70">
-            <span
-              className="h-2.5 w-2.5 rounded-full"
-              style={{ backgroundColor: fact.accent }}
+          <div className="mt-10">
+            <FactSource
+              accent={fact.accent}
+              source={fact.source}
+              sourceUrl={fact.sourceUrl}
             />
-            {fact.sourceUrl ? (
-              <a
-                href={fact.sourceUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="font-bold text-white/82 underline decoration-white/30 underline-offset-4 transition hover:text-white hover:decoration-white/70"
-              >
-                Source: {fact.source}
-              </a>
-            ) : (
-              <span>Source: {fact.source}</span>
-            )}
           </div>
         </article>
 

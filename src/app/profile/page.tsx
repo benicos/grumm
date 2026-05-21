@@ -10,6 +10,7 @@ import { getRoleLabel } from "@/lib/roles";
 import { useAuth } from "../auth/AuthProvider";
 import RequireAuth from "../auth/RequireAuth";
 import { AppState } from "../components/AppState";
+import FactSource from "../components/FactSource";
 import { premiumPrimaryCtaClassName } from "../components/buttonStyles";
 import GradeIcon from "../components/GradeIcon";
 import HeroBackground from "../components/HeroBackground";
@@ -185,21 +186,27 @@ function FactList({
       <div className="mt-5 space-y-3">
         {visibleFacts.length > 0 ? (
           visibleFacts.map((fact) => (
-            <Link
+            <article
               key={fact.id}
-              href={`/fact/${fact.slug}`}
-              className="block rounded-lg border border-white/10 bg-black/16 p-4 transition hover:-translate-y-0.5 hover:border-white/20"
+              className="rounded-lg border border-white/10 bg-black/16 p-4 transition hover:-translate-y-0.5 hover:border-white/20"
             >
               <div className="mb-3 flex items-center justify-between gap-3">
                 <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.16em] text-[#ffd166]">
                   {fact.category}
                 </span>
-                <span className="text-xs text-white/42">{fact.source}</span>
+                <FactSource
+                  className="max-w-[48%] text-xs text-white/42"
+                  label=""
+                  source={fact.source}
+                  sourceUrl={fact.sourceUrl}
+                />
               </div>
-              <p className="text-base font-bold leading-snug tracking-[-0.03em]">
-                {fact.title}
-              </p>
-            </Link>
+              <Link href={`/fact/${fact.slug}`} className="block">
+                <p className="text-base font-bold leading-snug tracking-[-0.03em]">
+                  {fact.title}
+                </p>
+              </Link>
+            </article>
           ))
         ) : (
           <div className="rounded-lg border border-white/10 bg-black/16 p-4 text-sm leading-6 text-white/62">

@@ -1,5 +1,6 @@
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { gradeIconOptions, paginationConfig } from "@/config/app";
+import { getBadgeInfo } from "@/lib/badges";
 import { formatAppError, getConfiguredErrorMessage } from "@/lib/errors";
 import type { PermissionKey, UserRole } from "@/lib/roles";
 import {
@@ -20,6 +21,36 @@ export type AdminFactAuthor = Pick<AdminProfile, "id" | "role" | "username">;
 export type AdminFact = Database["public"]["Tables"]["facts"]["Row"] & {
   authorProfile?: AdminFactAuthor | null;
   categories: Pick<AdminCategory, "name" | "slug"> | null;
+};
+export type AdminUserThemeStat = {
+  accent: string;
+  count: number;
+  name: string;
+  slug: string;
+};
+export type AdminUserActivity = {
+  accent: string;
+  at: string;
+  factSlug: string;
+  factTitle: string;
+  label: string;
+  type: "like" | "save" | "view";
+};
+export type AdminUserDetail = {
+  profile: AdminProfile;
+  roleName: string | null;
+  gradeBadge: string | null;
+  gradeName: string | null;
+  stats: {
+    completedGoals: number;
+    currentStreak: number;
+    interactions: number;
+    likedFacts: number;
+    savedFacts: number;
+    viewedFacts: number;
+  };
+  recentActivity: AdminUserActivity[];
+  topThemes: AdminUserThemeStat[];
 };
 
 export const FACT_STATUS_LABELS: Record<FactStatus, string> = {
@@ -160,6 +191,96 @@ function requirePermission(
   if (!hasPermission(auth, permission)) {
     throw new Error("Permission insuffisante.");
   }
+}
+
+type AdminUserFactRelation = {
+  title: string | null;
+  slug: string | null;
+  categories:
+    | { name: string | null; slug: string | null; accent_color: string | null }
+    | { name: string | null; slug: string | null; accent_color: string | null }[]
+    | null;
+};
+
+type AdminUserInteractionRow = {
+  created_at?: string;
+  first_viewed_at?: string;
+  facts: AdminUserFactRelation | AdminUserFactRelation[] | null;
+};
+
+function getAdminFactRelation(row: AdminUserInteractionRow) {
+  return Array.isArray(row.facts) ? row.facts[0] : row.facts;
+}
+
+function getAdminFactCategory(fact: AdminUserFactRelation | null) {
+  return Array.isArray(fact?.categories)
+    ? fact.categories[0]
+    : fact?.categories;
+}
+
+function formatAdminActivity(
+  rows: AdminUserInteractionRow[],
+  type: AdminUserActivity["type"],
+): AdminUserActivity[] {
+  const labels = {
+    like: "A aimé",
+    save: "A enregistré",
+    view: "A lu",
+  } satisfies Record<AdminUserActivity["type"], string>;
+
+  return rows
+    .map((row) => {
+      const fact = getAdminFactRelation(row);
+
+      if (!fact?.slug || !fact.title) {
+        return null;
+      }
+
+      const category = getAdminFactCategory(fact);
+
+      return {
+        accent: category?.accent_color ?? "#fbbf24",
+        at: row.first_viewed_at ?? row.created_at ?? new Date(0).toISOString(),
+        factSlug: fact.slug,
+        factTitle: fact.title,
+        label: labels[type],
+        type,
+      };
+    })
+    .filter((item): item is AdminUserActivity => Boolean(item));
+}
+
+function getCurrentGoalStreak(
+  progressRows: Pick<
+    Database["public"]["Tables"]["user_daily_progress"]["Row"],
+    "goal_completed" | "progress_date"
+  >[],
+) {
+  const completedDates = new Set(
+    progressRows
+      .filter((row) => row.goal_completed)
+      .map((row) => row.progress_date),
+  );
+  const cursor = new Date();
+  let count = 0;
+  const today = cursor.toISOString().slice(0, 10);
+
+  if (!completedDates.has(today)) {
+    cursor.setDate(cursor.getDate() - 1);
+  }
+
+  for (let index = 0; index < 120; index += 1) {
+    const key = cursor.toISOString().slice(0, 10);
+
+    if (!completedDates.has(key)) {
+      break;
+    }
+
+    count += 1;
+    cursor.setDate(cursor.getDate() - 1);
+  }
+
+  return count;
 }
 
 async function getNextFactDisplayOrder(supabase: AdminClient) {
@@ -519,6 +640,197 @@ export async function getAdminProfiles({
   };
 }
 
+export async function getAdminUserDetail(
+  userId: string,
+): Promise<AdminUserDetail | null> {
+  const auth = await getAuthenticatedAdminClient();
+
+  if (!auth.ok) {
+    throw new Error(auth.message);
+  }
+
+  requirePermission(auth, "users.manage");
+
+  const profileList = await getAdminProfiles({
+    pageSize: 10,
+    query: userId,
+  });
+  let profile = profileList.items.find((item) => item.id === userId) ?? null;
+
+  if (!profile) {
+    const { data, error } = await auth.supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", userId)
+      .maybeSingle();
+
+    if (error) {
+      throwAdminError(error, "load admin user profile", "profiles");
+    }
+
+    profile = data ? ({ ...data, email: null } as AdminProfile) : null;
+  }
+
+  if (!profile) {
+    return null;
+  }
+
+  const [
+    roleResult,
+    viewedFacts,
+    likedFacts,
+    savedFacts,
+    completedGoals,
+    progressRows,
+    gradesResult,
+    themeRows,
+    recentViews,
+    recentLikes,
+    recentSaves,
+  ] = await Promise.all([
+    auth.supabase
+      .from("roles")
+      .select("name")
+      .eq("slug", profile.role)
+      .maybeSingle(),
+    auth.supabase
+      .from("user_fact_views")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", userId),
+    auth.supabase
+      .from("likes")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", userId),
+    auth.supabase
+      .from("saves")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", userId),
+    auth.supabase
+      .from("user_daily_progress")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", userId)
+      .eq("goal_completed", true),
+    auth.supabase
+      .from("user_daily_progress")
+      .select("progress_date,goal_completed")
+      .eq("user_id", userId)
+      .order("progress_date", { ascending: false })
+      .limit(120),
+    auth.supabase
+      .from("grades")
+      .select("id,slug,name,required_goals,description,badge,display_order")
+      .order("required_goals", { ascending: true })
+      .order("display_order", { ascending: true }),
+    auth.supabase
+      .from("user_fact_views")
+      .select("first_viewed_at,facts(title,slug,categories(name,slug,accent_color))")
+      .eq("user_id", userId)
+      .order("first_viewed_at", { ascending: false })
+      .limit(250),
+    auth.supabase
+      .from("user_fact_views")
+      .select("first_viewed_at,facts(title,slug,categories(name,slug,accent_color))")
+      .eq("user_id", userId)
+      .order("first_viewed_at", { ascending: false })
+      .limit(6),
+    auth.supabase
+      .from("likes")
+      .select("created_at,facts(title,slug,categories(name,slug,accent_color))")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(6),
+    auth.supabase
+      .from("saves")
+      .select("created_at,facts(title,slug,categories(name,slug,accent_color))")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(6),
+  ]);
+
+  const error =
+    roleResult.error ??
+    viewedFacts.error ??
+    likedFacts.error ??
+    savedFacts.error ??
+    completedGoals.error ??
+    progressRows.error ??
+    gradesResult.error ??
+    themeRows.error ??
+    recentViews.error ??
+    recentLikes.error ??
+    recentSaves.error;
+
+  if (error) {
+    throwAdminError(error, "load admin user detail", "users");
+  }
+
+  const grades = (gradesResult.data ?? []).map((grade) => ({
+    badge: grade.badge,
+    description: grade.description,
+    displayOrder: grade.display_order,
+    id: grade.id,
+    name: grade.name,
+    requiredGoals: grade.required_goals,
+    slug: grade.slug,
+  }));
+  const completedGoalsCount = completedGoals.count ?? 0;
+  const grade = getBadgeInfo(completedGoalsCount, grades);
+  const themeStats = new Map<string, AdminUserThemeStat>();
+
+  ((themeRows.data ?? []) as AdminUserInteractionRow[]).forEach((row) => {
+    const category = getAdminFactCategory(getAdminFactRelation(row));
+
+    if (!category?.slug || !category.name) {
+      return;
+    }
+
+    const current = themeStats.get(category.slug);
+    themeStats.set(category.slug, {
+      accent: category.accent_color ?? "#fbbf24",
+      count: (current?.count ?? 0) + 1,
+      name: category.name,
+      slug: category.slug,
+    });
+  });
+
+  const recentActivity = [
+    ...formatAdminActivity(
+      (recentViews.data ?? []) as AdminUserInteractionRow[],
+      "view",
+    ),
+    ...formatAdminActivity(
+      (recentLikes.data ?? []) as AdminUserInteractionRow[],
+      "like",
+    ),
+    ...formatAdminActivity(
+      (recentSaves.data ?? []) as AdminUserInteractionRow[],
+      "save",
+    ),
+  ]
+    .sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime())
+    .slice(0, 10);
+
+  return {
+    gradeBadge: grade.badge,
+    gradeName: grade.title,
+    profile,
+    recentActivity,
+    roleName: roleResult.data?.name ?? null,
+    stats: {
+      completedGoals: completedGoalsCount,
+      currentStreak: getCurrentGoalStreak(progressRows.data ?? []),
+      interactions:
+        (viewedFacts.count ?? 0) + (likedFacts.count ?? 0) + (savedFacts.count ?? 0),
+      likedFacts: likedFacts.count ?? 0,
+      savedFacts: savedFacts.count ?? 0,
+      viewedFacts: viewedFacts.count ?? 0,
+    },
+    topThemes: [...themeStats.values()]
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 6),
+  };
+}
+
 export async function getAdminCategory(id: string): Promise<AdminCategory | null> {
   const auth = await getAuthenticatedAdminClient();
 
@@ -814,7 +1126,7 @@ export async function saveAdminFact(input: {
   advancedSlug?: string;
   category_id: string;
   content: string;
-  hook: string;
+  hook?: string | null;
   id?: string;
   source: string;
   source_url: string | null;
@@ -828,12 +1140,12 @@ export async function saveAdminFact(input: {
   }
 
   const title = input.title.trim();
-  const hook = input.hook.trim();
+  const hook = input.hook?.trim() ?? "";
 
-  if (!input.category_id || !title || !hook || !input.content.trim()) {
+  if (!input.category_id || !title || !input.content.trim()) {
     return {
       ok: false,
-      message: "Titre, hook, contenu et thème sont requis.",
+      message: "Titre, contenu et thème sont requis.",
     };
   }
 
@@ -844,7 +1156,7 @@ export async function saveAdminFact(input: {
     const basePayload = {
       category_id: input.category_id,
       content: input.content.trim(),
-      hook,
+      hook: hook || null,
       published_at:
         status === "published" ? new Date().toISOString() : null,
       slug,

@@ -174,7 +174,7 @@ export default function AdminDashboardPage() {
                         </div>
                         <p className="mt-2 font-bold text-white">{fact.title}</p>
                         <p className="mt-1 line-clamp-2 text-sm text-slate-400">
-                          {fact.hook}
+                          {fact.hook ?? "Sans phrase à retenir"}
                         </p>
                       </div>
                       <div className="flex flex-wrap items-center gap-2 lg:justify-end">

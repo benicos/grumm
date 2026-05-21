@@ -259,3 +259,87 @@ export async function signOut(): Promise<AuthResult> {
 
   return { ok: true };
 }
+
+export async function requestPasswordReset(email: string): Promise<AuthResult> {
+  const supabase = createSupabaseBrowserClient();
+
+  if (!supabase) {
+    return { ok: false, message: getSupabaseErrorMessage("supabase_unconfigured") };
+  }
+
+  const normalizedEmail = email.trim();
+
+  if (!normalizedEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+    return {
+      ok: false,
+      message: "Entre une adresse email valide.",
+      field: "email",
+    };
+  }
+
+  const redirectTo =
+    typeof window === "undefined"
+      ? undefined
+      : `${window.location.origin}/reset-password`;
+  const { error } = await supabase.auth.resetPasswordForEmail(normalizedEmail, {
+    redirectTo,
+  });
+
+  if (error) {
+    return {
+      ok: false,
+      message: getSupabaseErrorMessage(error.message),
+      field: getSupabaseField(error.message),
+    };
+  }
+
+  return {
+    ok: true,
+    message: "Si un compte existe avec cet email, un lien de réinitialisation vient d'être envoyé.",
+  };
+}
+
+export async function updatePasswordAfterReset(password: string): Promise<AuthResult> {
+  const supabase = createSupabaseBrowserClient();
+
+  if (!supabase) {
+    return { ok: false, message: getSupabaseErrorMessage("supabase_unconfigured") };
+  }
+
+  if (password.length < 8) {
+    return {
+      ok: false,
+      message: "Le mot de passe doit contenir au moins 8 caractères.",
+      field: "password",
+    };
+  }
+
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
+  if (!session) {
+    return {
+      ok: false,
+      message: "Ce lien a expiré. Demande un nouveau lien de réinitialisation.",
+      field: "global",
+    };
+  }
+
+  const { error } = await supabase.auth.updateUser({
+    password,
+  });
+
+  if (error) {
+    return {
+      ok: false,
+      message: getSupabaseErrorMessage(error.message),
+      field: getSupabaseField(error.message),
+    };
+  }
+
+  return {
+    ok: true,
+    message: "Mot de passe mis à jour.",
+  };
+}

@@ -5,6 +5,7 @@ import { Download, Link as LinkIcon, Share2, X } from "lucide-react";
 import { type CSSProperties, useMemo, useRef, useState } from "react";
 import { siteConfig, socialShareConfig } from "@/config/app";
 import type { FeedFact } from "@/lib/facts";
+import FactSource from "../FactSource";
 import { premiumPrimaryCtaClassName } from "../buttonStyles";
 
 type FactShareModalProps = {
@@ -59,6 +60,7 @@ export default function FactShareModal({ fact, onClose }: FactShareModalProps) {
   const title = truncateText(activeFact.title, 76);
   const detail = truncateText(activeFact.detail, 170);
   const source = truncateText(activeFact.source, 68);
+  const shareText = activeFact.hook?.trim() || activeFact.title;
   const displayUrl = siteConfig.publicUrl.replace(/^https?:\/\//, "");
 
   async function renderStoryBlob() {
@@ -133,7 +135,7 @@ export default function FactShareModal({ fact, onClose }: FactShareModalProps) {
 
       await navigator.share({
         files: [file],
-        text: activeFact.title,
+        text: `${shareText}\n\n${factUrl}`,
         title: activeFact.title,
       });
       setStatus("Image prête à être partagée.");
@@ -154,7 +156,7 @@ export default function FactShareModal({ fact, onClose }: FactShareModalProps) {
     try {
       if (navigator.share) {
         await navigator.share({
-          text: activeFact.hook,
+          text: `${shareText}\n\n${factUrl}`,
           title: activeFact.title,
           url: factUrl,
         });
@@ -265,6 +267,13 @@ export default function FactShareModal({ fact, onClose }: FactShareModalProps) {
           <p className="mt-4 max-w-xl text-sm leading-6 text-white/58">
             Tu as appris quelque chose ? Fais le savoir à tes amis en partageant ce fait de manière simple et rapide.
           </p>
+          <div className="mt-5 max-w-xl rounded-md border border-white/10 bg-white/[0.045] px-4 py-3">
+            <FactSource
+              className="text-sm text-white/58"
+              source={activeFact.source}
+              sourceUrl={activeFact.sourceUrl}
+            />
+          </div>
 
           <div className="mt-7 grid gap-3 sm:grid-cols-2">
             <button

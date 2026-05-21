@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import {
   deleteAdminUser,
@@ -244,7 +245,13 @@ export default function AdminUsersPage() {
                       {new Date(userProfile.created_at).toLocaleDateString("fr-FR")}
                     </td>
                     <td className="px-4 py-3">
-                      <div className="flex justify-end">
+                      <div className="flex justify-end gap-2">
+                        <Link
+                          href={`/admin/users/${userProfile.id}`}
+                          className="rounded-md border border-slate-700 bg-slate-900 px-4 py-2 text-sm font-extrabold text-slate-200 transition hover:bg-slate-800"
+                        >
+                          Voir
+                        </Link>
                         {canDeleteUsers && (
                           <AdminButton
                             tone="danger"

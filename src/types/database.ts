@@ -45,7 +45,7 @@ export type Database = {
           category_id: string;
           slug: string;
           title: string;
-          hook: string;
+          hook: string | null;
           content: string;
           source: string;
           source_url: string | null;
@@ -63,7 +63,7 @@ export type Database = {
           category_id: string;
           slug?: string;
           title: string;
-          hook: string;
+          hook?: string | null;
           content: string;
           source: string;
           source_url?: string | null;
@@ -81,7 +81,7 @@ export type Database = {
           category_id?: string;
           slug?: string;
           title?: string;
-          hook?: string;
+          hook?: string | null;
           content?: string;
           source?: string;
           source_url?: string | null;
@@ -392,7 +392,7 @@ export type Database = {
           id: string;
           slug: string;
           title: string;
-          hook: string;
+          hook: string | null;
           content: string;
           source: string;
           source_url: string | null;
@@ -440,7 +440,7 @@ export type Database = {
           id: string;
           slug: string;
           title: string;
-          hook: string;
+          hook: string | null;
           content: string;
           source: string;
           source_url: string | null;
@@ -460,7 +460,7 @@ export type Database = {
           id: string;
           slug: string;
           title: string;
-          hook: string;
+          hook: string | null;
           content: string;
           source: string;
           source_url: string | null;

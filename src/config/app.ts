@@ -7,14 +7,19 @@ export const siteConfig = {
 } as const;
 
 export const appRoutes = {
+  about: "/about",
   admin: "/admin",
+  contact: "/contact",
   discover: "/discover",
   explorer: "/explorer",
+  forgotPassword: "/forgot-password",
   home: "/",
   login: "/login",
+  privacy: "/privacy-policy",
   profile: "/profile",
   profileEdit: "/profile/edit",
   register: "/register",
+  resetPassword: "/reset-password",
 } as const;
 
 export const dailyGoalConfig = {
@@ -42,12 +47,9 @@ export const userMessages = {
 } as const;
 
 export const footerLinks = [
-  { href: "/#", label: "À propos" },
-  { href: "/#", label: "Confidentialité" },
-  { href: "/#", label: "Conditions" },
-  { href: "/#", label: "Contact" },
-  { href: "https://www.instagram.com/", label: "Instagram", external: true },
-  { href: "https://x.com/", label: "X/Twitter", external: true },
+  { href: appRoutes.privacy, label: "Politique de confidentialité" },
+  { href: appRoutes.about, label: "À propos" },
+  { href: appRoutes.contact, label: "Contact" },
 ] as const;
 
 export const socialShareConfig = {

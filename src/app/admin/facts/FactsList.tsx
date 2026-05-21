@@ -279,7 +279,7 @@ export default function FactsList({
                     <td className="max-w-md px-4 py-3">
                       <p className="font-bold text-white">{fact.title}</p>
                       <p className="mt-1 line-clamp-2 text-xs text-slate-500">
-                        {fact.hook}
+                        {fact.hook ?? "Sans phrase à retenir"}
                       </p>
                     </td>
                     <td className="px-4 py-3 text-slate-300">
