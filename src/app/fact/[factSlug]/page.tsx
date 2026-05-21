@@ -24,6 +24,7 @@ import {
 } from "@/lib/facts";
 import type { FeedFact } from "@/lib/facts";
 import { rememberAuthRedirect } from "@/lib/authRedirect";
+import { isCommercialCollaborationFact } from "@/lib/commercial";
 import { getToneBackground } from "@/lib/gradients";
 import { useAuth } from "../../auth/AuthProvider";
 import { AppState } from "../../components/AppState";
@@ -110,7 +111,12 @@ export default function FactDetailPage() {
   }, [params.factSlug]);
 
   useEffect(() => {
-    if (!fact?.id || isLoading || !isAuthenticated) {
+    if (
+      !fact?.id ||
+      isLoading ||
+      !isAuthenticated ||
+      isCommercialCollaborationFact(fact)
+    ) {
       queueMicrotask(() => {
         setLiked(false);
         setSaved(false);
@@ -124,17 +130,22 @@ export default function FactDetailPage() {
         setSaved(actions.saved.includes(fact.id));
       })
       .catch(() => undefined);
-  }, [fact?.id, isAuthenticated, isLoading]);
+  }, [fact, isAuthenticated, isLoading]);
 
   useEffect(() => {
-    if (isLoading || !isAuthenticated || !fact?.id) {
+    if (
+      isLoading ||
+      !isAuthenticated ||
+      !fact?.id ||
+      isCommercialCollaborationFact(fact)
+    ) {
       return;
     }
 
     recordFactView(fact.id, profile?.daily_goal ?? DEFAULT_DAILY_GOAL).catch(
       () => undefined,
     );
-  }, [fact?.id, isAuthenticated, isLoading, profile?.daily_goal]);
+  }, [fact, isAuthenticated, isLoading, profile?.daily_goal]);
 
   useEffect(() => {
     let cancelled = false;
@@ -142,7 +153,7 @@ export default function FactDetailPage() {
     void finishFactRead(factReadTokenRef.current);
     factReadTokenRef.current = null;
 
-    if (!fact?.id) {
+    if (!fact?.id || isCommercialCollaborationFact(fact)) {
       return () => {
         cancelled = true;
       };
@@ -164,7 +175,7 @@ export default function FactDetailPage() {
       void finishFactRead(factReadTokenRef.current);
       factReadTokenRef.current = null;
     };
-  }, [fact?.id]);
+  }, [fact]);
 
   const toggleProtectedAction = async (
     isActive: boolean,
@@ -172,7 +183,7 @@ export default function FactDetailPage() {
     enableAction: (factId: string) => Promise<{ ok: boolean }>,
     disableAction: (factId: string) => Promise<{ ok: boolean }>,
   ) => {
-    if (!fact) {
+    if (!fact || isCommercialCollaborationFact(fact)) {
       return;
     }
 
@@ -211,7 +222,7 @@ export default function FactDetailPage() {
   };
 
   const shareFact = () => {
-    if (!fact) {
+    if (!fact || isCommercialCollaborationFact(fact)) {
       return;
     }
 
@@ -247,7 +258,7 @@ export default function FactDetailPage() {
       <AppState
         eyebrow="404"
         title="Ce fait n'existe pas."
-        description="Le slug demandé ne correspond à aucun fait publié."
+        description="Le slug demandé ne correspond à aucun fait visible."
         primaryHref="/discover"
         primaryLabel="Retour à Découvrir"
         secondaryHref="/explorer"
@@ -257,6 +268,7 @@ export default function FactDetailPage() {
   }
 
   const toneBackground = getToneBackground(fact.tone);
+  const isSponsored = isCommercialCollaborationFact(fact);
 
   return (
     <main
@@ -278,12 +290,18 @@ export default function FactDetailPage() {
       <section className="relative z-10 mx-auto grid min-h-[calc(100vh-100px)] w-full max-w-6xl items-center gap-8 px-6 py-14 lg:grid-cols-[minmax(0,1fr)_320px]">
         <article className="w-full rounded-[28px] border border-white/10 bg-black/18 p-6 shadow-[0_34px_130px_rgba(0,0,0,0.42)] backdrop-blur-xl sm:p-8 lg:p-10">
           <div className="flex flex-wrap items-center gap-3">
-            <Link
-              href={`/discover/theme/${fact.categorySlug}`}
-              className="rounded-full border border-white/15 bg-white/10 px-4 py-2 text-xs font-bold uppercase tracking-[0.22em] text-white/85 backdrop-blur-xl"
-            >
-              {fact.category}
-            </Link>
+            {isSponsored ? (
+              <span className="rounded-full border border-[#ffd166]/20 bg-[#ffd166]/12 px-4 py-2 text-xs font-bold uppercase tracking-[0.22em] text-[#ffe3a4] backdrop-blur-xl">
+                Collaboration commerciale
+              </span>
+            ) : (
+              <Link
+                href={`/discover/theme/${fact.categorySlug}`}
+                className="rounded-full border border-white/15 bg-white/10 px-4 py-2 text-xs font-bold uppercase tracking-[0.22em] text-white/85 backdrop-blur-xl"
+              >
+                {fact.category}
+              </Link>
+            )}
           </div>
 
           <h1 className="mt-8 max-w-4xl text-[clamp(2.4rem,6vw,5.2rem)] font-extrabold leading-[0.96] tracking-[-0.055em] [text-wrap:balance]">
@@ -301,35 +319,50 @@ export default function FactDetailPage() {
           ) : null}
 
           <div className="mt-10 flex flex-wrap items-center gap-3">
-            <button
-              type="button"
-              onClick={() =>
-                toggleProtectedAction(liked, setLiked, likeFact, unlikeFact)
-              }
-              className={`rounded-full border border-white/15 px-5 py-3 text-sm font-bold backdrop-blur-xl transition hover:scale-[1.02] ${
-                liked ? "bg-white text-[#07111f]" : "bg-white/10 text-white"
-              }`}
-            >
-              Aimer
-            </button>
-            <button
-              type="button"
-              onClick={() =>
-                toggleProtectedAction(saved, setSaved, saveFact, unsaveFact)
-              }
-              className={`rounded-full border border-white/15 px-5 py-3 text-sm font-bold backdrop-blur-xl transition hover:scale-[1.02] ${
-                saved ? "bg-[#ffd166] text-[#07111f]" : "bg-white/10 text-white"
-              }`}
-            >
-              Enregistrer
-            </button>
-            <button
-              type="button"
-              onClick={shareFact}
-              className="rounded-full border border-white/15 bg-white/10 px-5 py-3 text-sm font-bold text-white backdrop-blur-xl transition hover:scale-[1.02]"
-            >
-              Partager
-            </button>
+            {isSponsored ? (
+              <a
+                href={fact.sourceUrl ?? "#"}
+                target={fact.sourceUrl ? "_blank" : undefined}
+                rel={fact.sourceUrl ? "noopener noreferrer" : undefined}
+                className="rounded-full bg-white px-5 py-3 text-sm font-extrabold text-[#07111f] shadow-[0_18px_55px_rgba(255,255,255,0.16)] transition hover:scale-[1.02] hover:bg-[#ffe7ad]"
+              >
+                En savoir plus
+              </a>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  onClick={() =>
+                    toggleProtectedAction(liked, setLiked, likeFact, unlikeFact)
+                  }
+                  className={`rounded-full border border-white/15 px-5 py-3 text-sm font-bold backdrop-blur-xl transition hover:scale-[1.02] ${
+                    liked ? "bg-white text-[#07111f]" : "bg-white/10 text-white"
+                  }`}
+                >
+                  Aimer
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    toggleProtectedAction(saved, setSaved, saveFact, unsaveFact)
+                  }
+                  className={`rounded-full border border-white/15 px-5 py-3 text-sm font-bold backdrop-blur-xl transition hover:scale-[1.02] ${
+                    saved
+                      ? "bg-[#ffd166] text-[#07111f]"
+                      : "bg-white/10 text-white"
+                  }`}
+                >
+                  Enregistrer
+                </button>
+                <button
+                  type="button"
+                  onClick={shareFact}
+                  className="rounded-full border border-white/15 bg-white/10 px-5 py-3 text-sm font-bold text-white backdrop-blur-xl transition hover:scale-[1.02]"
+                >
+                  Partager
+                </button>
+              </>
+            )}
             <Link
               href="/discover"
               className="rounded-full border border-white/15 bg-black/20 px-5 py-3 text-sm font-bold text-white/72 backdrop-blur-xl transition hover:scale-[1.02] hover:text-white"
@@ -342,6 +375,10 @@ export default function FactDetailPage() {
             <FactSource
               accent={fact.accent}
               onSourceClick={() => {
+                if (isSponsored) {
+                  return;
+                }
+
                 markFactReadInteraction(factReadTokenRef.current);
                 void trackAnalyticsEvent({
                   entityId: fact.id,
@@ -349,6 +386,7 @@ export default function FactDetailPage() {
                   eventName: "source_clicked",
                 });
               }}
+              label={isSponsored ? "Partenaire:" : undefined}
               source={fact.source}
               sourceUrl={fact.sourceUrl}
             />
@@ -363,12 +401,14 @@ export default function FactDetailPage() {
             Explore ce thème ou retourne au flux principal.
           </h2>
           <div className="mt-6 grid gap-3">
-            <Link
-              href={`/discover/theme/${fact.categorySlug}`}
-              className={premiumPrimaryCtaClassName}
-            >
-              Explorer ce thème
-            </Link>
+            {!isSponsored ? (
+              <Link
+                href={`/discover/theme/${fact.categorySlug}`}
+                className={premiumPrimaryCtaClassName}
+              >
+                Explorer ce thème
+              </Link>
+            ) : null}
             <Link
               href="/discover"
               className="rounded-[14px] border border-white/10 px-4 py-3 text-center text-sm font-bold text-white/72 transition hover:border-white/20 hover:text-white"

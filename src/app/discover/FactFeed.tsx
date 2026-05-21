@@ -13,6 +13,7 @@ import {
   trackAnalyticsEvent,
   type FactReadToken,
 } from "@/lib/analytics/web";
+import { isCommercialCollaborationFact } from "@/lib/commercial";
 import {
   DEFAULT_DAILY_GOAL,
   DISCOVER_FEED_BATCH_SIZE,
@@ -274,13 +275,19 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
   }, []);
 
   const toggleRemoteAction = async (
-    factId: string,
+    fact: FeedFact,
     isActive: boolean,
     setter: Dispatch<SetStateAction<string[]>>,
     enableAction: (factId: string) => Promise<{ ok: boolean }>,
     disableAction: (factId: string) => Promise<{ ok: boolean }>,
     analyticsEventName: "fact_liked" | "fact_saved",
   ) => {
+    if (isCommercialCollaborationFact(fact)) {
+      return;
+    }
+
+    const factId = fact.id;
+
     if (!isAuthenticated) {
       rememberAuthRedirect(window.location.pathname);
       showTemporaryNotice("Connecte-toi pour synchroniser cette action.");
@@ -317,12 +324,16 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
   };
 
   const openFactDetail = (fact: FeedFact) => {
+    if (isCommercialCollaborationFact(fact)) {
+      return;
+    }
+
     markFactReadInteraction(factReadTokenRef.current);
     router.push(`/fact/${fact.slug || fact.id}`);
   };
 
   const shareFact = () => {
-    if (!activeFact) {
+    if (!activeFact || isCommercialCollaborationFact(activeFact)) {
       return;
     }
 
@@ -506,7 +517,11 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
       }
 
       try {
-        const actions = await getUserFactActions(facts.map((fact) => fact.id));
+        const actions = await getUserFactActions(
+          facts
+            .filter((fact) => !isCommercialCollaborationFact(fact))
+            .map((fact) => fact.id),
+        );
 
         if (isMounted) {
           setLiked(actions.liked);
@@ -576,6 +591,7 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
       isLoadingAuth ||
       !isAuthenticated ||
       !activeFact?.id ||
+      isCommercialCollaborationFact(activeFact) ||
       reportedFactsRef.current.has(activeFact.id)
     ) {
       return;
@@ -604,7 +620,7 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
         }
       })
       .catch(() => undefined);
-  }, [activeFact?.id, isAuthenticated, isLoadingAuth, profile?.daily_goal]);
+  }, [activeFact, isAuthenticated, isLoadingAuth, profile?.daily_goal]);
 
   useEffect(() => {
     let cancelled = false;
@@ -613,7 +629,11 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
     factReadTokenRef.current = null;
     void finishFactRead(previousToken);
 
-    if (!activeFact?.id || isLoadingFacts) {
+    if (
+      !activeFact?.id ||
+      isLoadingFacts ||
+      isCommercialCollaborationFact(activeFact)
+    ) {
       return () => {
         cancelled = true;
       };
@@ -633,7 +653,7 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
     return () => {
       cancelled = true;
     };
-  }, [activeFact?.id, isLoadingFacts]);
+  }, [activeFact, isLoadingFacts]);
 
   useEffect(() => {
     if (swipeHintTimerRef.current !== null) {
@@ -649,7 +669,7 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
     swipeHintTimerRef.current = window.setTimeout(() => {
       setShowSwipeHint(true);
       swipeHintTimerRef.current = null;
-    }, 4000);
+    }, 8000);
 
     return () => {
       if (swipeHintTimerRef.current !== null) {
@@ -725,7 +745,7 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
       <AppState
         eyebrow="Thème introuvable"
         title="Ce thème n’existe pas encore."
-        description="Ce lien ne correspond à aucun thème publié."
+        description="Ce lien ne correspond à aucun thème visible."
         primaryHref="/explorer"
         primaryLabel="Explorer les thèmes"
         secondaryHref="/discover"
@@ -810,6 +830,7 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
           const isActive = offset === 0;
           const depth = Math.abs(offset);
           const toneBackground = getToneBackground(fact.tone);
+          const isSponsored = isCommercialCollaborationFact(fact);
 
           return (
             <article
@@ -836,22 +857,28 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
 
               <div className="relative z-10 flex h-full w-full max-w-6xl flex-col pb-24 pt-36 sm:pb-20">
                 <div className="flex flex-wrap items-center gap-3">
-                  <Link
-                    href={`/discover/theme/${fact.categorySlug}`}
-                    onClick={() =>
-                      void trackAnalyticsEvent({
-                        entityType: "category",
-                        eventName: "category_opened",
-                        metadata: {
-                          name: fact.category,
-                          slug: fact.categorySlug,
-                        },
-                      })
-                    }
-                    className="w-fit rounded-full border border-white/15 bg-white/10 px-4 py-2 text-xs font-bold uppercase tracking-[0.22em] text-white/85 backdrop-blur-xl transition hover:-translate-y-0.5 hover:border-white/25 hover:bg-white/15"
-                  >
-                    {fact.category}
-                  </Link>
+                  {isSponsored ? (
+                    <span className="w-fit rounded-full border border-[#ffd166]/20 bg-[#ffd166]/12 px-4 py-2 text-xs font-bold uppercase tracking-[0.22em] text-[#ffe3a4] backdrop-blur-xl">
+                      Collaboration commerciale
+                    </span>
+                  ) : (
+                    <Link
+                      href={`/discover/theme/${fact.categorySlug}`}
+                      onClick={() =>
+                        void trackAnalyticsEvent({
+                          entityType: "category",
+                          eventName: "category_opened",
+                          metadata: {
+                            name: fact.category,
+                            slug: fact.categorySlug,
+                          },
+                        })
+                      }
+                      className="w-fit rounded-full border border-white/15 bg-white/10 px-4 py-2 text-xs font-bold uppercase tracking-[0.22em] text-white/85 backdrop-blur-xl transition hover:-translate-y-0.5 hover:border-white/25 hover:bg-white/15"
+                    >
+                      {fact.category}
+                    </Link>
+                  )}
                   {theme && (
                     <div className="w-fit rounded-full border border-white/10 bg-black/16 px-4 py-2 text-xs font-bold uppercase tracking-[0.18em] text-white/62 backdrop-blur-xl">
                       Thème
@@ -869,77 +896,88 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
                       {fact.detail}
                     </p>
 
-                    <div
-                      className="mt-7 flex items-center gap-3 lg:hidden"
-                      data-mobile-actions
-                    >
-                      <button
-                        type="button"
-                        aria-label="Aimer"
-                        onClick={() =>
-                          toggleRemoteAction(
-                            fact.id,
-                            liked.includes(fact.id),
-                            setLiked,
-                            likeFact,
-                            unlikeFact,
-                            "fact_liked",
-                          )
-                        }
-                        className={`grid h-14 w-14 place-items-center rounded-full border border-white/15 backdrop-blur-xl transition hover:scale-105 ${
-                          liked.includes(fact.id)
-                            ? "bg-white text-[#07111f]"
-                            : "bg-white/10 text-white"
-                        }`}
+                    {isSponsored ? (
+                      <a
+                        href={fact.sourceUrl ?? "#"}
+                        target={fact.sourceUrl ? "_blank" : undefined}
+                        rel={fact.sourceUrl ? "noopener noreferrer" : undefined}
+                        className="mt-7 inline-flex rounded-full bg-white px-5 py-3 text-sm font-extrabold text-[#07111f] shadow-[0_18px_55px_rgba(255,255,255,0.16)] transition hover:-translate-y-0.5 hover:bg-[#ffe7ad] lg:hidden"
                       >
-                        {actionIcons.like}
-                      </button>
+                        En savoir plus
+                      </a>
+                    ) : (
+                      <div
+                        className="mt-7 flex items-center gap-3 lg:hidden"
+                        data-mobile-actions
+                      >
+                        <button
+                          type="button"
+                          aria-label="Aimer"
+                          onClick={() =>
+                            toggleRemoteAction(
+                              fact,
+                              liked.includes(fact.id),
+                              setLiked,
+                              likeFact,
+                              unlikeFact,
+                              "fact_liked",
+                            )
+                          }
+                          className={`grid h-14 w-14 place-items-center rounded-full border border-white/15 backdrop-blur-xl transition hover:scale-105 ${
+                            liked.includes(fact.id)
+                              ? "bg-white text-[#07111f]"
+                              : "bg-white/10 text-white"
+                          }`}
+                        >
+                          {actionIcons.like}
+                        </button>
 
-                      <button
-                        type="button"
-                        aria-label="Enregistrer"
-                        onClick={() =>
-                          toggleRemoteAction(
-                            fact.id,
-                            saved.includes(fact.id),
-                            setSaved,
-                            saveFact,
-                            unsaveFact,
-                            "fact_saved",
-                          )
-                        }
-                        className={`grid h-14 w-14 place-items-center rounded-full border border-white/15 backdrop-blur-xl transition hover:scale-105 ${
-                          saved.includes(fact.id)
-                            ? "bg-[#ffd166] text-[#07111f]"
-                            : "bg-white/10 text-white"
-                        }`}
-                      >
-                        {actionIcons.save}
-                      </button>
+                        <button
+                          type="button"
+                          aria-label="Enregistrer"
+                          onClick={() =>
+                            toggleRemoteAction(
+                              fact,
+                              saved.includes(fact.id),
+                              setSaved,
+                              saveFact,
+                              unsaveFact,
+                              "fact_saved",
+                            )
+                          }
+                          className={`grid h-14 w-14 place-items-center rounded-full border border-white/15 backdrop-blur-xl transition hover:scale-105 ${
+                            saved.includes(fact.id)
+                              ? "bg-[#ffd166] text-[#07111f]"
+                              : "bg-white/10 text-white"
+                          }`}
+                        >
+                          {actionIcons.save}
+                        </button>
 
-                      <button
-                        type="button"
-                        aria-label="Partager"
-                        onClick={shareFact}
-                        className="grid h-14 w-14 place-items-center rounded-full border border-white/15 bg-white/10 text-white backdrop-blur-xl transition hover:scale-105"
-                      >
-                        {actionIcons.share}
-                      </button>
+                        <button
+                          type="button"
+                          aria-label="Partager"
+                          onClick={shareFact}
+                          className="grid h-14 w-14 place-items-center rounded-full border border-white/15 bg-white/10 text-white backdrop-blur-xl transition hover:scale-105"
+                        >
+                          {actionIcons.share}
+                        </button>
 
-                      <button
-                        type="button"
-                        aria-label="Voir le fait"
-                        onClick={() => openFactDetail(fact)}
-                        className="grid h-14 w-14 place-items-center rounded-full border border-white/15 bg-white/10 text-white backdrop-blur-xl transition hover:scale-105"
-                      >
-                        {actionIcons.view}
-                      </button>
-                    </div>
+                        <button
+                          type="button"
+                          aria-label="Voir le fait"
+                          onClick={() => openFactDetail(fact)}
+                          className="grid h-14 w-14 place-items-center rounded-full border border-white/15 bg-white/10 text-white backdrop-blur-xl transition hover:scale-105"
+                        >
+                          {actionIcons.view}
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
 
                 <div className="w-full max-w-2xl" data-fact-progress-source>
-                  {isLoadingAuth ? (
+                  {isSponsored ? null : isLoadingAuth ? (
                     <div className="mb-5 rounded-full border border-white/10 bg-white/10 px-4 py-3 text-sm font-semibold text-white/72 backdrop-blur-xl">
                       Chargement de ta progression
                     </div>
@@ -961,16 +999,16 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
                         />
                       </div>
                     </>
-                  ) : (
-                    <div className="mb-5 rounded-full border border-white/10 bg-white/10 px-4 py-3 text-sm font-semibold text-white/72 backdrop-blur-xl">
-                      Connecte-toi pour voir ta progression
-                    </div>
-                  )}
+                  ) : null}
 
                   <div data-fact-source>
                   <FactSource
                     accent={fact.accent}
                     onSourceClick={() => {
+                      if (isSponsored) {
+                        return;
+                      }
+
                       markFactReadInteraction(factReadTokenRef.current);
                       void trackAnalyticsEvent({
                         entityId: fact.id,
@@ -978,78 +1016,90 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
                         eventName: "source_clicked",
                       });
                     }}
+                    label={isSponsored ? "Partenaire:" : undefined}
                     source={fact.source}
                     sourceUrl={fact.sourceUrl}
                   />
                   </div>
                 </div>
 
-                <div
-                  className="absolute right-5 top-1/2 hidden -translate-y-1/2 items-center gap-3 sm:right-8 lg:flex lg:flex-col"
-                  data-desktop-actions
-                >
-                  <button
-                    type="button"
-                    aria-label="Aimer"
-                    onClick={() =>
-                      toggleRemoteAction(
-                        fact.id,
-                        liked.includes(fact.id),
-                        setLiked,
-                        likeFact,
-                        unlikeFact,
-                        "fact_liked",
-                      )
-                    }
-                    className={`grid h-14 w-14 place-items-center rounded-full border border-white/15 backdrop-blur-xl transition hover:scale-105 ${
-                      liked.includes(fact.id)
-                        ? "bg-white text-[#07111f]"
-                        : "bg-white/10 text-white"
-                    }`}
+                {isSponsored ? (
+                  <a
+                    href={fact.sourceUrl ?? "#"}
+                    target={fact.sourceUrl ? "_blank" : undefined}
+                    rel={fact.sourceUrl ? "noopener noreferrer" : undefined}
+                    className="absolute right-5 top-1/2 hidden -translate-y-1/2 rounded-full bg-white px-5 py-3 text-sm font-extrabold text-[#07111f] shadow-[0_18px_55px_rgba(255,255,255,0.16)] transition hover:scale-[1.03] hover:bg-[#ffe7ad] sm:right-8 lg:inline-flex"
                   >
-                    {actionIcons.like}
-                  </button>
+                    En savoir plus
+                  </a>
+                ) : (
+                  <div
+                    className="absolute right-5 top-1/2 hidden -translate-y-1/2 items-center gap-3 sm:right-8 lg:flex lg:flex-col"
+                    data-desktop-actions
+                  >
+                    <button
+                      type="button"
+                      aria-label="Aimer"
+                      onClick={() =>
+                        toggleRemoteAction(
+                          fact,
+                          liked.includes(fact.id),
+                          setLiked,
+                          likeFact,
+                          unlikeFact,
+                          "fact_liked",
+                        )
+                      }
+                      className={`grid h-14 w-14 place-items-center rounded-full border border-white/15 backdrop-blur-xl transition hover:scale-105 ${
+                        liked.includes(fact.id)
+                          ? "bg-white text-[#07111f]"
+                          : "bg-white/10 text-white"
+                      }`}
+                    >
+                      {actionIcons.like}
+                    </button>
 
-                  <button
-                    type="button"
-                    aria-label="Enregistrer"
-                    onClick={() =>
-                      toggleRemoteAction(
-                        fact.id,
-                        saved.includes(fact.id),
-                        setSaved,
-                        saveFact,
-                        unsaveFact,
-                        "fact_saved",
-                      )
-                    }
-                    className={`grid h-14 w-14 place-items-center rounded-full border border-white/15 backdrop-blur-xl transition hover:scale-105 ${
-                      saved.includes(fact.id)
-                        ? "bg-[#ffd166] text-[#07111f]"
-                        : "bg-white/10 text-white"
-                    }`}
-                  >
-                    {actionIcons.save}
-                  </button>
+                    <button
+                      type="button"
+                      aria-label="Enregistrer"
+                      onClick={() =>
+                        toggleRemoteAction(
+                          fact,
+                          saved.includes(fact.id),
+                          setSaved,
+                          saveFact,
+                          unsaveFact,
+                          "fact_saved",
+                        )
+                      }
+                      className={`grid h-14 w-14 place-items-center rounded-full border border-white/15 backdrop-blur-xl transition hover:scale-105 ${
+                        saved.includes(fact.id)
+                          ? "bg-[#ffd166] text-[#07111f]"
+                          : "bg-white/10 text-white"
+                      }`}
+                    >
+                      {actionIcons.save}
+                    </button>
 
-                  <button
-                    type="button"
-                    aria-label="Partager"
-                    onClick={shareFact}
-                    className="grid h-14 w-14 place-items-center rounded-full border border-white/15 bg-white/10 text-white backdrop-blur-xl transition hover:scale-105"
-                  >
-                    {actionIcons.share}
-                  </button>
+                    <button
+                      type="button"
+                      aria-label="Partager"
+                      onClick={shareFact}
+                      className="grid h-14 w-14 place-items-center rounded-full border border-white/15 bg-white/10 text-white backdrop-blur-xl transition hover:scale-105"
+                    >
+                      {actionIcons.share}
+                    </button>
 
-                  <button
-                    type="button"
-                    aria-label="Voir le fait"
-                    onClick={() => openFactDetail(fact)}
-                    className="grid h-14 w-14 place-items-center rounded-full border border-white/15 bg-white/10 text-white backdrop-blur-xl transition hover:scale-105"
-                  >
-                    {actionIcons.view}
-                  </button>
-                </div>
+                    <button
+                      type="button"
+                      aria-label="Voir le fait"
+                      onClick={() => openFactDetail(fact)}
+                      className="grid h-14 w-14 place-items-center rounded-full border border-white/15 bg-white/10 text-white backdrop-blur-xl transition hover:scale-105"
+                    >
+                      {actionIcons.view}
+                    </button>
+                  </div>
+                )}
               </div>
             </article>
           );
@@ -1062,7 +1112,7 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
                 Découvrir est vide
               </p>
               <h1 className="mt-4 text-3xl font-extrabold tracking-[-0.04em]">
-                Aucun fait publié pour le moment.
+                Aucun fait disponible pour le moment.
               </h1>
               <p className="mt-4 text-sm leading-6 text-white/62">
                 {process.env.NODE_ENV === "production"

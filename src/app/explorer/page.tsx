@@ -6,7 +6,6 @@ import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { trackAnalyticsEvent } from "@/lib/analytics/web";
 import { getExplorerData } from "@/lib/facts";
 import type { CategorySummary, FeedFact } from "@/lib/facts";
-import { getToneBackground } from "@/lib/gradients";
 import { AppState } from "../components/AppState";
 import FactSource from "../components/FactSource";
 import Footer from "../components/Footer";
@@ -32,13 +31,13 @@ function SearchIcon() {
   );
 }
 
-function ExplorerSkeleton({ cards = 6 }: { cards?: number }) {
+function ExplorerSkeleton({ cards = 3 }: { cards?: number }) {
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
       {Array.from({ length: cards }).map((_, index) => (
         <div
           key={index}
-          className="min-h-[180px] rounded-lg border border-white/10 bg-white/[0.055] p-5"
+          className="min-h-[180px] rounded-[22px] border border-white/10 bg-white/[0.055] p-5"
         >
           <div className="h-6 w-28 animate-pulse rounded-full bg-white/10" />
           <div className="mt-16 h-4 w-48 animate-pulse rounded-full bg-white/10" />
@@ -89,7 +88,7 @@ function shuffleItems<T>(items: T[], seedKey: string) {
 
 function FactCard({ fact }: { fact: FeedFact }) {
   return (
-    <article className="rounded-lg border border-white/10 bg-white/[0.055] p-5 shadow-sm backdrop-blur-xl transition hover:-translate-y-1 hover:border-white/20">
+    <article className="rounded-[22px] border border-white/10 bg-white/[0.052] p-5 shadow-[0_18px_70px_rgba(0,0,0,0.20)] backdrop-blur-xl transition hover:-translate-y-1 hover:border-white/20">
       <div className="mb-4 flex items-center justify-between gap-3">
         <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.16em] text-[#ffd166]">
           {fact.category}
@@ -113,8 +112,7 @@ function FactCard({ fact }: { fact: FeedFact }) {
   );
 }
 
-function ThemeCard({ theme }: { theme: CategorySummary }) {
-  const toneBackground = getToneBackground(theme.tone);
+function ThemePill({ theme }: { theme: CategorySummary }) {
   const count = theme.count ?? 0;
 
   return (
@@ -128,25 +126,16 @@ function ThemeCard({ theme }: { theme: CategorySummary }) {
           metadata: { name: theme.name, slug: theme.slug },
         })
       }
-      className={`group relative min-h-[205px] overflow-hidden rounded-lg border border-white/10 ${toneBackground.className} p-6 shadow-[0_28px_90px_rgba(0,0,0,0.2)] transition hover:-translate-y-1 hover:border-white/25`}
-      style={toneBackground.style}
+      className="group inline-flex min-w-0 items-center justify-center gap-3 rounded-full border border-white/10 bg-white/[0.065] px-4 py-3 text-sm font-extrabold text-white shadow-[0_16px_55px_rgba(0,0,0,0.18)] backdrop-blur-xl transition hover:-translate-y-0.5 hover:border-white/20 hover:bg-white/[0.09]"
     >
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.28),transparent_26%),linear-gradient(180deg,transparent,rgba(0,0,0,0.42))]" />
-      <div className="relative flex h-full flex-col justify-between">
-        <div className="flex items-start justify-between gap-4">
-          <h3 className="text-3xl font-extrabold tracking-[-0.05em]">
-            {theme.name}
-          </h3>
-          <span className="rounded-full bg-black/20 px-3 py-1 text-sm font-bold backdrop-blur">
-            {count}
-          </span>
-        </div>
-        <p className="mt-12 max-w-[220px] text-sm font-medium text-white/78">
-          {count > 0
-            ? `${count} faits publiés`
-            : "Thème prêt à accueillir de nouveaux faits"}
-        </p>
-      </div>
+      <span
+        className="h-2.5 w-2.5 rounded-full"
+        style={{ backgroundColor: theme.accent }}
+      />
+      <span className="truncate">{theme.name}</span>
+      <span className="rounded-full bg-black/22 px-2 py-0.5 text-xs text-white/58">
+        {count}
+      </span>
     </Link>
   );
 }
@@ -156,7 +145,6 @@ export default function ExplorerPage() {
   const [submittedQuery, setSubmittedQuery] = useState("");
   const [themes, setThemes] = useState<CategorySummary[]>([]);
   const [facts, setFacts] = useState<FeedFact[]>([]);
-  const [recentFacts, setRecentFacts] = useState<FeedFact[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const normalizedQuery = submittedQuery.trim().toLowerCase();
@@ -167,16 +155,15 @@ export default function ExplorerPage() {
       ? facts
       : shuffleItems(facts, `${sessionSeed}:facts`);
 
-    return selectedFacts.slice(0, hasActiveSearch ? 24 : 6);
+    return selectedFacts.slice(0, hasActiveSearch ? 24 : 3);
   }, [facts, hasActiveSearch, sessionSeed]);
   const visibleThemes = useMemo(() => {
     const selectedThemes = hasActiveSearch
       ? themes
       : shuffleItems(themes, `${sessionSeed}:themes`);
 
-    return selectedThemes.slice(0, hasActiveSearch ? 18 : 6);
+    return selectedThemes.slice(0, hasActiveSearch ? 18 : 8);
   }, [hasActiveSearch, sessionSeed, themes]);
-  const visibleRecentFacts = recentFacts.slice(0, 6);
 
   const loadExplorer = useCallback(async (searchValue?: string) => {
     setIsLoading(true);
@@ -190,7 +177,6 @@ export default function ExplorerPage() {
 
       setThemes(data.categories);
       setFacts(data.facts);
-      setRecentFacts(data.recentFacts);
     } catch (loadError) {
       setError(
         loadError instanceof Error
@@ -252,13 +238,9 @@ export default function ExplorerPage() {
       <HeroBackground />
       <Navbar />
 
-      <main className="relative z-10 mx-auto w-full max-w-[1180px] px-6 py-12 sm:py-16 lg:px-8">
+      <main className="relative z-10 mx-auto w-full max-w-[1180px] px-6 py-6 sm:py-7 lg:px-8">
         <section className="flex min-h-[72vh] flex-col justify-center gap-10 pb-14 pt-6 text-center">
           <div className="mx-auto max-w-4xl">
-            <div className="mb-8 inline-flex w-fit rounded-full bg-white/[0.055] px-3 py-1 text-sm/6 font-semibold text-white/62 ring-1 ring-white/10 backdrop-blur-xl">
-              Explorer
-            </div>
-
             <h1 className="bg-[linear-gradient(120deg,#ffffff_0%,#ffe4a1_40%,#6ae3c0_78%,#ffffff_100%)] bg-clip-text text-[clamp(2.6rem,6vw,5.2rem)] font-extrabold leading-[0.98] text-transparent [text-wrap:balance]">
               Trouve le fait qui va te rester en tête.
             </h1>
@@ -273,13 +255,7 @@ export default function ExplorerPage() {
               <input
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter") {
-                    event.preventDefault();
-                    runSearch();
-                  }
-                }}
-                placeholder="Ocean, NASA, cerveau, histoire, Einstein..."
+                placeholder="Espace, histoire, psychologie, NASA..."
                 className="min-w-0 flex-1 bg-transparent text-base font-semibold text-white outline-none placeholder:text-white/42"
               />
               {hasActiveSearch ? (
@@ -352,91 +328,61 @@ export default function ExplorerPage() {
             )}
           </section>
         ) : (
-          <>
-        <section className="pb-12">
-          <div className="mb-6 flex items-end justify-between gap-6">
-            <div>
-              <p className="text-xs font-bold uppercase tracking-[0.22em] text-[#ffd166]">
-                À découvrir
-              </p>
-              <h2 className="mt-2 text-3xl font-extrabold tracking-[-0.04em]">
-                Faits aléatoires
-              </h2>
-            </div>
-              <Link href="/discover" className="text-sm font-bold text-[#ffd166]">
-                Ouvrir le flux
-              </Link>
-          </div>
-
-          {isLoading ? (
-            <ExplorerSkeleton />
-          ) : visibleFacts.length > 0 ? (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {visibleFacts.map((fact) => (
-                <FactCard key={fact.id} fact={fact} />
-              ))}
-            </div>
-          ) : (
-            <div className="rounded-lg border border-white/10 bg-white/[0.055] p-6 text-sm text-white/62">
-              Aucun fait ne correspond à cette recherche.
-            </div>
-          )}
-        </section>
-
-        <section className="pb-12">
-          <div className="mb-6 flex items-end justify-between gap-6">
-            <div>
-              <p className="text-xs font-bold uppercase tracking-[0.22em] text-[#ffd166]">
-                Thèmes
-              </p>
-              <h2 className="mt-2 text-3xl font-extrabold tracking-[-0.04em]">
-                Thèmes à explorer
-              </h2>
-            </div>
-          </div>
-
-          {isLoading ? (
-            <ExplorerSkeleton />
-          ) : visibleThemes.length > 0 ? (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {visibleThemes.map((theme) => (
-                <ThemeCard key={theme.id} theme={theme} />
-              ))}
-            </div>
-          ) : (
-            <div className="rounded-lg border border-white/10 bg-white/[0.055] p-6 text-sm text-white/62">
-              Aucun thème ne correspond à cette recherche.
-            </div>
-          )}
-        </section>
-
-          <section className="pb-20">
-            <div className="mb-6 flex items-end justify-between gap-6">
-              <div>
-                <p className="text-xs font-bold uppercase tracking-[0.22em] text-[#ffd166]">
-                  Récemment ajoutés
-                </p>
-                <h2 className="mt-2 text-3xl font-extrabold tracking-[-0.04em]">
-                  Les derniers faits publiés
-                </h2>
-              </div>
-            </div>
-
+          <section className="-mt-10 pb-20">
             {isLoading ? (
-              <ExplorerSkeleton />
-            ) : visibleRecentFacts.length > 0 ? (
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {visibleRecentFacts.map((fact) => (
-                  <FactCard key={fact.id} fact={fact} />
-                ))}
-              </div>
+              <ExplorerSkeleton cards={3} />
             ) : (
-              <div className="rounded-lg border border-white/10 bg-white/[0.055] p-6 text-sm text-white/62">
-                Aucun fait publié pour le moment.
+              <div className="space-y-10">
+                <div>
+                  <p className="mb-4 text-xs font-bold uppercase tracking-[0.22em] text-[#ffd166]">
+                    Quelques pistes
+                  </p>
+                  {visibleThemes.length > 0 ? (
+                    <div className="mx-auto grid max-w-4xl grid-cols-2 gap-3 sm:grid-cols-4">
+                      {visibleThemes.map((theme, index) => (
+                        <ThemePill
+                          key={`${theme.id}:${theme.slug}:${index}`}
+                          theme={theme}
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="rounded-[20px] border border-white/10 bg-white/[0.055] p-5 text-sm text-white/62">
+                      Aucun thème disponible pour le moment.
+                    </div>
+                  )}
+                </div>
+
+                <div>
+                  <div className="mb-6 flex items-end justify-between gap-6">
+                    <div>
+                      <p className="text-xs font-bold uppercase tracking-[0.22em] text-[#ffd166]">
+                        À découvrir
+                      </p>
+                      <h2 className="mt-2 text-3xl font-extrabold tracking-[-0.04em]">
+                        Aujourd&apos;hui sur Grumm.
+                      </h2>
+                    </div>
+                    <Link href="/discover" className="text-sm font-bold text-[#ffd166]">
+                      Ouvrir le flux
+                    </Link>
+                  </div>
+
+                  {visibleFacts.length > 0 ? (
+                    <div className="grid gap-4 md:grid-cols-3">
+                      {visibleFacts.map((fact) => (
+                        <FactCard key={fact.id} fact={fact} />
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="rounded-[20px] border border-white/10 bg-white/[0.055] p-5 text-sm text-white/62">
+                      Aucun fait disponible pour le moment.
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           </section>
-          </>
         )}
       </main>
       <Footer />

@@ -145,7 +145,7 @@ export default function RoleEditor({ roleSlug }: { roleSlug?: string }) {
         ) : (
           <form onSubmit={submitRole} className="grid gap-5">
             {isSystem && (
-              <div className="rounded-md border border-amber-300/20 bg-amber-300/10 p-3 text-sm font-semibold text-amber-100">
+              <div className="rounded-md border border-[#465fff]/20 bg-[#465fff]/10 p-3 text-sm font-semibold text-[#dbeafe]">
                 Rôle système protégé. Le rôle administrateur doit conserver les permissions critiques.
               </div>
             )}
@@ -158,7 +158,7 @@ export default function RoleEditor({ roleSlug }: { roleSlug?: string }) {
                   onChange={(event) =>
                     setForm((current) => ({ ...current, name: event.target.value }))
                   }
-                  className="mt-2 w-full rounded-md border border-slate-800 bg-slate-900 px-3 py-2.5 text-sm text-white outline-none focus:border-amber-300"
+                  className="mt-2 w-full rounded-md border border-slate-800 bg-slate-900 px-3 py-2.5 text-sm text-white outline-none focus:border-[#465fff]"
                 />
               </label>
               <label className="block">
@@ -171,7 +171,7 @@ export default function RoleEditor({ roleSlug }: { roleSlug?: string }) {
                   onChange={(event) =>
                     setForm((current) => ({ ...current, slug: event.target.value }))
                   }
-                  className="mt-2 w-full rounded-md border border-slate-800 bg-slate-900 px-3 py-2.5 text-sm text-white outline-none focus:border-amber-300 disabled:opacity-60"
+                  className="mt-2 w-full rounded-md border border-slate-800 bg-slate-900 px-3 py-2.5 text-sm text-white outline-none focus:border-[#465fff] disabled:opacity-60"
                 />
               </label>
             </div>
@@ -186,7 +186,7 @@ export default function RoleEditor({ roleSlug }: { roleSlug?: string }) {
                     description: event.target.value,
                   }))
                 }
-                className="mt-2 min-h-24 w-full rounded-md border border-slate-800 bg-slate-900 px-3 py-2.5 text-sm text-white outline-none focus:border-amber-300"
+                className="mt-2 min-h-24 w-full rounded-md border border-slate-800 bg-slate-900 px-3 py-2.5 text-sm text-white outline-none focus:border-[#465fff]"
               />
             </label>
 
@@ -202,7 +202,7 @@ export default function RoleEditor({ roleSlug }: { roleSlug?: string }) {
                       type="checkbox"
                       checked={form.permissions.includes(permission)}
                       onChange={() => togglePermission(permission)}
-                      className="h-4 w-4 accent-amber-300"
+                      className="h-4 w-4 accent-[#465fff]"
                     />
                     <span>{PERMISSION_LABELS[permission]}</span>
                   </label>

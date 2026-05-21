@@ -28,10 +28,6 @@ export default function LoginPage() {
           <h1 className="mt-4 bg-[linear-gradient(120deg,#ffffff,#ffe4a1_45%,#6ae3c0)] bg-clip-text text-[clamp(2.5rem,6vw,4.8rem)] font-extrabold leading-none text-transparent">
             Continue là où ta curiosité s’est arrêtée.
           </h1>
-          <p className="mx-auto mt-5 max-w-lg text-base font-semibold leading-8 text-white/62 lg:mx-0">
-            Ton profil Grumm garde tes lectures, tes sauvegardes et ta
-            progression sans ajouter de friction au parcours.
-          </p>
         </div>
         <div className="flex justify-center lg:justify-end">
           <AuthForm mode="login" />

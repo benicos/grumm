@@ -5,10 +5,11 @@ import { BookOpen, Clock, Eye, Layers3, Target, Users } from "lucide-react";
 import { useEffect, useState } from "react";
 import {
   FACT_STATUS_LABELS,
+  getAdminAnalyticsData,
   getAdminDashboardData,
   updateAdminFactStatus,
 } from "@/lib/admin";
-import type { AdminDashboardData } from "@/lib/admin";
+import type { AdminAnalyticsData, AdminDashboardData } from "@/lib/admin";
 import {
   AdminLoadingRows,
   AdminMessage,
@@ -40,8 +41,77 @@ const dashboardStatIcons = {
   "Vues uniques": Eye,
 } as const;
 
+function DashboardBarList({
+  empty,
+  items,
+  title,
+}: {
+  empty: string;
+  items: { label: string; value: number }[];
+  title: string;
+}) {
+  const max = Math.max(...items.map((item) => item.value), 1);
+
+  return (
+    <AdminPanel className="p-5">
+      <h2 className="text-lg font-extrabold text-white">{title}</h2>
+      <div className="mt-5 grid gap-3">
+        {items.length > 0 ? (
+          items.slice(0, 10).map((item, index) => (
+            <div key={`${item.label}:${index}`} className="grid gap-2">
+              <div className="flex items-center justify-between gap-3 text-sm">
+                <span className="line-clamp-1 font-bold text-slate-200">{item.label}</span>
+                <span className="font-extrabold text-[#93c5fd]">{item.value}</span>
+              </div>
+              <div className="h-2 overflow-hidden rounded-full bg-[#1d2939]">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-[#465fff] to-[#36c2ff]"
+                  style={{ width: `${Math.max(6, (item.value / max) * 100)}%` }}
+                />
+              </div>
+            </div>
+          ))
+        ) : (
+          <p className="rounded-md border border-dashed border-slate-800 p-4 text-sm text-slate-500">
+            {empty}
+          </p>
+        )}
+      </div>
+    </AdminPanel>
+  );
+}
+
+function PlatformDonut({ platforms }: { platforms: AdminAnalyticsData["platforms"] }) {
+  const web = platforms.find((platform) => platform.label.toLowerCase() === "web")?.percent ?? 0;
+  const ios = platforms.find((platform) => platform.label.toLowerCase() === "ios")?.percent ?? 0;
+
+  return (
+    <AdminPanel className="p-5">
+      <h2 className="text-lg font-extrabold text-white">Plateformes</h2>
+      <div className="mt-5 flex items-center gap-5">
+        <div
+          className="h-32 w-32 rounded-full"
+          style={{
+            background: `conic-gradient(#465fff 0 ${web}%, #36c2ff ${web}% ${web + ios}%, #344054 ${web + ios}% 100%)`,
+          }}
+        />
+        <div className="grid gap-3 text-sm">
+          {platforms.map((platform, index) => (
+            <div key={`${platform.label}:${index}`} className="flex items-center gap-2">
+              <span className="h-2.5 w-2.5 rounded-full bg-[#465fff]" />
+              <span className="font-bold text-slate-300">{platform.label}</span>
+              <span className="font-extrabold text-white">{platform.percent}%</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </AdminPanel>
+  );
+}
+
 export default function AdminDashboardPage() {
   const [data, setData] = useState<AdminDashboardData | null>(null);
+  const [analytics, setAnalytics] = useState<AdminAnalyticsData | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -52,10 +122,14 @@ export default function AdminDashboardPage() {
 
     async function loadDashboard() {
       try {
-        const nextData = await getAdminDashboardData();
+        const [nextData, nextAnalytics] = await Promise.all([
+          getAdminDashboardData(),
+          getAdminAnalyticsData().catch(() => null),
+        ]);
 
         if (isMounted) {
           setData(nextData);
+          setAnalytics(nextAnalytics);
         }
       } catch (loadError) {
         if (isMounted) {
@@ -95,7 +169,12 @@ export default function AdminDashboardPage() {
     setMessage(result.message);
 
     try {
-      setData(await getAdminDashboardData());
+      const [nextData, nextAnalytics] = await Promise.all([
+        getAdminDashboardData(),
+        getAdminAnalyticsData().catch(() => null),
+      ]);
+      setData(nextData);
+      setAnalytics(nextAnalytics);
     } catch (loadError) {
       setError(
         loadError instanceof Error
@@ -114,7 +193,7 @@ export default function AdminDashboardPage() {
         action={
           <Link
             href="/admin/facts/create"
-            className="rounded-md bg-amber-300 px-4 py-2 text-sm font-extrabold text-slate-950 hover:bg-amber-200"
+            className="rounded-lg bg-[#465fff] px-4 py-2 text-sm font-extrabold text-white hover:bg-[#3641f5]"
           >
             Nouveau fait
           </Link>
@@ -133,8 +212,8 @@ export default function AdminDashboardPage() {
       ) : data ? (
         <div className="grid gap-6">
           <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-6">
-            {data.stats.map((stat) => (
-              <AdminPanel key={stat.label} className="p-5">
+            {data.stats.map((stat, index) => (
+              <AdminPanel key={`${stat.label}:${index}`} className="p-5">
                 {(() => {
                   const Icon =
                     dashboardStatIcons[
@@ -142,7 +221,7 @@ export default function AdminDashboardPage() {
                     ] ?? BookOpen;
 
                   return (
-                    <div className="mb-4 grid h-10 w-10 place-items-center rounded-md border border-amber-300/20 bg-amber-300/10 text-amber-200">
+                    <div className="mb-4 grid h-10 w-10 place-items-center rounded-lg border border-[#465fff]/20 bg-[#465fff]/10 text-[#93c5fd]">
                       <Icon className="h-5 w-5" aria-hidden="true" />
                     </div>
                   );
@@ -157,6 +236,28 @@ export default function AdminDashboardPage() {
             ))}
           </section>
 
+          {analytics ? (
+            <section className="grid gap-6 xl:grid-cols-3">
+              <DashboardBarList
+                title="Top faits vus"
+                empty="Aucune lecture sur la période."
+                items={analytics.reading.topReadFacts.map((fact) => ({
+                  label: fact.title,
+                  value: fact.value,
+                }))}
+              />
+              <DashboardBarList
+                title="Top thèmes vus"
+                empty="Aucun thème ouvert sur la période."
+                items={analytics.categories.topOpenedThemes.map((theme) => ({
+                  label: theme.name,
+                  value: theme.value,
+                }))}
+              />
+              <PlatformDonut platforms={analytics.platforms} />
+            </section>
+          ) : null}
+
           {data.role === "administrateur" && (
             <AdminPanel>
               <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 px-5 py-4">
@@ -170,7 +271,7 @@ export default function AdminDashboardPage() {
                 </div>
                 <Link
                   href="/admin/facts/pending"
-                  className="text-sm font-bold text-amber-300"
+                  className="text-sm font-bold text-[#93c5fd]"
                 >
                   Tout voir
                 </Link>
@@ -210,7 +311,7 @@ export default function AdminDashboardPage() {
                           type="button"
                           disabled={isBusy}
                           onClick={() => publishFact(fact.id)}
-                          className="rounded-md bg-amber-300 px-3 py-2 text-sm font-extrabold text-slate-950 transition hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-55"
+                          className="rounded-md bg-[#465fff] px-3 py-2 text-sm font-extrabold text-white transition hover:bg-[#3641f5] disabled:cursor-not-allowed disabled:opacity-55"
                         >
                           Valider
                         </button>
@@ -236,7 +337,7 @@ export default function AdminDashboardPage() {
             <AdminPanel>
               <div className="flex items-center justify-between border-b border-slate-800 px-5 py-4">
                 <h2 className="text-lg font-extrabold">Derniers faits</h2>
-                <Link href="/admin/facts" className="text-sm font-bold text-amber-300">
+                <Link href="/admin/facts" className="text-sm font-bold text-[#93c5fd]">
                   Tout voir
                 </Link>
               </div>
@@ -292,7 +393,7 @@ export default function AdminDashboardPage() {
             <AdminPanel>
               <div className="flex items-center justify-between border-b border-slate-800 px-5 py-4">
                 <h2 className="text-lg font-extrabold">Derniers utilisateurs</h2>
-                <Link href="/admin/users" className="text-sm font-bold text-amber-300">
+                <Link href="/admin/users" className="text-sm font-bold text-[#93c5fd]">
                   Tout voir
                 </Link>
               </div>

@@ -66,7 +66,7 @@ export default function FactsList({
     useState<StatusFilter>(initialStatusFilter);
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [page, setPage] = useState(1);
-  const [pageSize] = useState(20);
+  const [pageSize] = useState(5);
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [isBusy, setIsBusy] = useState(false);
@@ -192,14 +192,14 @@ export default function FactsList({
             ) : (
               <Link
                 href="/admin/facts/pending"
-                className="rounded-md border border-amber-300/40 bg-amber-300/10 px-4 py-2 text-sm font-extrabold text-amber-200 hover:bg-amber-300/15"
+                className="rounded-md border border-[#465fff]/40 bg-[#465fff]/10 px-4 py-2 text-sm font-extrabold text-[#bfdbfe] hover:bg-[#465fff]/15"
               >
                 Faits en attente
               </Link>
             )}
             <Link
               href="/admin/facts/create"
-              className="rounded-md bg-amber-300 px-4 py-2 text-sm font-extrabold text-slate-950 hover:bg-amber-200"
+              className="rounded-md bg-[#465fff] px-4 py-2 text-sm font-extrabold text-white hover:bg-[#3641f5]"
             >
               Créer un fait
             </Link>
@@ -228,7 +228,7 @@ export default function FactsList({
               setPage(1);
               setIsLoading(true);
             }}
-            className="rounded-md border border-slate-800 bg-slate-950 px-3 py-2.5 text-sm font-bold text-slate-200 outline-none focus:border-amber-300"
+            className="rounded-md border border-slate-800 bg-slate-950 px-3 py-2.5 text-sm font-bold text-slate-200 outline-none focus:border-[#465fff]"
           >
             <option value="all">Tous les statuts</option>
             {factStatuses.map((status) => (
@@ -244,7 +244,7 @@ export default function FactsList({
               setPage(1);
               setIsLoading(true);
             }}
-            className="rounded-md border border-slate-800 bg-slate-950 px-3 py-2.5 text-sm font-bold text-slate-200 outline-none focus:border-amber-300"
+            className="rounded-md border border-slate-800 bg-slate-950 px-3 py-2.5 text-sm font-bold text-slate-200 outline-none focus:border-[#465fff]"
           >
             <option value="all">Tous les thèmes</option>
             {categories.map((category) => (

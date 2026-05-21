@@ -1,5 +1,9 @@
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { dailyGoalConfig, discoverConfig } from "@/config/app";
+import {
+  filterCommercialCollaborationCategories,
+  filterCommercialCollaborationFacts,
+} from "@/lib/commercial";
 import { formatAppError, logAppError } from "@/lib/errors";
 import { slugify } from "@/lib/slug";
 
@@ -544,9 +548,9 @@ export async function getExplorerData(options?: { query?: string }): Promise<Exp
   ]);
 
   return {
-    categories,
-    facts,
-    recentFacts,
+    categories: filterCommercialCollaborationCategories(categories),
+    facts: filterCommercialCollaborationFacts(facts),
+    recentFacts: filterCommercialCollaborationFacts(recentFacts),
     source: "supabase" as const,
   };
 }

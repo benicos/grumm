@@ -32,21 +32,21 @@ const baseLinks = [
 
 function AdminShellSkeleton() {
   return (
-    <div className={`${inter.className} min-h-screen bg-[#0a0f1a] text-slate-100`}>
-      <div className="grid min-h-screen lg:grid-cols-[260px_minmax(0,1fr)]">
-        <aside className="hidden border-r border-slate-800 bg-slate-950 p-5 lg:block">
-          <div className="h-9 w-32 animate-pulse rounded bg-slate-800" />
+    <div className={`${inter.className} min-h-screen bg-[#0b1220] text-slate-100`}>
+      <div className="grid min-h-screen lg:grid-cols-[280px_minmax(0,1fr)]">
+        <aside className="hidden border-r border-[#1d2939] bg-[#101828] p-5 lg:block">
+          <div className="h-9 w-32 animate-pulse rounded bg-[#1d2939]" />
           <div className="mt-10 space-y-3">
             {Array.from({ length: 5 }).map((_, index) => (
-              <div key={index} className="h-10 animate-pulse rounded bg-slate-900" />
+              <div key={index} className="h-10 animate-pulse rounded bg-[#1d2939]" />
             ))}
           </div>
         </aside>
         <main className="p-6 lg:p-8">
-          <div className="h-10 w-64 animate-pulse rounded bg-slate-900" />
+          <div className="h-10 w-64 animate-pulse rounded bg-[#1d2939]" />
           <div className="mt-8 grid gap-4 lg:grid-cols-4">
             {Array.from({ length: 4 }).map((_, index) => (
-              <div key={index} className="h-28 animate-pulse rounded-lg bg-slate-900" />
+              <div key={index} className="h-28 animate-pulse rounded-xl bg-[#1d2939]" />
             ))}
           </div>
         </main>
@@ -87,12 +87,12 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
   }
 
   return (
-    <div className={`${inter.className} min-h-screen bg-[#0a0f1a] text-slate-100`}>
-      <div className="grid min-h-screen lg:grid-cols-[260px_minmax(0,1fr)]">
-        <aside className="hidden border-r border-slate-800 bg-slate-950 lg:block">
+    <div className={`${inter.className} min-h-screen bg-[#0b1220] text-slate-100`}>
+      <div className="grid min-h-screen lg:grid-cols-[280px_minmax(0,1fr)]">
+        <aside className="hidden border-r border-[#1d2939] bg-[#101828] lg:block">
           <div className="flex h-full flex-col p-5">
             <Link href="/admin" className="flex items-center gap-3 font-extrabold">
-              <span className="grid h-9 w-9 place-items-center rounded-md bg-amber-300 text-slate-950">
+              <span className="grid h-9 w-9 place-items-center rounded-lg bg-[#465fff] text-white shadow-[0_12px_30px_rgba(70,95,255,0.28)]">
                 G
               </span>
               <span>Grumm Admin</span>
@@ -113,10 +113,10 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
                   <Link
                     key={item.href}
                     href={item.href}
-                    className={`block rounded-md px-3 py-2 text-sm font-bold transition ${
+                    className={`block rounded-lg px-3 py-2 text-sm font-bold transition ${
                       isActive
-                        ? "bg-amber-300 text-slate-950"
-                        : "text-slate-300 hover:bg-slate-900 hover:text-white"
+                        ? "bg-[#465fff] text-white shadow-[0_12px_30px_rgba(70,95,255,0.20)]"
+                        : "text-slate-300 hover:bg-[#1d2939] hover:text-white"
                     }`}
                   >
                     {item.label}
@@ -125,20 +125,20 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
               })}
             </nav>
 
-            <div className="mt-auto rounded-lg border border-slate-800 bg-slate-900/60 p-4">
+            <div className="mt-auto rounded-xl border border-[#1d2939] bg-[#1d2939]/72 p-4">
               <p className="truncate text-sm font-bold">{displayName ?? "Compte"}</p>
               <p className="mt-1 text-xs text-slate-400">{roleLabel}</p>
               <div className="mt-4 grid gap-2">
                 <Link
                   href="/discover"
-                  className="rounded-md border border-slate-700 px-3 py-2 text-center text-xs font-bold text-slate-200 hover:bg-slate-800"
+                  className="rounded-lg border border-[#344054] px-3 py-2 text-center text-xs font-bold text-slate-200 hover:bg-[#26364c]"
                 >
                   Retour site
                 </Link>
                 <button
                   type="button"
                   onClick={handleLogout}
-                  className="rounded-md border border-red-400/30 px-3 py-2 text-xs font-bold text-red-100 hover:bg-red-500/10"
+                  className="rounded-lg border border-red-400/30 px-3 py-2 text-xs font-bold text-red-100 hover:bg-red-500/10"
                 >
                   Déconnexion
                 </button>
@@ -148,14 +148,14 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
         </aside>
 
         <section className="min-w-0">
-          <header className="sticky top-0 z-20 border-b border-slate-800 bg-[#0a0f1a]/92 px-4 py-3 backdrop-blur lg:hidden">
+          <header className="sticky top-0 z-20 border-b border-[#1d2939] bg-[#0b1220]/92 px-4 py-3 backdrop-blur lg:hidden">
             <div className="flex items-center justify-between gap-3">
               <Link
                 href="/admin"
                 className="flex items-center gap-2 font-extrabold"
                 onClick={() => setIsMobileNavOpen(false)}
               >
-                <span className="grid h-8 w-8 place-items-center rounded-md bg-amber-300 text-slate-950">
+                <span className="grid h-8 w-8 place-items-center rounded-lg bg-[#465fff] text-white">
                   G
                 </span>
                 <span>Grumm Admin</span>
@@ -165,7 +165,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
                 aria-expanded={isMobileNavOpen}
                 aria-label={isMobileNavOpen ? "Fermer la navigation admin" : "Ouvrir la navigation admin"}
                 onClick={() => setIsMobileNavOpen((current) => !current)}
-                className="grid h-10 w-10 place-items-center rounded-md border border-slate-700 bg-slate-900 text-slate-100"
+                className="grid h-10 w-10 place-items-center rounded-lg border border-[#344054] bg-[#101828] text-slate-100"
               >
                 {isMobileNavOpen ? (
                   <X className="h-5 w-5" aria-hidden="true" />
@@ -175,7 +175,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
               </button>
             </div>
             <div className="mt-2 flex items-center justify-between gap-3">
-              <span className="rounded-full border border-slate-700 px-3 py-1 text-xs font-bold text-slate-300">
+              <span className="rounded-full border border-[#344054] px-3 py-1 text-xs font-bold text-slate-300">
                 {roleLabel}
               </span>
               <span className="text-xs font-bold text-slate-500">
@@ -183,16 +183,16 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
               </span>
             </div>
             {isMobileNavOpen && (
-              <nav className="mt-3 grid gap-2 rounded-lg border border-slate-800 bg-slate-950 p-2 shadow-2xl">
+              <nav className="mt-3 grid gap-2 rounded-xl border border-[#1d2939] bg-[#101828] p-2 shadow-2xl">
                 {navLinks.map((item) => (
                   <Link
                     key={item.href}
                     href={item.href}
                     onClick={() => setIsMobileNavOpen(false)}
-                    className={`rounded-md px-3 py-2 text-sm font-bold ${
+                    className={`rounded-lg px-3 py-2 text-sm font-bold ${
                       pathname === item.href
-                        ? "bg-amber-300 text-slate-950"
-                        : "bg-slate-900 text-slate-200"
+                        ? "bg-[#465fff] text-white"
+                        : "bg-[#1d2939] text-slate-200"
                     }`}
                   >
                     {item.label}
@@ -201,7 +201,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
                 <Link
                   href="/discover"
                   onClick={() => setIsMobileNavOpen(false)}
-                  className="rounded-md bg-slate-900 px-3 py-2 text-sm font-bold text-slate-200"
+                  className="rounded-lg bg-[#1d2939] px-3 py-2 text-sm font-bold text-slate-200"
                 >
                   Site public
                 </Link>

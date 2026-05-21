@@ -10,7 +10,7 @@ export default function Forbidden() {
     <AppState
       eyebrow="403"
       title="Accès protégé."
-      description="Cette ressource demande une connexion ou des droits supplémentaires. Aucun contenu brut n’est affiché."
+      description="Cette ressource demande une connexion ou des droits supplémentaires."
       primaryHref="/login"
       primaryLabel="Se connecter"
       secondaryHref="/discover"

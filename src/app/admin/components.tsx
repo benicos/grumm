@@ -15,7 +15,7 @@ export function AdminPageHeader({
     <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
       <div className="min-w-0">
         {eyebrow && (
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-amber-300">
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#465fff]">
             {eyebrow}
           </p>
         )}
@@ -41,7 +41,7 @@ export function AdminPanel({
   className?: string;
 }) {
   return (
-    <section className={`overflow-hidden rounded-lg border border-slate-800 bg-slate-950 shadow-xl ${className}`}>
+    <section className={`overflow-hidden rounded-xl border border-[#1d2939] bg-[#101828] shadow-[0_18px_45px_rgba(2,8,23,0.24)] ${className}`}>
       {children}
     </section>
   );
@@ -60,7 +60,7 @@ export function AdminMessage({
 
   const classes = {
     error: "border-red-400/25 bg-red-500/10 text-red-100",
-    info: "border-slate-700 bg-slate-900 text-slate-200",
+    info: "border-[#344054] bg-[#1d2939] text-slate-200",
     success: "border-emerald-400/25 bg-emerald-500/10 text-emerald-100",
   };
 
@@ -87,9 +87,9 @@ export function AdminButton({
   const classes = {
     danger:
       "border border-red-400/30 bg-red-500/10 text-red-100 hover:bg-red-500/15",
-    primary: "bg-amber-300 text-slate-950 hover:bg-amber-200",
+    primary: "bg-[#465fff] text-white hover:bg-[#3641f5]",
     secondary:
-      "border border-slate-700 bg-slate-900 text-slate-200 hover:bg-slate-800",
+      "border border-[#344054] bg-[#1d2939] text-slate-200 hover:bg-[#26364c]",
   };
 
   return (
@@ -118,7 +118,7 @@ export function AdminSearch({
       value={value}
       onChange={(event) => onChange(event.target.value)}
       placeholder={placeholder}
-      className="w-full rounded-md border border-slate-800 bg-slate-950 px-4 py-2.5 text-sm text-white outline-none placeholder:text-slate-500 focus:border-amber-300"
+      className="w-full rounded-lg border border-[#1d2939] bg-[#101828] px-4 py-2.5 text-sm text-white outline-none placeholder:text-slate-500 focus:border-[#465fff]"
     />
   );
 }
@@ -137,7 +137,7 @@ export function AdminPager({
   const pageCount = Math.max(1, Math.ceil(total / pageSize));
 
   return (
-    <div className="flex flex-col gap-3 border-t border-slate-800 px-4 py-3 text-sm text-slate-400 sm:flex-row sm:items-center sm:justify-between">
+    <div className="flex flex-col gap-3 border-t border-[#1d2939] px-4 py-3 text-sm text-slate-400 sm:flex-row sm:items-center sm:justify-between">
       <span>
         Page {page} / {pageCount} - {total} résultats
       </span>
@@ -163,7 +163,7 @@ export function AdminPager({
 
 export function AdminTableEmpty({ label }: { label: string }) {
   return (
-    <div className="rounded-md border border-dashed border-slate-800 p-8 text-center text-sm text-slate-400">
+    <div className="rounded-lg border border-dashed border-[#344054] p-8 text-center text-sm text-slate-400">
       {label}
     </div>
   );
@@ -173,7 +173,7 @@ export function AdminLoadingRows({ rows = 5 }: { rows?: number }) {
   return (
     <div className="space-y-2 p-4">
       {Array.from({ length: rows }).map((_, index) => (
-        <div key={index} className="h-14 animate-pulse rounded-md bg-slate-900" />
+        <div key={index} className="h-14 animate-pulse rounded-lg bg-[#1d2939]" />
       ))}
     </div>
   );

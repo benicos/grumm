@@ -87,14 +87,14 @@ function Field({
         <textarea
           value={value}
           onChange={(event) => onChange(event.target.value)}
-          className="mt-2 min-h-36 w-full rounded-md border border-slate-800 bg-slate-900 px-3 py-2.5 text-sm text-white outline-none focus:border-amber-300"
+          className="mt-2 min-h-36 w-full rounded-md border border-slate-800 bg-slate-900 px-3 py-2.5 text-sm text-white outline-none focus:border-[#465fff]"
         />
       ) : (
         <input
           value={value}
           onChange={(event) => onChange(event.target.value)}
           type={type}
-          className="mt-2 w-full rounded-md border border-slate-800 bg-slate-900 px-3 py-2.5 text-sm text-white outline-none focus:border-amber-300"
+          className="mt-2 w-full rounded-md border border-slate-800 bg-slate-900 px-3 py-2.5 text-sm text-white outline-none focus:border-[#465fff]"
         />
       )}
     </label>
@@ -281,7 +281,7 @@ export default function FactEditor({ factId }: { factId?: string }) {
                       category_id: event.target.value,
                     }))
                   }
-                  className="mt-2 w-full rounded-md border border-slate-800 bg-slate-900 px-3 py-2.5 text-sm text-white outline-none focus:border-amber-300"
+                  className="mt-2 w-full rounded-md border border-slate-800 bg-slate-900 px-3 py-2.5 text-sm text-white outline-none focus:border-[#465fff]"
                 >
                   {categories.map((category) => (
                     <option key={category.id} value={category.id}>
@@ -302,7 +302,7 @@ export default function FactEditor({ factId }: { factId?: string }) {
                         status: event.target.value as FactStatus,
                       }))
                     }
-                    className="mt-2 w-full rounded-md border border-slate-800 bg-slate-900 px-3 py-2.5 text-sm text-white outline-none focus:border-amber-300"
+                    className="mt-2 w-full rounded-md border border-slate-800 bg-slate-900 px-3 py-2.5 text-sm text-white outline-none focus:border-[#465fff]"
                   >
                     {factStatuses.map((status) => (
                       <option key={status} value={status}>
@@ -312,7 +312,7 @@ export default function FactEditor({ factId }: { factId?: string }) {
                   </select>
                 </label>
               ) : (
-                <div className="rounded-md border border-amber-300/20 bg-amber-300/10 p-3 text-sm font-semibold text-amber-100">
+                <div className="rounded-md border border-[#465fff]/20 bg-[#465fff]/10 p-3 text-sm font-semibold text-[#dbeafe]">
                   Statut automatique : en attente de validation.
                 </div>
               )}

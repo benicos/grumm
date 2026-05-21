@@ -143,7 +143,7 @@ export default function Navbar({ fixed = false }: NavbarProps) {
           <nav className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-12 font-bold uppercase lg:flex">
             {visibleLinks.map((item) => (
               <Link
-                key={item.label}
+                key={item.href}
                 href={item.href}
                 className="text-sm/6 font-semibold text-white opacity-70 underline-offset-4 decoration-[0.15rem] transition hover:opacity-100 hover:underline"
               >
@@ -196,7 +196,7 @@ export default function Navbar({ fixed = false }: NavbarProps) {
                 <div className="space-y-2 py-6">
                   {visibleLinks.map((item) => (
                     <Link
-                      key={item.label}
+                      key={item.href}
                       href={item.href}
                       onClick={() => setIsOpen(false)}
                       className="-mx-3 block rounded-lg px-3 py-2 text-base/7 font-semibold text-white hover:bg-white/5"

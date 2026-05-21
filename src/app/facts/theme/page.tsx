@@ -43,24 +43,28 @@ function ThemeCard({ theme }: { theme: CategorySummary }) {
           metadata: { name: theme.name, slug: theme.slug },
         })
       }
-      className={`group relative min-h-[210px] overflow-hidden rounded-[24px] border border-white/10 ${toneBackground.className} p-6 shadow-[0_28px_90px_rgba(0,0,0,0.22)] transition hover:-translate-y-1 hover:border-white/25`}
+      className={`group relative min-h-[220px] overflow-hidden rounded-[28px] border border-white/10 ${toneBackground.className} p-6 shadow-[0_28px_90px_rgba(0,0,0,0.22)] transition duration-300 hover:-translate-y-1 hover:border-white/25 hover:shadow-[0_34px_110px_rgba(0,0,0,0.34)]`}
       style={toneBackground.style}
     >
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.26),transparent_28%),linear-gradient(180deg,transparent,rgba(0,0,0,0.46))]" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_82%_18%,rgba(255,255,255,0.28),transparent_26%),radial-gradient(circle_at_18%_80%,rgba(255,209,102,0.20),transparent_28%),linear-gradient(180deg,rgba(255,255,255,0.02),rgba(0,0,0,0.50))]" />
+      <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-white/10 blur-2xl transition group-hover:bg-white/16" />
       <div className="relative flex h-full flex-col justify-between">
         <div className="flex items-start justify-between gap-4">
           <h2 className="text-3xl font-extrabold leading-tight text-white">
             {theme.name}
           </h2>
-          <span className="rounded-full bg-black/22 px-3 py-1 text-sm font-extrabold text-white backdrop-blur">
+          <span className="rounded-full bg-black/24 px-3 py-1 text-sm font-extrabold text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.12)] backdrop-blur">
             {theme.count ?? 0}
           </span>
         </div>
-        <p className="mt-12 max-w-[230px] text-sm font-semibold leading-6 text-white/76">
+        <p className="mt-12 max-w-[230px] text-sm font-semibold leading-6 text-white/78">
           {theme.count && theme.count > 0
-            ? `${theme.count} faits publiés à explorer`
+            ? `${theme.count} faits à explorer`
             : "Thème prêt à accueillir de nouveaux faits"}
         </p>
+        <span className="mt-5 inline-flex w-fit rounded-full bg-white/12 px-3 py-1 text-xs font-extrabold uppercase tracking-[0.16em] text-white/72 transition group-hover:bg-white/18">
+          Explorer
+        </span>
       </div>
     </Link>
   );
@@ -141,13 +145,13 @@ export default function FactsThemePage() {
           <ThemeSkeleton />
         ) : themes.length > 0 ? (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {themes.map((theme) => (
-              <ThemeCard key={theme.id} theme={theme} />
+            {themes.map((theme, index) => (
+              <ThemeCard key={`${theme.id}:${theme.slug}:${index}`} theme={theme} />
             ))}
           </div>
         ) : (
           <div className="rounded-[22px] border border-white/10 bg-white/[0.055] p-6 text-sm font-semibold text-white/62 backdrop-blur-xl">
-            Aucun thème publié pour le moment.
+            Aucun thème disponible pour le moment.
           </div>
         )}
       </main>

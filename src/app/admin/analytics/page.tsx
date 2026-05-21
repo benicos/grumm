@@ -42,7 +42,7 @@ function StatCard({
 }) {
   return (
     <AdminPanel className="p-5">
-      <div className="mb-4 grid h-10 w-10 place-items-center rounded-md border border-amber-300/20 bg-amber-300/10 text-amber-200">
+      <div className="mb-4 grid h-10 w-10 place-items-center rounded-lg border border-[#465fff]/20 bg-[#465fff]/10 text-[#93c5fd]">
         <Icon className="h-5 w-5" aria-hidden="true" />
       </div>
       <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">
@@ -63,7 +63,7 @@ function InlineStat({
   value: number | string;
 }) {
   return (
-    <div className="rounded-md border border-slate-800 bg-slate-900/55 p-4">
+    <div className="rounded-lg border border-[#1d2939] bg-[#1d2939]/55 p-4">
       <div className="flex items-center gap-2 text-slate-500">
         <Icon className="h-4 w-4" aria-hidden="true" />
         <p className="text-xs font-bold uppercase tracking-[0.14em]">
@@ -85,14 +85,14 @@ function ProgressRow({
   value: string;
 }) {
   return (
-    <div className="grid gap-2 rounded-md border border-slate-800 bg-slate-900/55 p-4">
+    <div className="grid gap-2 rounded-lg border border-[#1d2939] bg-[#1d2939]/55 p-4">
       <div className="flex items-center justify-between gap-3">
         <span className="font-bold text-white">{label}</span>
         <span className="text-sm font-bold text-slate-400">{value}</span>
       </div>
-      <div className="h-2 overflow-hidden rounded-full bg-slate-800">
+      <div className="h-2 overflow-hidden rounded-full bg-[#344054]">
         <div
-          className="h-full rounded-full bg-gradient-to-r from-amber-300 to-emerald-300"
+          className="h-full rounded-full bg-gradient-to-r from-[#465fff] to-[#36c2ff]"
           style={{ width: `${Math.min(percent, 100)}%` }}
         />
       </div>
@@ -128,13 +128,13 @@ function FactList({
                 <span className="line-clamp-2 text-sm font-bold text-white">
                   {fact.title}
                 </span>
-                <span className="shrink-0 rounded-full bg-slate-800 px-3 py-1 text-xs font-extrabold text-amber-300">
+                <span className="shrink-0 rounded-full bg-slate-800 px-3 py-1 text-xs font-extrabold text-[#93c5fd]">
                   {fact.value}
                 </span>
               </div>
               <div className="h-2 overflow-hidden rounded-full bg-slate-800">
                 <div
-                  className="h-full rounded-full bg-gradient-to-r from-amber-300 to-emerald-300"
+                  className="h-full rounded-full bg-gradient-to-r from-[#465fff] to-[#36c2ff]"
                   style={{ width: `${Math.max(8, (fact.value / max) * 100)}%` }}
                 />
               </div>
@@ -263,9 +263,9 @@ export default function AdminAnalyticsPage() {
               </div>
               <div className="grid gap-3 p-5">
                 {data.platforms.length > 0 ? (
-                  data.platforms.map((platform) => (
+                  data.platforms.map((platform, index) => (
                     <ProgressRow
-                      key={platform.label}
+                      key={`${platform.label}:${index}`}
                       label={platform.label}
                       percent={platform.percent}
                       value={`${platform.count} (${platform.percent}%)`}

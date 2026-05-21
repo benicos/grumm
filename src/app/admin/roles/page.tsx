@@ -28,7 +28,7 @@ export default function AdminRolesPage() {
   const [roles, setRoles] = useState<AdminRole[]>([]);
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
-  const [pageSize] = useState(20);
+  const [pageSize] = useState(5);
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [isBusy, setIsBusy] = useState(false);
@@ -131,7 +131,7 @@ export default function AdminRolesPage() {
         action={
           <Link
             href="/admin/roles/create"
-            className="rounded-md bg-amber-300 px-4 py-2 text-sm font-extrabold text-slate-950 hover:bg-amber-200"
+            className="rounded-md bg-[#465fff] px-4 py-2 text-sm font-extrabold text-white hover:bg-[#3641f5]"
           >
             Créer un rôle
           </Link>
@@ -173,7 +173,7 @@ export default function AdminRolesPage() {
                     <div className="flex flex-wrap items-center gap-2">
                       <h2 className="font-extrabold text-white">{role.name}</h2>
                       {role.is_system && (
-                        <span className="rounded bg-amber-300/10 px-2 py-1 text-xs font-bold text-amber-200">
+                        <span className="rounded bg-[#465fff]/10 px-2 py-1 text-xs font-bold text-[#bfdbfe]">
                           systeme
                         </span>
                       )}

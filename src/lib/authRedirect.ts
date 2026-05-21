@@ -4,36 +4,8 @@ function isSafePath(path: string | null): path is string {
   return Boolean(path && path.startsWith("/") && !path.startsWith("//"));
 }
 
-function normalizeLegacyPath(path: string) {
-  if (path === "/faits") {
-    return "/discover";
-  }
-
-  if (path.startsWith("/faits/theme/")) {
-    return path.replace("/faits/theme/", "/discover/theme/");
-  }
-
-  if (path.startsWith("/fait/")) {
-    return path.replace("/fait/", "/fact/");
-  }
-
-  if (path === "/profil") {
-    return "/profile";
-  }
-
-  if (path === "/connexion") {
-    return "/login";
-  }
-
-  if (path === "/inscription") {
-    return "/register";
-  }
-
-  return path;
-}
-
 function isAuthPath(path: string) {
-  return ["/login", "/register", "/connexion", "/inscription"].includes(path);
+  return ["/login", "/register"].includes(path);
 }
 
 export function rememberAuthRedirect(path: string) {
@@ -41,7 +13,7 @@ export function rememberAuthRedirect(path: string) {
     return;
   }
 
-  window.sessionStorage.setItem(AUTH_REDIRECT_KEY, normalizeLegacyPath(path));
+  window.sessionStorage.setItem(AUTH_REDIRECT_KEY, path);
 }
 
 export function consumeAuthRedirect(fallback = "/profile") {
@@ -56,7 +28,7 @@ export function consumeAuthRedirect(fallback = "/profile") {
     return fallback;
   }
 
-  return normalizeLegacyPath(storedPath);
+  return storedPath;
 }
 
 export function getLegacyNextParam() {
@@ -70,7 +42,7 @@ export function getLegacyNextParam() {
     return null;
   }
 
-  return normalizeLegacyPath(next);
+  return next;
 }
 
 export function getCurrentPathForRedirect() {

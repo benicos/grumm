@@ -30,7 +30,7 @@ export const dailyGoalConfig = {
 } as const;
 
 export const paginationConfig = {
-  adminDefaultPageSize: 20,
+  adminDefaultPageSize: 5,
   adminMaxPageSize: 50,
 } as const;
 
@@ -41,7 +41,7 @@ export const discoverConfig = {
 
 export const userMessages = {
   emptyFactsDebug:
-    "Aucun fait publié pour le moment. Ajoute des contenus publiés dans l'administration pour alimenter cette page.",
+    "Aucun fait disponible pour le moment. Ajoute des contenus visibles dans l'administration pour alimenter cette page.",
   emptyFactsPublic:
     "Oups... Aucun fait n’est disponible pour le moment, nous revenons très vite !",
   genericLoadError: "Impossible de charger ce contenu pour le moment.",

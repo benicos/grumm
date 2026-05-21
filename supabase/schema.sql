@@ -3136,3 +3136,33 @@ create policy "Admins can read fact read events"
 on public.fact_read_events for select
 to authenticated
 using (public.is_admin());
+
+drop policy if exists "Admins can read all likes" on public.likes;
+create policy "Admins can read all likes"
+on public.likes for select
+to authenticated
+using (public.is_admin());
+
+drop policy if exists "Admins can read all saves" on public.saves;
+create policy "Admins can read all saves"
+on public.saves for select
+to authenticated
+using (public.is_admin());
+
+drop policy if exists "Admins can read all views" on public.views;
+create policy "Admins can read all views"
+on public.views for select
+to authenticated
+using (public.is_admin());
+
+drop policy if exists "Admins can read all fact views" on public.user_fact_views;
+create policy "Admins can read all fact views"
+on public.user_fact_views for select
+to authenticated
+using (public.is_admin());
+
+drop policy if exists "Admins can read all daily progress" on public.user_daily_progress;
+create policy "Admins can read all daily progress"
+on public.user_daily_progress for select
+to authenticated
+using (public.is_admin());

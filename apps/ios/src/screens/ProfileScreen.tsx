@@ -1,6 +1,6 @@
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
-import { Bookmark, Check, ChevronLeft, Eye, Flame, Heart, Layers3, Pencil, Target, X } from "lucide-react-native";
+import { Bookmark, CalendarDays, Check, ChevronLeft, Eye, Flag, Flame, Heart, Layers3, Mail, Pencil, ShieldCheck, Target, X, type LucideIcon } from "lucide-react-native";
 import { useCallback, useEffect, useState } from "react";
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -21,6 +21,20 @@ import type { ProfileSummary } from "../types/domain";
 import { AuthScreen } from "./AuthScreen";
 
 type FieldErrors = Partial<Record<ProfileField, string>>;
+
+function formatProfileDate(value?: string | null) {
+  if (!value) {
+    return "Non disponible";
+  }
+
+  return new Intl.DateTimeFormat("fr-FR", {
+    dateStyle: "medium",
+  }).format(new Date(value));
+}
+
+function formatRole(role?: string | null) {
+  return role === "administrateur" ? "Administrateur" : "Membre";
+}
 
 export function ProfileScreen() {
   const insets = useSafeAreaInsets();
@@ -75,6 +89,8 @@ export function ProfileScreen() {
   const gradeTitle = summary?.gradeTitle ?? "Curieux débutant";
   const gradeBadge = summary?.gradeBadge ?? "sparkles";
   const completedGoals = summary?.completedDailyGoals ?? 0;
+  const createdAt = summary?.createdAt ?? profile?.createdAt ?? null;
+  const roleLabel = formatRole(summary?.role ?? profile?.role);
   const canReplayCelebration = todayReadCount >= dailyGoal;
 
   async function replayCelebration() {
@@ -99,17 +115,38 @@ export function ProfileScreen() {
 
   return (
     <LinearGradient colors={["#07111f", "#101b2c", "#050812"]} style={styles.root}>
+      <View style={styles.glowTop} />
+      <View style={styles.glowBottom} />
       <ScrollView contentContainerStyle={[styles.content, { paddingTop: insets.top + 18 }]} showsVerticalScrollIndicator={false}>
-        <LinearGradient colors={["rgba(255,209,102,0.16)", "rgba(106,227,192,0.06)", "rgba(255,255,255,0.055)"]} style={styles.header}>
-          <View style={styles.gradeRing}>
-            <GradeIcon badge={gradeBadge} size={36} />
+        <LinearGradient colors={["rgba(255,209,102,0.15)", "rgba(106,227,192,0.06)", "rgba(255,255,255,0.045)"]} style={styles.header}>
+          <View style={styles.headerTop}>
+            <View style={styles.headerIdentity}>
+              <Text style={styles.eyebrow}>Profil</Text>
+              <Text style={styles.title}>{displayName}</Text>
+              {summary?.email ?? profile?.email ? (
+                <View style={styles.emailRow}>
+                  <Mail color="rgba(248,250,252,0.48)" size={15} strokeWidth={2.25} />
+                  <Text numberOfLines={1} style={styles.email}>{summary?.email ?? profile?.email}</Text>
+                </View>
+              ) : null}
+            </View>
+            <View style={styles.rankCard}>
+              <View style={styles.gradeRing}>
+                <GradeIcon badge={gradeBadge} size={30} />
+              </View>
+              <View style={styles.rankTextBlock}>
+                <Text style={styles.rankLabel}>Rang</Text>
+                <Text numberOfLines={2} style={styles.rankTitle}>{gradeTitle}</Text>
+              </View>
+            </View>
           </View>
-          <View style={styles.headerText}>
-            <Text style={styles.eyebrow}>Profil</Text>
-            <Text style={styles.title}>{displayName}</Text>
-            <Text style={styles.rankTitle}>{gradeTitle}</Text>
-            {summary?.email ? <Text style={styles.email}>{summary.email}</Text> : null}
+
+          <View style={styles.metaGrid}>
+            <ProfileMeta Icon={CalendarDays} label="Inscription" value={formatProfileDate(createdAt)} />
+            <ProfileMeta Icon={ShieldCheck} label="Rôle" value={roleLabel} />
+            <ProfileMeta Icon={Flag} label="Objectif" value={`${dailyGoal} faits`} />
           </View>
+
           <Pressable onPress={() => setIsEditing(true)} style={styles.editButton}>
             <Pencil color={colors.text} size={18} strokeWidth={2.3} />
           </Pressable>
@@ -254,8 +291,10 @@ function ProfileEditView({
           <TextInput
             autoCapitalize="none"
             onChangeText={setUsername}
+            onSubmitEditing={submitSettings}
             placeholder="pseudo"
             placeholderTextColor="rgba(248,250,252,0.42)"
+            returnKeyType="done"
             style={styles.input}
             value={username}
           />
@@ -265,8 +304,10 @@ function ProfileEditView({
           <TextInput
             keyboardType="number-pad"
             onChangeText={setDailyGoal}
+            onSubmitEditing={submitSettings}
             placeholder="10"
             placeholderTextColor="rgba(248,250,252,0.42)"
+            returnKeyType="done"
             style={styles.input}
             value={dailyGoal}
           />
@@ -283,8 +324,10 @@ function ProfileEditView({
             autoCapitalize="none"
             keyboardType="email-address"
             onChangeText={setNextEmail}
+            onSubmitEditing={submitEmail}
             placeholder="email"
             placeholderTextColor="rgba(248,250,252,0.42)"
+            returnKeyType="done"
             style={styles.input}
             value={nextEmail}
           />
@@ -296,8 +339,10 @@ function ProfileEditView({
           <Text style={styles.formLabel}>Nouveau mot de passe</Text>
           <TextInput
             onChangeText={setPassword}
+            onSubmitEditing={submitPassword}
             placeholder="8 caractères minimum"
             placeholderTextColor="rgba(248,250,252,0.42)"
+            returnKeyType="done"
             secureTextEntry
             style={styles.input}
             value={password}
@@ -339,6 +384,18 @@ function FieldError({ message }: { message?: string }) {
   );
 }
 
+function ProfileMeta({ Icon, label, value }: { Icon: LucideIcon; label: string; value: string }) {
+  return (
+    <View style={styles.metaItem}>
+      <Icon color={colors.accent} size={16} strokeWidth={2.35} />
+      <View style={styles.metaTextBlock}>
+        <Text style={styles.metaLabel}>{label}</Text>
+        <Text numberOfLines={1} style={styles.metaValue}>{value}</Text>
+      </View>
+    </View>
+  );
+}
+
 function StatCard({ Icon, label, value }: { Icon: typeof Eye; label: string; value: number | string }) {
   return (
     <View style={styles.statCard}>
@@ -369,9 +426,6 @@ function ThemeSection({ themes }: { themes: ProfileSummary["topThemes"] }) {
                 <Text numberOfLines={1} style={styles.themeName}>
                   {theme.name}
                 </Text>
-              </View>
-              <View style={styles.themeTrack}>
-                <View style={[styles.themeFill, { backgroundColor: theme.accent, width: `${theme.percent}%` }]} />
               </View>
               <Text style={styles.themeCount}>{theme.count}</Text>
             </View>
@@ -470,9 +524,16 @@ const styles = StyleSheet.create({
   },
   email: {
     color: "rgba(248,250,252,0.46)",
+    flex: 1,
     fontSize: 13,
     fontWeight: "700",
-    marginTop: 7,
+  },
+  emailRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 7,
+    marginTop: 8,
+    minWidth: 0,
   },
   error: {
     color: colors.danger,
@@ -545,26 +606,30 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: "rgba(5,8,18,0.42)",
     borderColor: "rgba(255,209,102,0.28)",
-    borderRadius: 999,
+    borderRadius: 16,
     borderWidth: 1,
-    height: 70,
+    height: 50,
     justifyContent: "center",
-    width: 70,
+    width: 50,
   },
   header: {
     borderColor: colors.border,
     borderRadius: 28,
     borderWidth: 1,
-    flexDirection: "row",
-    gap: 16,
+    gap: 18,
     minHeight: 154,
     overflow: "hidden",
     padding: 18,
     paddingRight: 64,
   },
-  headerText: {
+  headerIdentity: {
     flex: 1,
-    justifyContent: "center",
+    minWidth: 0,
+  },
+  headerTop: {
+    flexDirection: "row",
+    gap: 14,
+    justifyContent: "space-between",
   },
   input: {
     backgroundColor: "rgba(255,255,255,0.08)",
@@ -618,11 +683,64 @@ const styles = StyleSheet.create({
     marginTop: 16,
     overflow: "hidden",
   },
-  rankTitle: {
-    color: colors.accent,
-    fontSize: 16,
+  metaGrid: {
+    gap: 9,
+  },
+  metaItem: {
+    alignItems: "center",
+    backgroundColor: "rgba(5,8,18,0.24)",
+    borderColor: "rgba(255,255,255,0.09)",
+    borderRadius: 17,
+    borderWidth: 1,
+    flexDirection: "row",
+    gap: 10,
+    minHeight: 54,
+    paddingHorizontal: 13,
+  },
+  metaLabel: {
+    color: "rgba(248,250,252,0.40)",
+    fontSize: 10,
     fontWeight: "900",
-    marginTop: 8,
+    textTransform: "uppercase",
+  },
+  metaTextBlock: {
+    flex: 1,
+    minWidth: 0,
+  },
+  metaValue: {
+    color: colors.text,
+    fontSize: 13,
+    fontWeight: "900",
+    marginTop: 2,
+  },
+  rankCard: {
+    alignItems: "center",
+    backgroundColor: "rgba(255,209,102,0.10)",
+    borderColor: "rgba(255,209,102,0.20)",
+    borderRadius: 21,
+    borderWidth: 1,
+    flexDirection: "row",
+    gap: 11,
+    maxWidth: 156,
+    minHeight: 78,
+    padding: 11,
+  },
+  rankLabel: {
+    color: "rgba(255,209,102,0.72)",
+    fontSize: 10,
+    fontWeight: "900",
+    textTransform: "uppercase",
+  },
+  rankTextBlock: {
+    flex: 1,
+    minWidth: 0,
+  },
+  rankTitle: {
+    color: colors.text,
+    fontSize: 13,
+    fontWeight: "900",
+    lineHeight: 17,
+    marginTop: 3,
   },
   replayButton: {
     alignItems: "center",
@@ -640,10 +758,28 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
     flex: 1,
   },
+  glowBottom: {
+    backgroundColor: "rgba(106,227,192,0.10)",
+    borderRadius: 999,
+    bottom: -120,
+    height: 260,
+    left: -105,
+    position: "absolute",
+    width: 260,
+  },
+  glowTop: {
+    backgroundColor: "rgba(255,209,102,0.14)",
+    borderRadius: 999,
+    height: 280,
+    position: "absolute",
+    right: -115,
+    top: -90,
+    width: 280,
+  },
   profileSection: {
-    backgroundColor: "rgba(255,255,255,0.05)",
-    borderColor: "rgba(255,255,255,0.11)",
-    borderRadius: 24,
+    backgroundColor: "rgba(255,255,255,0.035)",
+    borderColor: "rgba(255,255,255,0.10)",
+    borderRadius: 26,
     borderWidth: 1,
     gap: 14,
     paddingHorizontal: 18,
@@ -660,9 +796,9 @@ const styles = StyleSheet.create({
     fontWeight: "900",
   },
   statCard: {
-    backgroundColor: "rgba(255,255,255,0.06)",
+    backgroundColor: "rgba(255,255,255,0.052)",
     borderColor: "rgba(255,255,255,0.12)",
-    borderRadius: 22,
+    borderRadius: 24,
     borderWidth: 1,
     flexGrow: 1,
     minHeight: 104,
@@ -714,10 +850,14 @@ const styles = StyleSheet.create({
     fontWeight: "800",
   },
   themeCount: {
-    color: colors.muted,
+    backgroundColor: "rgba(255,255,255,0.07)",
+    borderRadius: 999,
+    color: "rgba(248,250,252,0.70)",
     fontSize: 12,
     fontWeight: "900",
     minWidth: 24,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
     textAlign: "right",
   },
   themeDot: {
@@ -740,12 +880,19 @@ const styles = StyleSheet.create({
   },
   themeRow: {
     alignItems: "center",
+    backgroundColor: "rgba(5,8,18,0.18)",
+    borderColor: "rgba(255,255,255,0.08)",
+    borderRadius: 16,
+    borderWidth: 1,
     flexDirection: "row",
-    gap: 10,
+    gap: 12,
+    justifyContent: "space-between",
+    minHeight: 54,
+    paddingHorizontal: 13,
   },
   themeTextRow: {
     alignItems: "center",
-    flex: 0.9,
+    flex: 1,
     flexDirection: "row",
     gap: 8,
     minWidth: 0,

@@ -30,7 +30,7 @@ export default function AdminUsersPage() {
   const [query, setQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
   const [page, setPage] = useState(1);
-  const [pageSize] = useState(20);
+  const [pageSize] = useState(5);
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [isBusy, setIsBusy] = useState(false);
@@ -185,7 +185,7 @@ export default function AdminUsersPage() {
               setPage(1);
               setIsLoading(true);
             }}
-            className="rounded-md border border-slate-800 bg-slate-950 px-3 py-2.5 text-sm font-bold text-slate-200 outline-none focus:border-amber-300"
+            className="rounded-md border border-slate-800 bg-slate-950 px-3 py-2.5 text-sm font-bold text-slate-200 outline-none focus:border-[#465fff]"
           >
             <option value="all">Tous les rôles</option>
             {roles.map((role) => (
@@ -232,7 +232,7 @@ export default function AdminUsersPage() {
                         onChange={(event) =>
                           changeRole(userProfile.id, event.target.value)
                         }
-                        className="rounded-md border border-slate-800 bg-slate-900 px-3 py-2 text-sm font-bold text-white outline-none focus:border-amber-300"
+                        className="rounded-md border border-slate-800 bg-slate-900 px-3 py-2 text-sm font-bold text-white outline-none focus:border-[#465fff]"
                       >
                         {roles.map((role) => (
                           <option key={role.slug} value={role.slug}>

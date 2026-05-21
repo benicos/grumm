@@ -23,7 +23,7 @@ export default function ThemesList() {
   const [categories, setCategories] = useState<AdminCategory[]>([]);
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
-  const [pageSize] = useState(20);
+  const [pageSize] = useState(5);
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [isBusy, setIsBusy] = useState(false);
@@ -127,7 +127,7 @@ export default function ThemesList() {
         action={
           <Link
             href="/admin/themes/create"
-            className="rounded-md bg-amber-300 px-4 py-2 text-sm font-extrabold text-slate-950 hover:bg-amber-200"
+            className="rounded-md bg-[#465fff] px-4 py-2 text-sm font-extrabold text-white hover:bg-[#3641f5]"
           >
             Créer un thème
           </Link>

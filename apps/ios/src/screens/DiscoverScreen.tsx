@@ -16,6 +16,7 @@ import {
   trackMobileAnalyticsEvent,
   type MobileFactReadToken,
 } from "../lib/analytics";
+import { isCommercialCollaborationFact } from "../lib/commercial";
 import { getFactActions, getFeedFacts, getTodayDailyProgress, recordFactView, toggleLike, toggleSave } from "../lib/facts";
 import { useFactImageShare } from "../lib/share";
 import { colors } from "../theme/colors";
@@ -89,9 +90,12 @@ export function DiscoverScreen({ initialFact, onRequireAuth }: DiscoverScreenPro
       const mergedFacts = initialFact
         ? [initialFact, ...nextFacts.filter((fact) => fact.id !== initialFact.id)]
         : nextFacts;
+      const standardFactIds = mergedFacts
+        .filter((fact) => !isCommercialCollaborationFact(fact))
+        .map((fact) => fact.id);
       setFacts(mergedFacts);
       setCurrentIndex(0);
-      mergeActions(await getFactActions(mergedFacts.map((fact) => fact.id)));
+      mergeActions(await getFactActions(standardFactIds));
     } catch (nextError) {
       setError(nextError instanceof Error ? nextError.message : userMessages.genericLoadError);
     } finally {
@@ -112,8 +116,11 @@ export function DiscoverScreen({ initialFact, onRequireAuth }: DiscoverScreenPro
         limit: mobileConfig.feedBatchSize,
       });
       const uniqueFacts = nextFacts.filter((fact) => !facts.some((current) => current.id === fact.id));
+      const standardFactIds = uniqueFacts
+        .filter((fact) => !isCommercialCollaborationFact(fact))
+        .map((fact) => fact.id);
       setFacts((current) => [...current, ...uniqueFacts]);
-      mergeActions(await getFactActions(uniqueFacts.map((fact) => fact.id)));
+      mergeActions(await getFactActions(standardFactIds));
     } finally {
       setIsLoadingMore(false);
     }
@@ -144,7 +151,11 @@ export function DiscoverScreen({ initialFact, onRequireAuth }: DiscoverScreenPro
   useEffect(() => {
     const fact = activeFactId ? facts.find((item) => item.id === activeFactId) : null;
 
-    if (!fact || recordedIds.current.has(fact.id)) {
+    if (
+      !fact ||
+      isCommercialCollaborationFact(fact) ||
+      recordedIds.current.has(fact.id)
+    ) {
       return;
     }
 
@@ -181,7 +192,9 @@ export function DiscoverScreen({ initialFact, onRequireAuth }: DiscoverScreenPro
     void finishMobileFactRead(factReadTokenRef.current);
     factReadTokenRef.current = null;
 
-    if (!activeFactId) {
+    const activeFact = activeFactId ? facts.find((fact) => fact.id === activeFactId) : null;
+
+    if (!activeFactId || (activeFact && isCommercialCollaborationFact(activeFact))) {
       return () => {
         cancelled = true;
       };
@@ -201,7 +214,7 @@ export function DiscoverScreen({ initialFact, onRequireAuth }: DiscoverScreenPro
     return () => {
       cancelled = true;
     };
-  }, [activeFactId]);
+  }, [activeFactId, facts]);
 
   useEffect(() => {
     const subscription = AppState.addEventListener("change", (state) => {
@@ -219,6 +232,10 @@ export function DiscoverScreen({ initialFact, onRequireAuth }: DiscoverScreenPro
   }, []);
 
   async function handleToggleLike(fact: FeedFact) {
+    if (isCommercialCollaborationFact(fact)) {
+      return;
+    }
+
     if (!session) {
       onRequireAuth();
       return;
@@ -244,6 +261,10 @@ export function DiscoverScreen({ initialFact, onRequireAuth }: DiscoverScreenPro
   }
 
   async function handleToggleSave(fact: FeedFact) {
+    if (isCommercialCollaborationFact(fact)) {
+      return;
+    }
+
     if (!session) {
       onRequireAuth();
       return;
@@ -300,6 +321,10 @@ export function DiscoverScreen({ initialFact, onRequireAuth }: DiscoverScreenPro
             fact={item}
             height={cardHeight}
             onShare={() => {
+              if (isCommercialCollaborationFact(item)) {
+                return;
+              }
+
               markMobileFactReadInteraction(factReadTokenRef.current);
               void trackMobileAnalyticsEvent({
                 entityId: item.id,
@@ -309,6 +334,10 @@ export function DiscoverScreen({ initialFact, onRequireAuth }: DiscoverScreenPro
               void shareFactImage(item);
             }}
             onSourcePress={() => {
+              if (isCommercialCollaborationFact(item)) {
+                return;
+              }
+
               markMobileFactReadInteraction(factReadTokenRef.current);
               void trackMobileAnalyticsEvent({
                 entityId: item.id,

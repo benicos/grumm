@@ -23,7 +23,7 @@ export default function AdminGradesPage() {
   const [grades, setGrades] = useState<AdminGrade[]>([]);
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
-  const [pageSize] = useState(20);
+  const [pageSize] = useState(5);
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [isBusy, setIsBusy] = useState(false);
@@ -123,7 +123,7 @@ export default function AdminGradesPage() {
         action={
           <Link
             href="/admin/grades/create"
-            className="rounded-md bg-amber-300 px-4 py-2 text-sm font-extrabold text-slate-950 hover:bg-amber-200"
+            className="rounded-md bg-[#465fff] px-4 py-2 text-sm font-extrabold text-white hover:bg-[#3641f5]"
           >
             Créer un grade
           </Link>
@@ -167,7 +167,7 @@ export default function AdminGradesPage() {
                   <tr key={grade.id}>
                     <td className="px-4 py-3">
                       <div className="flex items-start gap-3">
-                        <span className="mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-md border border-slate-800 bg-slate-900 text-amber-300">
+                        <span className="mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-md border border-slate-800 bg-slate-900 text-[#93c5fd]">
                           <GradeIcon badge={grade.badge} className="h-4 w-4" />
                         </span>
                         <div className="min-w-0">

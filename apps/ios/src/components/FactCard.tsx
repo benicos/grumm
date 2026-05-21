@@ -3,6 +3,7 @@ import { Bookmark, ExternalLink, Heart, Share2, type LucideIcon } from "lucide-r
 import { Linking, Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { isCommercialCollaborationFact } from "../lib/commercial";
 import { colors } from "../theme/colors";
 import type { FactActions, FeedFact } from "../types/domain";
 
@@ -29,6 +30,7 @@ function getGradientColors(fact: FeedFact): [string, string, string] {
 export function FactCard({ actions, fact, height, onShare, onSourcePress, onToggleLike, onToggleSave }: FactCardProps) {
   const insets = useSafeAreaInsets();
   const sourceUrl = fact.sourceUrl?.trim();
+  const isSponsored = isCommercialCollaborationFact(fact);
 
   return (
     <View style={[styles.page, { height }]}>
@@ -54,28 +56,45 @@ export function FactCard({ actions, fact, height, onShare, onSourcePress, onTogg
           </View>
 
           <View style={styles.bottomContent}>
-            <View style={styles.actions}>
-              <ActionButton accent={fact.accent} active={actions.liked} Icon={Heart} label="Aimer" onPress={onToggleLike} />
-              <ActionButton accent={fact.accent} active={actions.saved} Icon={Bookmark} label="Garder" onPress={onToggleSave} />
-              <ActionButton accent={fact.accent} Icon={Share2} label="Partager" onPress={onShare} />
-            </View>
+            {isSponsored ? (
+              <Pressable
+                accessibilityRole="link"
+                onPress={() => {
+                  if (sourceUrl) {
+                    Linking.openURL(sourceUrl);
+                  }
+                }}
+                style={({ pressed }) => [styles.sponsoredButton, pressed && styles.pressed]}
+              >
+                <Text style={styles.sponsoredButtonText}>En savoir plus</Text>
+                <ExternalLink color="#07111f" size={15} strokeWidth={2.4} />
+              </Pressable>
+            ) : (
+              <View style={styles.actions}>
+                <ActionButton accent={fact.accent} active={actions.liked} Icon={Heart} label="Aimer" onPress={onToggleLike} />
+                <ActionButton accent={fact.accent} active={actions.saved} Icon={Bookmark} label="Enregistrer" onPress={onToggleSave} />
+                <ActionButton accent={fact.accent} Icon={Share2} label="Partager" onPress={onShare} />
+              </View>
+            )}
 
             {sourceUrl ? (
               <Pressable
                 onPress={() => {
-                  onSourcePress?.();
+                  if (!isSponsored) {
+                    onSourcePress?.();
+                  }
                   Linking.openURL(sourceUrl);
                 }}
                 style={styles.sourceLink}
               >
                 <Text style={styles.source} numberOfLines={1}>
-                  Source : {fact.source}
+                  {isSponsored ? "Partenaire" : "Source"} : {fact.source}
                 </Text>
                 <ExternalLink color="rgba(248,250,252,0.58)" size={13} strokeWidth={2.2} />
               </Pressable>
             ) : (
               <Text style={styles.source} numberOfLines={1}>
-                Source : {fact.source}
+                {isSponsored ? "Partenaire" : "Source"} : {fact.source}
               </Text>
             )}
           </View>
@@ -101,6 +120,7 @@ function ActionButton({
   return (
     <Pressable
       accessibilityRole="button"
+      accessibilityLabel={label}
       onPress={onPress}
       style={({ pressed }) => [
         styles.actionButton,
@@ -121,7 +141,6 @@ function ActionButton({
           size={23}
           strokeWidth={2.15}
         />
-        <Text style={[styles.actionLabel, active && styles.actionLabelActive]}>{label}</Text>
       </LinearGradient>
     </Pressable>
   );
@@ -130,17 +149,15 @@ function ActionButton({
 const styles = StyleSheet.create({
   actionButton: {
     alignItems: "center",
-    borderColor: "rgba(255,255,255,0.14)",
-    borderRadius: 20,
+    borderColor: "rgba(255,255,255,0.18)",
+    borderRadius: 999,
     borderWidth: 1,
-    flex: 1,
-    gap: 4,
-    height: 62,
+    height: 58,
     justifyContent: "center",
-    maxWidth: 94,
+    width: 58,
     shadowColor: "#000",
     shadowOffset: { height: 12, width: 0 },
-    shadowOpacity: 0.24,
+    shadowOpacity: 0.28,
     shadowRadius: 18,
   },
   actionButtonActive: {
@@ -149,26 +166,15 @@ const styles = StyleSheet.create({
   },
   actionGradient: {
     alignItems: "center",
-    borderRadius: 19,
-    gap: 4,
+    borderRadius: 999,
     height: "100%",
     justifyContent: "center",
     overflow: "hidden",
     width: "100%",
   },
-  actionLabel: {
-    color: "rgba(248,250,252,0.72)",
-    fontSize: 10,
-    fontWeight: "900",
-    letterSpacing: 0,
-  },
-  actionLabelActive: {
-    color: "#06111d",
-  },
   actions: {
     flexDirection: "row",
-    gap: 10,
-    justifyContent: "space-between",
+    gap: 12,
   },
   bottomContent: {
     gap: 14,
@@ -248,6 +254,26 @@ const styles = StyleSheet.create({
     alignItems: "center",
     flexDirection: "row",
     gap: 6,
+  },
+  sponsoredButton: {
+    alignItems: "center",
+    alignSelf: "flex-start",
+    backgroundColor: "rgba(255,255,255,0.92)",
+    borderRadius: 999,
+    flexDirection: "row",
+    gap: 8,
+    paddingHorizontal: 18,
+    paddingVertical: 12,
+    shadowColor: "#fff",
+    shadowOffset: { height: 12, width: 0 },
+    shadowOpacity: 0.18,
+    shadowRadius: 24,
+  },
+  sponsoredButtonText: {
+    color: "#07111f",
+    fontSize: 13,
+    fontWeight: "900",
+    letterSpacing: 0,
   },
   title: {
     color: colors.text,

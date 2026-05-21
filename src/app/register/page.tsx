@@ -28,10 +28,6 @@ export default function RegisterPage() {
           <h1 className="mt-4 bg-[linear-gradient(120deg,#ffffff,#ffe4a1_45%,#6ae3c0)] bg-clip-text text-[clamp(2.5rem,6vw,4.8rem)] font-extrabold leading-none text-transparent">
             Fais de la découverte un réflexe.
           </h1>
-          <p className="mx-auto mt-5 max-w-lg text-base font-semibold leading-8 text-white/62 lg:mx-0">
-            Crée ton accès pour retrouver tes faits, mesurer ta progression et
-            construire une bibliothèque personnelle.
-          </p>
         </div>
         <div className="flex justify-center lg:justify-end">
           <AuthForm mode="signup" />

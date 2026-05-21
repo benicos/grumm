@@ -24,6 +24,10 @@ export function AuthScreen() {
   async function submit() {
     setError(null);
 
+    if (!email.trim() || password.length < 6 || (!isLogin && !username)) {
+      return;
+    }
+
     if (!isLogin) {
       const usernameError = getUsernameValidationMessage(normalizedUsername);
 
@@ -102,8 +106,10 @@ export function AuthScreen() {
               <TextInput
                 autoCapitalize="none"
                 onChangeText={setPassword}
+                onSubmitEditing={submit}
                 placeholder="Mot de passe"
                 placeholderTextColor="rgba(248,250,252,0.42)"
+                returnKeyType="done"
                 secureTextEntry
                 style={styles.input}
                 textContentType={isLogin ? "password" : "newPassword"}

@@ -24,7 +24,7 @@ export default function Footer() {
           {footerLinks.map((link) =>
             "external" in link && link.external ? (
               <a
-                key={link.label}
+                key={link.href}
                 href={link.href}
                 target="_blank"
                 rel="noopener noreferrer"
@@ -34,7 +34,7 @@ export default function Footer() {
               </a>
             ) : (
               <Link
-                key={link.label}
+                key={link.href}
                 href={link.href}
                 className="transition hover:text-white"
               >

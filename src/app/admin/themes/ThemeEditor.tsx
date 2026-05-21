@@ -166,7 +166,7 @@ export default function ThemeEditor({ themeId }: { themeId?: string }) {
                 onChange={(event) =>
                   setForm((current) => ({ ...current, name: event.target.value }))
                 }
-                className="mt-2 w-full rounded-md border border-slate-800 bg-slate-900 px-3 py-2.5 text-sm text-white outline-none focus:border-amber-300"
+                className="mt-2 w-full rounded-md border border-slate-800 bg-slate-900 px-3 py-2.5 text-sm text-white outline-none focus:border-[#465fff]"
               />
             </label>
 
@@ -206,7 +206,7 @@ export default function ThemeEditor({ themeId }: { themeId?: string }) {
                       tone: "",
                     }))
                   }
-                  className="mt-2 w-full rounded-md border border-slate-800 bg-slate-900 px-3 py-2.5 text-sm text-white outline-none focus:border-amber-300"
+                  className="mt-2 w-full rounded-md border border-slate-800 bg-slate-900 px-3 py-2.5 text-sm text-white outline-none focus:border-[#465fff]"
                 >
                   <option value="to-bottom-right">Diagonale</option>
                   <option value="to-right">Horizontal</option>
@@ -261,7 +261,7 @@ export default function ThemeEditor({ themeId }: { themeId?: string }) {
                       slug: event.target.value,
                     }))
                   }
-                  className="mt-2 w-full rounded-md border border-slate-800 bg-slate-950 px-3 py-2.5 text-sm text-white outline-none focus:border-amber-300"
+                  className="mt-2 w-full rounded-md border border-slate-800 bg-slate-950 px-3 py-2.5 text-sm text-white outline-none focus:border-[#465fff]"
                 />
               </label>
             </details>

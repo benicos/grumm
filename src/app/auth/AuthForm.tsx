@@ -122,9 +122,6 @@ export default function AuthForm({ mode }: AuthFormProps) {
         <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#ffd166]">
           Grumm.
         </p>
-        <h1 className="mt-3 text-3xl font-extrabold leading-tight text-white">
-          {isLogin ? "Reprendre la découverte" : "Créer ton accès"}
-        </h1>
         <p className="mt-3 text-sm font-semibold leading-6 text-white/56">
           {isLogin
             ? "Retrouve tes sauvegardes, ta progression et ton rythme de lecture."
@@ -152,7 +149,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
               minLength={3}
               maxLength={24}
               className="mt-2 w-full rounded-[16px] border border-white/10 bg-white/[0.055] px-4 py-3 text-white outline-none transition placeholder:text-white/35 focus:border-[#ffd166] focus:bg-white/[0.08]"
-              placeholder="LeSavantFou06"
+              placeholder="Nom d'utilisateur"
             />
             <span className="mt-2 block text-xs leading-5 text-white/45">
               Il sera normalise en{" "}
@@ -177,7 +174,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
             autoComplete="email"
             required
             className="mt-2 w-full rounded-[16px] border border-white/10 bg-white/[0.055] px-4 py-3 text-white outline-none transition placeholder:text-white/35 focus:border-[#ffd166] focus:bg-white/[0.08]"
-            placeholder="mail@exemple.fr"
+            placeholder="adresse@mail.fr"
           />
           <FieldError message={fieldErrors.email} />
         </label>

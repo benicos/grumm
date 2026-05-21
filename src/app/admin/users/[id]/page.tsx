@@ -44,7 +44,7 @@ function StatCard({
 }) {
   const Icon = statIcons[type];
   const toneClass = {
-    amber: "border-amber-300/20 bg-amber-300/10 text-amber-200",
+    amber: "border-[#465fff]/20 bg-[#465fff]/10 text-[#bfdbfe]",
     emerald: "border-emerald-300/20 bg-emerald-300/10 text-emerald-100",
     rose: "border-rose-300/20 bg-rose-300/10 text-rose-100",
     slate: "border-slate-700 bg-slate-900 text-slate-200",
@@ -156,7 +156,7 @@ export default function AdminUserDetailPage() {
             <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-3">
-                  <span className="grid h-12 w-12 place-items-center rounded-lg bg-amber-300 text-xl font-black text-slate-950">
+                  <span className="grid h-12 w-12 place-items-center rounded-lg bg-[#465fff] text-xl font-black text-white">
                     {detail.profile.username.slice(0, 1).toUpperCase()}
                   </span>
                   <div>
@@ -168,11 +168,11 @@ export default function AdminUserDetailPage() {
                   </div>
                 </div>
               </div>
-              <div className="rounded-lg border border-amber-300/20 bg-amber-300/10 px-4 py-3 text-amber-100">
+              <div className="rounded-lg border border-[#465fff]/20 bg-[#465fff]/10 px-4 py-3 text-[#dbeafe]">
                 <div className="flex items-center gap-3">
                   <GradeIcon badge={detail.gradeBadge} className="h-6 w-6" />
                   <div>
-                    <p className="text-xs font-bold uppercase tracking-[0.18em] text-amber-200/70">
+                    <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#bfdbfe]/70">
                       Rang
                     </p>
                     <p className="font-extrabold">{detail.gradeName ?? roleLabel}</p>
@@ -210,7 +210,7 @@ export default function AdminUserDetailPage() {
 
           <AdminPanel className="p-5">
             <div className="flex items-center gap-3">
-              <Layers3 className="h-5 w-5 text-amber-300" aria-hidden="true" />
+              <Layers3 className="h-5 w-5 text-[#93c5fd]" aria-hidden="true" />
               <h2 className="text-lg font-extrabold text-white">Thèmes les plus vus</h2>
             </div>
             <div className="mt-5 grid gap-3 md:grid-cols-2">
@@ -243,7 +243,7 @@ export default function AdminUserDetailPage() {
 
         <AdminPanel className="p-5">
           <div className="flex items-center gap-3">
-            <Activity className="h-5 w-5 text-amber-300" aria-hidden="true" />
+            <Activity className="h-5 w-5 text-[#93c5fd]" aria-hidden="true" />
             <h2 className="text-lg font-extrabold text-white">Activité récente</h2>
           </div>
           <div className="mt-5 space-y-3">

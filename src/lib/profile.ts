@@ -1,6 +1,10 @@
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { dailyGoalConfig } from "@/config/app";
 import type { GradeDefinition } from "@/lib/badges";
+import {
+  isCommercialCollaborationFact,
+  isCommercialCollaborationSlug,
+} from "@/lib/commercial";
 import { formatAppError, getConfiguredErrorMessage } from "@/lib/errors";
 import { FeedError, type FeedFact } from "@/lib/facts";
 import type { UserRole } from "@/lib/roles";
@@ -74,6 +78,7 @@ export type ThemeViewStat = {
 export type UserProfileSummary = {
   username: string | null;
   email: string | null;
+  createdAt: string | null;
   dailyGoal: number;
   role: UserRole;
   likedCount: number;
@@ -126,6 +131,10 @@ function mapRelatedFact(row: RelatedFactRow): FeedFact | null {
   };
 }
 
+function isStandardProfileFact(fact: FeedFact | null): fact is FeedFact {
+  return fact !== null && !isCommercialCollaborationFact(fact);
+}
+
 function todayKey() {
   const now = new Date();
   const year = now.getFullYear();
@@ -164,7 +173,7 @@ function getTopViewedThemes(rows: ViewedFactRow[]): ThemeViewStat[] {
       ? fact.categories[0]
       : fact.categories;
 
-    if (!category?.slug) {
+    if (!category?.slug || isCommercialCollaborationSlug(category.slug)) {
       return;
     }
 
@@ -215,7 +224,7 @@ export async function getUserProfileSummary(): Promise<UserProfileSummary> {
   ] = await Promise.all([
     supabase
       .from("profiles")
-      .select("username,daily_goal,role")
+      .select("username,daily_goal,role,created_at")
       .eq("id", user.id)
       .maybeSingle(),
     supabase
@@ -257,17 +266,23 @@ export async function getUserProfileSummary(): Promise<UserProfileSummary> {
 
   const likedFacts = ((likesResult.data ?? []) as RelatedFactRow[])
     .map(mapRelatedFact)
-    .filter((fact): fact is FeedFact => Boolean(fact));
+    .filter(isStandardProfileFact);
   const savedFacts = ((savesResult.data ?? []) as RelatedFactRow[])
     .map(mapRelatedFact)
-    .filter((fact): fact is FeedFact => Boolean(fact));
+    .filter(isStandardProfileFact);
+  const viewRows = (viewsResult.data ?? []) as ViewedFactRow[];
+  const standardViewRows = viewRows.filter((row) => {
+    const category = Array.isArray(row.facts?.categories)
+      ? row.facts?.categories[0]
+      : row.facts?.categories;
+
+    return !isCommercialCollaborationSlug(category?.slug);
+  });
 
   const uniqueViews = new Set(
-    (viewsResult.data ?? []).map((view) => view.fact_id),
+    standardViewRows.map((view) => view.fact_id),
   );
-  const topThemes = getTopViewedThemes(
-    (viewsResult.data ?? []) as ViewedFactRow[],
-  );
+  const topThemes = getTopViewedThemes(standardViewRows);
   const dailyRows = dailyProgressResult.data ?? [];
   const grades = gradesResult.error
     ? []
@@ -290,6 +305,7 @@ export async function getUserProfileSummary(): Promise<UserProfileSummary> {
         ? user.user_metadata.username
         : null),
     email: user.email ?? null,
+    createdAt: profileResult.data?.created_at ?? user.created_at ?? null,
     dailyGoal: profileResult.data?.daily_goal ?? dailyGoalConfig.defaultGoal,
     role: (profileResult.data?.role ?? "membre") as UserRole,
     likedCount: likedFacts.length,

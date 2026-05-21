@@ -54,7 +54,7 @@ function GradeIconPicker({
               aria-pressed={isSelected}
               className={`flex items-center gap-2 rounded-md border px-3 py-2 text-left text-sm font-bold transition ${
                 isSelected
-                  ? "border-amber-300 bg-amber-300 text-slate-950"
+                  ? "border-[#465fff] bg-[#465fff] text-white"
                   : "border-slate-800 bg-slate-900 text-slate-200 hover:border-slate-600"
               }`}
             >
@@ -181,7 +181,7 @@ export default function GradeEditor({ gradeId }: { gradeId?: string }) {
                   onChange={(event) =>
                     setForm((current) => ({ ...current, name: event.target.value }))
                   }
-                  className="mt-2 w-full rounded-md border border-slate-800 bg-slate-900 px-3 py-2.5 text-sm text-white outline-none focus:border-amber-300"
+                  className="mt-2 w-full rounded-md border border-slate-800 bg-slate-900 px-3 py-2.5 text-sm text-white outline-none focus:border-[#465fff]"
                 />
               </label>
               <label className="block">
@@ -191,7 +191,7 @@ export default function GradeEditor({ gradeId }: { gradeId?: string }) {
                   onChange={(event) =>
                     setForm((current) => ({ ...current, slug: event.target.value }))
                   }
-                  className="mt-2 w-full rounded-md border border-slate-800 bg-slate-900 px-3 py-2.5 text-sm text-white outline-none focus:border-amber-300"
+                  className="mt-2 w-full rounded-md border border-slate-800 bg-slate-900 px-3 py-2.5 text-sm text-white outline-none focus:border-[#465fff]"
                 />
               </label>
             </div>
@@ -211,7 +211,7 @@ export default function GradeEditor({ gradeId }: { gradeId?: string }) {
                       required_goals: Number(event.target.value),
                     }))
                   }
-                  className="mt-2 w-full rounded-md border border-slate-800 bg-slate-900 px-3 py-2.5 text-sm text-white outline-none focus:border-amber-300"
+                  className="mt-2 w-full rounded-md border border-slate-800 bg-slate-900 px-3 py-2.5 text-sm text-white outline-none focus:border-[#465fff]"
                 />
               </label>
               <label className="block">
@@ -225,7 +225,7 @@ export default function GradeEditor({ gradeId }: { gradeId?: string }) {
                       display_order: Number(event.target.value),
                     }))
                   }
-                  className="mt-2 w-full rounded-md border border-slate-800 bg-slate-900 px-3 py-2.5 text-sm text-white outline-none focus:border-amber-300"
+                  className="mt-2 w-full rounded-md border border-slate-800 bg-slate-900 px-3 py-2.5 text-sm text-white outline-none focus:border-[#465fff]"
                 />
               </label>
             </div>
@@ -245,7 +245,7 @@ export default function GradeEditor({ gradeId }: { gradeId?: string }) {
                     description: event.target.value,
                   }))
                 }
-                className="mt-2 min-h-28 w-full rounded-md border border-slate-800 bg-slate-900 px-3 py-2.5 text-sm text-white outline-none focus:border-amber-300"
+                className="mt-2 min-h-28 w-full rounded-md border border-slate-800 bg-slate-900 px-3 py-2.5 text-sm text-white outline-none focus:border-[#465fff]"
               />
             </label>
 

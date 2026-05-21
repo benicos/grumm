@@ -12,6 +12,12 @@ import type {
   ThemeViewStat,
 } from "../types/domain";
 import { getBadgeInfo, getGoalCelebrationMessage, type GradeDefinition } from "./badges";
+import {
+  filterCommercialCollaborationCategories,
+  filterCommercialCollaborationFacts,
+  isCommercialCollaborationFact,
+  isCommercialCollaborationSlug,
+} from "./commercial";
 import { slugify } from "./slug";
 import { getSupabaseClient, withSupabaseTimeout } from "./supabase";
 
@@ -110,6 +116,8 @@ type CacheEntry<T> = {
 
 const feedCache = new Map<string, CacheEntry<FeedFact[]>>();
 const explorerCache = new Map<string, CacheEntry<ExplorerData>>();
+const profileSummaryCache = new Map<string, CacheEntry<ProfileSummary>>();
+const savedFactsCache = new Map<string, CacheEntry<FeedFact[]>>();
 
 function getCached<T>(cache: Map<string, CacheEntry<T>>, key: string) {
   const entry = cache.get(key);
@@ -177,6 +185,10 @@ function mapRelatedFact(row: RelatedFactRow): FeedFact | null {
   };
 }
 
+function isStandardFact(fact: FeedFact | null): fact is FeedFact {
+  return fact !== null && !isCommercialCollaborationFact(fact);
+}
+
 function mapCategory(category: CategoryRow): CategorySummary {
   return {
     accent: category.accent_color,
@@ -195,7 +207,7 @@ function getTopViewedThemes(rows: ViewedFactRow[]): ThemeViewStat[] {
       ? row.facts?.categories[0]
       : row.facts?.categories;
 
-    if (!category?.slug) {
+    if (!category?.slug || isCommercialCollaborationSlug(category.slug)) {
       return;
     }
 
@@ -360,9 +372,13 @@ export async function getExplorerData(options?: { query?: string }): Promise<Exp
         .filter((fact): fact is FeedFact => Boolean(fact));
 
   const explorerData = {
-    categories: ((themesResult.data ?? []) as ExplorerThemeRpcRow[]).map(mapExplorerTheme),
-    facts: ((factsResult.data ?? []) as FeedRpcRow[]).map(mapFeedFact),
-    recentFacts,
+    categories: filterCommercialCollaborationCategories(
+      ((themesResult.data ?? []) as ExplorerThemeRpcRow[]).map(mapExplorerTheme),
+    ),
+    facts: filterCommercialCollaborationFacts(
+      ((factsResult.data ?? []) as FeedRpcRow[]).map(mapFeedFact),
+    ),
+    recentFacts: filterCommercialCollaborationFacts(recentFacts),
   };
 
   setCached(explorerCache, cacheKey, explorerData);
@@ -426,6 +442,8 @@ export async function toggleLike(factId: string, isLiked: boolean) {
   if (result.error) {
     throw new Error("Cette action n'a pas pu être effectuée.");
   }
+
+  profileSummaryCache.delete(user.id);
 }
 
 export async function toggleSave(factId: string, isSaved: boolean) {
@@ -447,6 +465,9 @@ export async function toggleSave(factId: string, isSaved: boolean) {
   if (result.error) {
     throw new Error("Cette action n'a pas pu être effectuée.");
   }
+
+  profileSummaryCache.delete(user.id);
+  savedFactsCache.delete(user.id);
 }
 
 function emptyDailyProgress(dailyGoal: number = mobileConfig.dailyGoal): DailyProgressResult {
@@ -561,6 +582,12 @@ export async function getSavedFacts() {
     throw new Error(userMessages.authRequired);
   }
 
+  const cachedFacts = getCached(savedFactsCache, user.id);
+
+  if (cachedFacts) {
+    return cachedFacts;
+  }
+
   const { data, error } = await withSupabaseTimeout(
     supabase
       .from("saves")
@@ -573,7 +600,13 @@ export async function getSavedFacts() {
     throw new Error(userMessages.genericLoadError);
   }
 
-  return ((data ?? []) as RelatedFactRow[]).map(mapRelatedFact).filter((fact): fact is FeedFact => Boolean(fact));
+  const facts = ((data ?? []) as RelatedFactRow[])
+    .map(mapRelatedFact)
+    .filter(isStandardFact);
+
+  setCached(savedFactsCache, user.id, facts);
+
+  return facts;
 }
 
 export async function getProfileSummary(): Promise<ProfileSummary> {
@@ -584,6 +617,12 @@ export async function getProfileSummary(): Promise<ProfileSummary> {
 
   if (!user) {
     throw new Error(userMessages.authRequired);
+  }
+
+  const cachedProfile = getCached(profileSummaryCache, user.id);
+
+  if (cachedProfile) {
+    return cachedProfile;
   }
 
   const today = todayKey();
@@ -598,7 +637,7 @@ export async function getProfileSummary(): Promise<ProfileSummary> {
     savedFactsResult,
     viewedThemesResult,
   ] = await Promise.all([
-    withSupabaseTimeout(supabase.from("profiles").select("username,daily_goal,role").eq("id", user.id).maybeSingle()),
+    withSupabaseTimeout(supabase.from("profiles").select("username,daily_goal,role,created_at").eq("id", user.id).maybeSingle()),
     withSupabaseTimeout(supabase.from("likes").select("id", { count: "exact", head: true }).eq("user_id", user.id)),
     withSupabaseTimeout(supabase.from("saves").select("id", { count: "exact", head: true }).eq("user_id", user.id)),
     withSupabaseTimeout(supabase.from("user_fact_views").select("id", { count: "exact", head: true }).eq("user_id", user.id)),
@@ -647,13 +686,14 @@ export async function getProfileSummary(): Promise<ProfileSummary> {
   const badge = getBadgeInfo(completedDailyGoals, grades);
   const likedFacts = ((likedFactsResult.data ?? []) as RelatedFactRow[])
     .map(mapRelatedFact)
-    .filter((fact): fact is FeedFact => Boolean(fact));
+    .filter(isStandardFact);
   const savedFacts = ((savedFactsResult.data ?? []) as RelatedFactRow[])
     .map(mapRelatedFact)
-    .filter((fact): fact is FeedFact => Boolean(fact));
+    .filter(isStandardFact);
 
-  return {
+  const summary: ProfileSummary = {
     completedDailyGoals,
+    createdAt: profileResult.data?.created_at ?? user.created_at ?? null,
     dailyGoal: profileResult.data?.daily_goal ?? mobileConfig.dailyGoal,
     email: user.email ?? null,
     gradeBadge: badge.badge,
@@ -670,6 +710,10 @@ export async function getProfileSummary(): Promise<ProfileSummary> {
     uniqueViewsCount: viewsResult.count ?? 0,
     username: profileResult.data?.username ?? null,
   };
+
+  setCached(profileSummaryCache, user.id, summary);
+
+  return summary;
 }
 
 export async function shareFact(fact: FeedFact) {

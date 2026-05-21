@@ -69,7 +69,7 @@ async function resolveProfile(session: Session | null): Promise<SessionProfile |
   const { data, error } = await withSupabaseTimeout(
     supabase
       .from("profiles")
-      .select("username,daily_goal,role")
+      .select("username,daily_goal,role,created_at")
       .eq("id", session.user.id)
       .maybeSingle(),
   );
@@ -79,6 +79,7 @@ async function resolveProfile(session: Session | null): Promise<SessionProfile |
   }
 
   return {
+    createdAt: data?.created_at ?? session.user.created_at ?? null,
     dailyGoal: data?.daily_goal ?? mobileConfig.dailyGoal,
     email: session.user.email ?? null,
     id: session.user.id,
@@ -95,6 +96,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let isMounted = true;
+    let bootstrapped = false;
+    let isRecoveringInvalidSession = false;
+
+    async function handleInvalidSession() {
+      if (isRecoveringInvalidSession) {
+        return;
+      }
+
+      isRecoveringInvalidSession = true;
+      try {
+        await recoverFromInvalidSession();
+
+        if (isMounted) {
+          setSession(null);
+          setProfile(null);
+          setError(null);
+          setIsLoading(false);
+        }
+      } finally {
+        isRecoveringInvalidSession = false;
+      }
+    }
 
     async function bootstrap() {
       try {
@@ -106,13 +129,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         if (sessionError) {
           if (isInvalidRefreshTokenError(sessionError)) {
-            await recoverFromInvalidSession();
-
-            if (isMounted) {
-              setSession(null);
-              setProfile(null);
-              setError(null);
-            }
+            await handleInvalidSession();
             return;
           }
 
@@ -135,6 +152,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setProfile(null);
         }
       } finally {
+        bootstrapped = true;
         if (isMounted) {
           setIsLoading(false);
         }
@@ -150,27 +168,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const supabase = getSupabaseClient();
       supabase.auth.startAutoRefresh();
-      subscription = supabase.auth.onAuthStateChange(async (_event, nextSession) => {
+      subscription = supabase.auth.onAuthStateChange(async (event, nextSession) => {
+        if (!bootstrapped && event === "INITIAL_SESSION") {
+          return;
+        }
+
         try {
+          if (!isMounted) {
+            return;
+          }
+
           setSession(nextSession);
           setProfile(await resolveProfile(nextSession));
           setError(null);
         } catch (nextError) {
           if (isInvalidRefreshTokenError(nextError)) {
-            await recoverFromInvalidSession();
-            setSession(null);
-            setProfile(null);
-            setError(null);
+            await handleInvalidSession();
             return;
           }
 
-          setError(getAuthErrorMessage(nextError));
+          if (isMounted) {
+            setError(getAuthErrorMessage(nextError));
+          }
         }
       }).data.subscription;
 
       const appStateSubscription = AppState.addEventListener("change", (state) => {
         if (state === "active") {
           supabase.auth.startAutoRefresh();
+          void withSupabaseTimeout(supabase.auth.getSession())
+            .then(({ error: sessionError }) => {
+              if (sessionError && isInvalidRefreshTokenError(sessionError)) {
+                void handleInvalidSession();
+              }
+            })
+            .catch((nextError) => {
+              if (isInvalidRefreshTokenError(nextError)) {
+                void handleInvalidSession();
+              }
+            });
         } else {
           supabase.auth.stopAutoRefresh();
         }
