@@ -1,10 +1,10 @@
-# Velora iOS
+# Grumm iOS
 
 Première version mobile native de test pour iPhone, construite avec Expo et React Native.
 
 ## Choix technique
 
-L'app iOS est isolée dans `apps/ios` pour ne pas casser le site Next.js existant. Elle ne charge pas Velora dans une WebView : elle utilise ses propres écrans React Native, un client Supabase mobile singleton et les mêmes tables/RPC que le web.
+L'app iOS est isolée dans `apps/ios` pour ne pas casser le site Next.js existant. Elle ne charge pas Grumm dans une WebView : elle utilise ses propres écrans React Native, un client Supabase mobile singleton et les mêmes tables/RPC que le web.
 
 Comparaison rapide :
 
@@ -15,7 +15,7 @@ Comparaison rapide :
 ## Prérequis
 
 - Node.js et npm.
-- Un projet Supabase Velora existant.
+- Un projet Supabase Grumm existant.
 - Pour le simulateur iOS : macOS avec Xcode.
 - Pour iPhone physique sans Mac : l'app Expo Go depuis l'App Store.
 
@@ -32,7 +32,7 @@ Renseigner :
 ```bash
 EXPO_PUBLIC_SUPABASE_URL=
 EXPO_PUBLIC_SUPABASE_ANON_KEY=
-EXPO_PUBLIC_SITE_URL=https://velora.app
+EXPO_PUBLIC_SITE_URL=https://grumm.app
 ```
 
 La clé `EXPO_PUBLIC_SUPABASE_ANON_KEY` est la clé publique Supabase prévue pour les clients. Ne jamais placer de clé service role dans cette app.
@@ -80,7 +80,7 @@ IPhone physique :
 
 Prochaines étapes recommandées :
 
-- Ajouter des icônes et splash screens Velora définitifs.
+- Ajouter des icônes et splash screens Grumm définitifs.
 - Ajouter deep links et OAuth si nécessaire.
 - Renforcer les tests sur iPhone réel.
 - Préparer `eas.json` et utiliser EAS Build.

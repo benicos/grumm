@@ -1,1 +1,5 @@
-export { default, metadata } from "../register/page";
+import { redirect } from "next/navigation";
+
+export default function LegacyInscriptionPage() {
+  redirect("/register");
+}

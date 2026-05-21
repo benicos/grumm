@@ -8,6 +8,7 @@ import {
   getAdminFacts,
   saveAdminFact,
 } from "@/lib/admin";
+import { trackAnalyticsEvent } from "@/lib/analytics/web";
 import type { AdminCategory, AdminFact, FactStatus } from "@/lib/admin";
 import { hasPermission } from "@/lib/roles";
 import { useAuth } from "../../auth/AuthProvider";
@@ -190,6 +191,13 @@ export default function FactEditor({ factId }: { factId?: string }) {
     }
 
     setMessage(result.message);
+    void trackAnalyticsEvent({
+      entityType: "fact",
+      eventName: isEditing ? "admin_fact_updated" : "admin_fact_created",
+      metadata: {
+        status: canPublish ? form.status : "pending_review",
+      },
+    });
 
     if (!isEditing) {
       setForm({

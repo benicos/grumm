@@ -1,7 +1,7 @@
 import * as Haptics from "expo-haptics";
 import { Flame } from "lucide-react-native";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Animated, FlatList, Pressable, StyleSheet, Text, View, type LayoutChangeEvent, type ViewToken } from "react-native";
+import { Animated, AppState, FlatList, Pressable, StyleSheet, Text, View, type LayoutChangeEvent, type ViewToken } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { FactCard } from "../components/FactCard";
@@ -9,6 +9,13 @@ import { GoalCelebration } from "../components/GoalCelebration";
 import { LoadingState, ScreenState } from "../components/ScreenState";
 import { mobileConfig, userMessages } from "../config/app";
 import { useAuth } from "../context/AuthContext";
+import {
+  finishMobileFactRead,
+  markMobileFactReadInteraction,
+  startMobileFactRead,
+  trackMobileAnalyticsEvent,
+  type MobileFactReadToken,
+} from "../lib/analytics";
 import { getFactActions, getFeedFacts, getTodayDailyProgress, recordFactView, toggleLike, toggleSave } from "../lib/facts";
 import { useFactImageShare } from "../lib/share";
 import { colors } from "../theme/colors";
@@ -37,8 +44,10 @@ export function DiscoverScreen({ initialFact, onRequireAuth }: DiscoverScreenPro
   }>({ completedGoals: 0, message: "Premier pas.", visible: false });
   const recordedIds = useRef(new Set<string>());
   const celebrationShownRef = useRef(false);
+  const factReadTokenRef = useRef<MobileFactReadToken | null>(null);
   const cardHeight = Math.max(560, screenHeight);
   const initialFactId = initialFact?.id ?? null;
+  const activeFactId = facts[currentIndex]?.id ?? null;
 
   const viewabilityConfig = useMemo(() => ({ itemVisiblePercentThreshold: 72 }), []);
   const onViewableItemsChanged = useCallback(({ viewableItems }: { viewableItems: ViewToken[] }) => {
@@ -133,7 +142,7 @@ export function DiscoverScreen({ initialFact, onRequireAuth }: DiscoverScreenPro
   }, [profile?.dailyGoal, session]);
 
   useEffect(() => {
-    const fact = facts[currentIndex];
+    const fact = activeFactId ? facts.find((item) => item.id === activeFactId) : null;
 
     if (!fact || recordedIds.current.has(fact.id)) {
       return;
@@ -164,7 +173,50 @@ export function DiscoverScreen({ initialFact, onRequireAuth }: DiscoverScreenPro
         }, 1900);
       })
       .catch(() => undefined);
-  }, [currentIndex, facts, profile?.dailyGoal]);
+  }, [activeFactId, facts, profile?.dailyGoal]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    void finishMobileFactRead(factReadTokenRef.current);
+    factReadTokenRef.current = null;
+
+    if (!activeFactId) {
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    startMobileFactRead(activeFactId)
+      .then((token) => {
+        if (cancelled) {
+          void finishMobileFactRead(token);
+          return;
+        }
+
+        factReadTokenRef.current = token;
+      })
+      .catch(() => undefined);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeFactId]);
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener("change", (state) => {
+      if (state !== "active") {
+        void finishMobileFactRead(factReadTokenRef.current);
+        factReadTokenRef.current = null;
+      }
+    });
+
+    return () => {
+      subscription.remove();
+      void finishMobileFactRead(factReadTokenRef.current);
+      factReadTokenRef.current = null;
+    };
+  }, []);
 
   async function handleToggleLike(fact: FeedFact) {
     if (!session) {
@@ -174,9 +226,17 @@ export function DiscoverScreen({ initialFact, onRequireAuth }: DiscoverScreenPro
 
     const current = actions[fact.id] ?? { liked: false, saved: false };
     setActions((value) => ({ ...value, [fact.id]: { ...current, liked: !current.liked } }));
+    markMobileFactReadInteraction(factReadTokenRef.current);
 
     try {
       await toggleLike(fact.id, current.liked);
+      if (!current.liked) {
+        void trackMobileAnalyticsEvent({
+          entityId: fact.id,
+          entityType: "fact",
+          eventName: "fact_liked",
+        });
+      }
       await Haptics.selectionAsync();
     } catch {
       setActions((value) => ({ ...value, [fact.id]: current }));
@@ -191,9 +251,17 @@ export function DiscoverScreen({ initialFact, onRequireAuth }: DiscoverScreenPro
 
     const current = actions[fact.id] ?? { liked: false, saved: false };
     setActions((value) => ({ ...value, [fact.id]: { ...current, saved: !current.saved } }));
+    markMobileFactReadInteraction(factReadTokenRef.current);
 
     try {
       await toggleSave(fact.id, current.saved);
+      if (!current.saved) {
+        void trackMobileAnalyticsEvent({
+          entityId: fact.id,
+          entityType: "fact",
+          eventName: "fact_saved",
+        });
+      }
       await Haptics.selectionAsync();
     } catch {
       setActions((value) => ({ ...value, [fact.id]: current }));
@@ -231,7 +299,23 @@ export function DiscoverScreen({ initialFact, onRequireAuth }: DiscoverScreenPro
             actions={actions[item.id] ?? { liked: false, saved: false }}
             fact={item}
             height={cardHeight}
-            onShare={() => void shareFactImage(item)}
+            onShare={() => {
+              markMobileFactReadInteraction(factReadTokenRef.current);
+              void trackMobileAnalyticsEvent({
+                entityId: item.id,
+                entityType: "fact",
+                eventName: "fact_shared",
+              });
+              void shareFactImage(item);
+            }}
+            onSourcePress={() => {
+              markMobileFactReadInteraction(factReadTokenRef.current);
+              void trackMobileAnalyticsEvent({
+                entityId: item.id,
+                entityType: "fact",
+                eventName: "source_clicked",
+              });
+            }}
             onToggleLike={() => void handleToggleLike(item)}
             onToggleSave={() => void handleToggleSave(item)}
           />

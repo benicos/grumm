@@ -1,6 +1,6 @@
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
-import { Bookmark, Check, ChevronLeft, Flame, Heart, Layers3, Pencil, X } from "lucide-react-native";
+import { Bookmark, Check, ChevronLeft, Eye, Flame, Heart, Layers3, Pencil, Target, X } from "lucide-react-native";
 import { useCallback, useEffect, useState } from "react";
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -9,9 +9,10 @@ import { GoalCelebration } from "../components/GoalCelebration";
 import { GradeIcon } from "../components/GradeIcon";
 import { LoadingState } from "../components/ScreenState";
 import { SwipeBackView } from "../components/SwipeBackView";
-import { VeloraButton } from "../components/VeloraButton";
+import { GrummButton } from "../components/GrummButton";
 import { mobileConfig, userMessages } from "../config/app";
 import { useAuth } from "../context/AuthContext";
+import { trackMobileAnalyticsEvent } from "../lib/analytics";
 import { getGoalCelebrationMessage } from "../lib/badges";
 import { getProfileSummary } from "../lib/facts";
 import { updateProfileEmail, updateProfilePassword, updateProfileSettings, type ProfileField } from "../lib/profile";
@@ -29,6 +30,10 @@ export function ProfileScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [celebration, setCelebration] = useState(false);
+
+  useEffect(() => {
+    void trackMobileAnalyticsEvent({ eventName: "profile_opened" });
+  }, []);
 
   const loadSummary = useCallback(async () => {
     if (!session) {
@@ -63,7 +68,7 @@ export function ProfileScreen() {
     return <AuthScreen />;
   }
 
-  const displayName = summary?.username ?? profile?.username ?? profile?.email ?? "Lecteur Velora";
+  const displayName = summary?.username ?? profile?.username ?? profile?.email ?? "Lecteur Grumm";
   const dailyGoal = summary?.dailyGoal ?? profile?.dailyGoal ?? mobileConfig.dailyGoal;
   const todayReadCount = summary?.todayReadCount ?? 0;
   const dailyPercent = Math.min(100, Math.round((todayReadCount / Math.max(dailyGoal, 1)) * 100));
@@ -93,7 +98,7 @@ export function ProfileScreen() {
   }
 
   return (
-    <View style={styles.root}>
+    <LinearGradient colors={["#07111f", "#101b2c", "#050812"]} style={styles.root}>
       <ScrollView contentContainerStyle={[styles.content, { paddingTop: insets.top + 18 }]} showsVerticalScrollIndicator={false}>
         <LinearGradient colors={["rgba(255,209,102,0.16)", "rgba(106,227,192,0.06)", "rgba(255,255,255,0.055)"]} style={styles.header}>
           <View style={styles.gradeRing}>
@@ -135,10 +140,10 @@ export function ProfileScreen() {
         </View>
 
         <View style={styles.statsGrid}>
-          <StatCard label="Faits lus" value={summary?.uniqueViewsCount ?? 0} />
-          <StatCard label="Faits aimés" value={summary?.likedCount ?? 0} />
-          <StatCard label="Enregistrés" value={summary?.savedCount ?? 0} />
-          <StatCard label="Objectifs atteints" value={completedGoals} />
+          <StatCard Icon={Eye} label="Faits lus" value={summary?.uniqueViewsCount ?? 0} />
+          <StatCard Icon={Heart} label="Faits aimés" value={summary?.likedCount ?? 0} />
+          <StatCard Icon={Bookmark} label="Enregistrés" value={summary?.savedCount ?? 0} />
+          <StatCard Icon={Target} label="Objectifs atteints" value={completedGoals} />
         </View>
 
         <ThemeSection themes={summary?.topThemes ?? []} />
@@ -156,12 +161,12 @@ export function ProfileScreen() {
           title="Faits enregistrés"
         />
 
-        <VeloraButton onPress={loadSummary} variant="secondary">
+        <GrummButton onPress={loadSummary} variant="secondary">
           Actualiser
-        </VeloraButton>
-        <VeloraButton onPress={signOut} variant="ghost">
+        </GrummButton>
+        <GrummButton onPress={signOut} variant="ghost">
           Se déconnecter
-        </VeloraButton>
+        </GrummButton>
       </ScrollView>
 
       <GoalCelebration
@@ -169,7 +174,7 @@ export function ProfileScreen() {
         message={getGoalCelebrationMessage(completedGoals)}
         visible={celebration}
       />
-    </View>
+    </LinearGradient>
   );
 }
 
@@ -267,9 +272,9 @@ function ProfileEditView({
           />
           <FieldError message={errors.dailyGoal} />
 
-          <VeloraButton disabled={isSubmitting === "settings"} isLoading={isSubmitting === "settings"} onPress={submitSettings}>
+          <GrummButton disabled={isSubmitting === "settings"} isLoading={isSubmitting === "settings"} onPress={submitSettings}>
             Mettre à jour
-          </VeloraButton>
+          </GrummButton>
         </View>
 
         <View style={styles.formPanel}>
@@ -284,9 +289,9 @@ function ProfileEditView({
             value={nextEmail}
           />
           <FieldError message={errors.email} />
-          <VeloraButton disabled={isSubmitting === "email"} isLoading={isSubmitting === "email"} onPress={submitEmail} variant="secondary">
+          <GrummButton disabled={isSubmitting === "email"} isLoading={isSubmitting === "email"} onPress={submitEmail} variant="secondary">
             Changer l&apos;email
-          </VeloraButton>
+          </GrummButton>
 
           <Text style={styles.formLabel}>Nouveau mot de passe</Text>
           <TextInput
@@ -298,14 +303,14 @@ function ProfileEditView({
             value={password}
           />
           <FieldError message={errors.password} />
-          <VeloraButton
+          <GrummButton
             disabled={isSubmitting === "password" || password.length === 0}
             isLoading={isSubmitting === "password"}
             onPress={submitPassword}
             variant="secondary"
           >
             Changer le mot de passe
-          </VeloraButton>
+          </GrummButton>
         </View>
 
         {message ? (
@@ -334,9 +339,12 @@ function FieldError({ message }: { message?: string }) {
   );
 }
 
-function StatCard({ label, value }: { label: string; value: number | string }) {
+function StatCard({ Icon, label, value }: { Icon: typeof Eye; label: string; value: number | string }) {
   return (
     <View style={styles.statCard}>
+      <View style={styles.statIcon}>
+        <Icon color={colors.accent} size={18} strokeWidth={2.35} />
+      </View>
       <Text numberOfLines={2} adjustsFontSizeToFit style={styles.statValue}>
         {value}
       </Text>
@@ -596,9 +604,11 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   progressPanel: {
-    backgroundColor: "rgba(255,255,255,0.045)",
-    borderBottomColor: "rgba(255,255,255,0.12)",
-    borderBottomWidth: 1,
+    backgroundColor: "rgba(255,255,255,0.06)",
+    borderColor: "rgba(255,255,255,0.12)",
+    borderRadius: 24,
+    borderWidth: 1,
+    paddingHorizontal: 18,
     paddingVertical: 18,
   },
   progressTrack: {
@@ -631,10 +641,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   profileSection: {
-    backgroundColor: "rgba(255,255,255,0.035)",
-    borderBottomColor: "rgba(255,255,255,0.11)",
-    borderBottomWidth: 1,
+    backgroundColor: "rgba(255,255,255,0.05)",
+    borderColor: "rgba(255,255,255,0.11)",
+    borderRadius: 24,
+    borderWidth: 1,
     gap: 14,
+    paddingHorizontal: 18,
     paddingVertical: 18,
   },
   sectionHeader: {
@@ -648,13 +660,25 @@ const styles = StyleSheet.create({
     fontWeight: "900",
   },
   statCard: {
-    backgroundColor: "rgba(255,255,255,0.045)",
-    borderBottomColor: "rgba(255,255,255,0.12)",
-    borderBottomWidth: 1,
+    backgroundColor: "rgba(255,255,255,0.06)",
+    borderColor: "rgba(255,255,255,0.12)",
+    borderRadius: 22,
+    borderWidth: 1,
     flexGrow: 1,
     minHeight: 104,
     minWidth: "45%",
     padding: 16,
+  },
+  statIcon: {
+    alignItems: "center",
+    backgroundColor: "rgba(255,209,102,0.10)",
+    borderColor: "rgba(255,209,102,0.20)",
+    borderRadius: 14,
+    borderWidth: 1,
+    height: 36,
+    justifyContent: "center",
+    marginBottom: 12,
+    width: 36,
   },
   statLabel: {
     color: colors.muted,

@@ -6,7 +6,7 @@ type BrowserSupabaseClient = SupabaseClient<Database>;
 let browserClient: BrowserSupabaseClient | null = null;
 
 const globalSupabase = globalThis as typeof globalThis & {
-  __veloraSupabaseBrowserClient?: BrowserSupabaseClient;
+  __grummSupabaseBrowserClient?: BrowserSupabaseClient;
 };
 
 function isBrowserSafeSupabaseKey(key?: string) {
@@ -29,8 +29,8 @@ export function createSupabaseBrowserClient() {
     return browserClient;
   }
 
-  if (globalSupabase.__veloraSupabaseBrowserClient) {
-    browserClient = globalSupabase.__veloraSupabaseBrowserClient;
+  if (globalSupabase.__grummSupabaseBrowserClient) {
+    browserClient = globalSupabase.__grummSupabaseBrowserClient;
     return browserClient;
   }
 
@@ -48,7 +48,7 @@ export function createSupabaseBrowserClient() {
       detectSessionInUrl: true,
     },
   });
-  globalSupabase.__veloraSupabaseBrowserClient = browserClient;
+  globalSupabase.__grummSupabaseBrowserClient = browserClient;
 
   return browserClient;
 }

@@ -11,7 +11,7 @@ export default function Footer() {
             className="inline-flex items-center gap-3 text-[1.05rem] font-extrabold tracking-[-0.04em]"
           >
             <span className="grid h-9 w-9 place-items-center rounded-[12px] bg-gradient-to-br from-[#ffd166] to-[#6ae3c0] font-black text-[#06111d] shadow-[0_10px_30px_rgba(255,209,102,0.18)]">
-              V
+              G
             </span>
             <span>{siteConfig.name}</span>
           </Link>

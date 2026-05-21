@@ -1,1 +1,5 @@
-export { default, metadata } from "../login/page";
+import { redirect } from "next/navigation";
+
+export default function LegacyConnexionPage() {
+  redirect("/login");
+}

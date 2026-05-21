@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { BookOpen, Clock, Eye, Layers3, Target, Users } from "lucide-react";
 import { useEffect, useState } from "react";
 import {
   FACT_STATUS_LABELS,
@@ -29,6 +30,15 @@ function formatDate(value: string) {
     timeStyle: "short",
   }).format(new Date(value));
 }
+
+const dashboardStatIcons = {
+  "En attente": Clock,
+  Faits: BookOpen,
+  "Objectifs aujourd'hui": Target,
+  "Thèmes": Layers3,
+  Utilisateurs: Users,
+  "Vues uniques": Eye,
+} as const;
 
 export default function AdminDashboardPage() {
   const [data, setData] = useState<AdminDashboardData | null>(null);
@@ -125,6 +135,18 @@ export default function AdminDashboardPage() {
           <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-6">
             {data.stats.map((stat) => (
               <AdminPanel key={stat.label} className="p-5">
+                {(() => {
+                  const Icon =
+                    dashboardStatIcons[
+                      stat.label as keyof typeof dashboardStatIcons
+                    ] ?? BookOpen;
+
+                  return (
+                    <div className="mb-4 grid h-10 w-10 place-items-center rounded-md border border-amber-300/20 bg-amber-300/10 text-amber-200">
+                      <Icon className="h-5 w-5" aria-hidden="true" />
+                    </div>
+                  );
+                })()}
                 <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">
                   {stat.label}
                 </p>
@@ -250,6 +272,7 @@ export default function AdminDashboardPage() {
                   ["Valider les faits", "/admin/facts/pending"],
                   ["Gérer les thèmes", "/admin/themes"],
                   ["Gérer les utilisateurs", "/admin/users"],
+                  ["Analytics interne", "/admin/analytics"],
                   ["Rôles et permissions", "/admin/roles"],
                   ["Grades", "/admin/grades"],
                 ].map(([label, href]) => (

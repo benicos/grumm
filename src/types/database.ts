@@ -289,6 +289,126 @@ export type Database = {
         };
         Relationships: [];
       };
+      analytics_sessions: {
+        Row: {
+          id: string;
+          user_id: string | null;
+          anonymous_id: string | null;
+          platform: "web" | "ios";
+          started_at: string;
+          ended_at: string | null;
+          duration_seconds: number | null;
+          pages_viewed: number;
+          facts_viewed: number;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id?: string | null;
+          anonymous_id?: string | null;
+          platform: "web" | "ios";
+          started_at?: string;
+          ended_at?: string | null;
+          duration_seconds?: number | null;
+          pages_viewed?: number;
+          facts_viewed?: number;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string | null;
+          anonymous_id?: string | null;
+          platform?: "web" | "ios";
+          started_at?: string;
+          ended_at?: string | null;
+          duration_seconds?: number | null;
+          pages_viewed?: number;
+          facts_viewed?: number;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      analytics_events: {
+        Row: {
+          id: string;
+          session_id: string | null;
+          user_id: string | null;
+          anonymous_id: string | null;
+          event_name: string;
+          entity_type: string | null;
+          entity_id: string | null;
+          metadata: Json;
+          platform: "web" | "ios";
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          session_id?: string | null;
+          user_id?: string | null;
+          anonymous_id?: string | null;
+          event_name: string;
+          entity_type?: string | null;
+          entity_id?: string | null;
+          metadata?: Json;
+          platform: "web" | "ios";
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          session_id?: string | null;
+          user_id?: string | null;
+          anonymous_id?: string | null;
+          event_name?: string;
+          entity_type?: string | null;
+          entity_id?: string | null;
+          metadata?: Json;
+          platform?: "web" | "ios";
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      fact_read_events: {
+        Row: {
+          id: string;
+          session_id: string | null;
+          user_id: string | null;
+          anonymous_id: string | null;
+          fact_id: string;
+          platform: "web" | "ios";
+          started_at: string;
+          ended_at: string | null;
+          duration_seconds: number | null;
+          completed: boolean;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          session_id?: string | null;
+          user_id?: string | null;
+          anonymous_id?: string | null;
+          fact_id: string;
+          platform: "web" | "ios";
+          started_at: string;
+          ended_at?: string | null;
+          duration_seconds?: number | null;
+          completed?: boolean;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          session_id?: string | null;
+          user_id?: string | null;
+          anonymous_id?: string | null;
+          fact_id?: string;
+          platform?: "web" | "ios";
+          started_at?: string;
+          ended_at?: string | null;
+          duration_seconds?: number | null;
+          completed?: boolean;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
       roles: {
         Row: {
           slug: string;

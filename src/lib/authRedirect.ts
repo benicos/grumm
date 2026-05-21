@@ -1,4 +1,4 @@
-const AUTH_REDIRECT_KEY = "velora:authRedirect";
+const AUTH_REDIRECT_KEY = "grumm:authRedirect";
 
 function isSafePath(path: string | null): path is string {
   return Boolean(path && path.startsWith("/") && !path.startsWith("//"));

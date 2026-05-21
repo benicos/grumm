@@ -65,7 +65,7 @@ export default async function OpenGraphImage({
               V
             </div>
             <div style={{ fontSize: 32, fontWeight: 900, letterSpacing: -1 }}>
-              Velora
+              Grumm.
             </div>
           </div>
           <div

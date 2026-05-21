@@ -7,6 +7,13 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { discoverConfig, userMessages } from "@/config/app";
 import {
+  finishFactRead,
+  markFactReadInteraction,
+  startFactRead,
+  trackAnalyticsEvent,
+  type FactReadToken,
+} from "@/lib/analytics/web";
+import {
   DEFAULT_DAILY_GOAL,
   DISCOVER_FEED_BATCH_SIZE,
   getFeedFacts,
@@ -105,7 +112,7 @@ type FactFeedProps = {
 const RECENT_FEED_STORAGE_LIMIT = discoverConfig.recentFeedStorageLimit;
 
 function getFeedStorageKey(scope: string) {
-  return `velora:recentFeedFacts:${scope}`;
+  return `grumm:recentFeedFacts:${scope}`;
 }
 
 function getRememberedFactIds(scope: string) {
@@ -189,6 +196,7 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
   const [currentStep, setCurrentStep] = useState(0);
   const [dragOffset, setDragOffset] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
+  const [showSwipeHint, setShowSwipeHint] = useState(true);
   const [liked, setLiked] = useState<string[]>([]);
   const [saved, setSaved] = useState<string[]>([]);
   const [dailyProgress, setDailyProgress] = useState({
@@ -209,6 +217,9 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
   const feedRequestIdRef = useRef(0);
   const isMountedRef = useRef(false);
   const loadedResetKeyRef = useRef<string | null>(null);
+  const factReadTokenRef = useRef<FactReadToken | null>(null);
+  const hasSwipedRef = useRef(false);
+  const swipeHintTimerRef = useRef<number | null>(null);
 
   const hasFacts = facts.length > 0;
   const activeFactIndex = hasFacts ? Math.min(currentStep, facts.length - 1) : 0;
@@ -243,7 +254,14 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
       const maxStep = Math.max(facts.length - 1, 0);
       const nextStep = Math.max(current + direction, 0);
 
-      return Math.min(nextStep, maxStep);
+      const resolvedStep = Math.min(nextStep, maxStep);
+
+      if (resolvedStep !== current) {
+        hasSwipedRef.current = true;
+        setShowSwipeHint(false);
+      }
+
+      return resolvedStep;
     });
     setDragOffset(0);
     dragOffsetRef.current = 0;
@@ -261,6 +279,7 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
     setter: Dispatch<SetStateAction<string[]>>,
     enableAction: (factId: string) => Promise<{ ok: boolean }>,
     disableAction: (factId: string) => Promise<{ ok: boolean }>,
+    analyticsEventName: "fact_liked" | "fact_saved",
   ) => {
     if (!isAuthenticated) {
       rememberAuthRedirect(window.location.pathname);
@@ -270,6 +289,7 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
     }
 
     toggleAction(factId, setter);
+    markFactReadInteraction(factReadTokenRef.current);
 
     try {
       const result = isActive
@@ -280,6 +300,15 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
         toggleAction(factId, setter);
         rememberAuthRedirect(window.location.pathname);
         router.push("/login");
+        return;
+      }
+
+      if (!isActive) {
+        void trackAnalyticsEvent({
+          entityId: factId,
+          entityType: "fact",
+          eventName: analyticsEventName,
+        });
       }
     } catch {
       toggleAction(factId, setter);
@@ -288,6 +317,7 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
   };
 
   const openFactDetail = (fact: FeedFact) => {
+    markFactReadInteraction(factReadTokenRef.current);
     router.push(`/fact/${fact.slug || fact.id}`);
   };
 
@@ -296,6 +326,12 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
       return;
     }
 
+    markFactReadInteraction(factReadTokenRef.current);
+    void trackAnalyticsEvent({
+      entityId: activeFact.id,
+      entityType: "fact",
+      eventName: "fact_shared",
+    });
     setSharedFact(activeFact);
   };
 
@@ -308,6 +344,8 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
 
       if (isReset) {
         loadedFactIdsRef.current = [];
+        hasSwipedRef.current = false;
+        setShowSwipeHint(true);
         setHasMoreFacts(true);
         setIsUnknownTheme(false);
         setCurrentStep(0);
@@ -569,6 +607,76 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
   }, [activeFact?.id, isAuthenticated, isLoadingAuth, profile?.daily_goal]);
 
   useEffect(() => {
+    let cancelled = false;
+    const previousToken = factReadTokenRef.current;
+
+    factReadTokenRef.current = null;
+    void finishFactRead(previousToken);
+
+    if (!activeFact?.id || isLoadingFacts) {
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    startFactRead(activeFact.id)
+      .then((token) => {
+        if (cancelled) {
+          void finishFactRead(token);
+          return;
+        }
+
+        factReadTokenRef.current = token;
+      })
+      .catch(() => undefined);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeFact?.id, isLoadingFacts]);
+
+  useEffect(() => {
+    if (swipeHintTimerRef.current !== null) {
+      window.clearTimeout(swipeHintTimerRef.current);
+      swipeHintTimerRef.current = null;
+    }
+
+    if (!hasSwipedRef.current || isLoadingFacts || !activeFact?.id) {
+      return;
+    }
+
+    setShowSwipeHint(false);
+    swipeHintTimerRef.current = window.setTimeout(() => {
+      setShowSwipeHint(true);
+      swipeHintTimerRef.current = null;
+    }, 4000);
+
+    return () => {
+      if (swipeHintTimerRef.current !== null) {
+        window.clearTimeout(swipeHintTimerRef.current);
+        swipeHintTimerRef.current = null;
+      }
+    };
+  }, [activeFact?.id, isLoadingFacts]);
+
+  useEffect(() => {
+    const handleHidden = () => {
+      if (document.visibilityState === "hidden") {
+        void finishFactRead(factReadTokenRef.current);
+        factReadTokenRef.current = null;
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleHidden);
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleHidden);
+      void finishFactRead(factReadTokenRef.current);
+      factReadTokenRef.current = null;
+    };
+  }, []);
+
+  useEffect(() => {
     const resetWheelDelta = () => {
       wheelDeltaRef.current = 0;
       wheelResetTimer.current = null;
@@ -730,6 +838,16 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
                 <div className="flex flex-wrap items-center gap-3">
                   <Link
                     href={`/discover/theme/${fact.categorySlug}`}
+                    onClick={() =>
+                      void trackAnalyticsEvent({
+                        entityType: "category",
+                        eventName: "category_opened",
+                        metadata: {
+                          name: fact.category,
+                          slug: fact.categorySlug,
+                        },
+                      })
+                    }
                     className="w-fit rounded-full border border-white/15 bg-white/10 px-4 py-2 text-xs font-bold uppercase tracking-[0.22em] text-white/85 backdrop-blur-xl transition hover:-translate-y-0.5 hover:border-white/25 hover:bg-white/15"
                   >
                     {fact.category}
@@ -765,6 +883,7 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
                             setLiked,
                             likeFact,
                             unlikeFact,
+                            "fact_liked",
                           )
                         }
                         className={`grid h-14 w-14 place-items-center rounded-full border border-white/15 backdrop-blur-xl transition hover:scale-105 ${
@@ -786,6 +905,7 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
                             setSaved,
                             saveFact,
                             unsaveFact,
+                            "fact_saved",
                           )
                         }
                         className={`grid h-14 w-14 place-items-center rounded-full border border-white/15 backdrop-blur-xl transition hover:scale-105 ${
@@ -848,11 +968,19 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
                   )}
 
                   <div data-fact-source>
-                    <FactSource
-                      accent={fact.accent}
-                      source={fact.source}
-                      sourceUrl={fact.sourceUrl}
-                    />
+                  <FactSource
+                    accent={fact.accent}
+                    onSourceClick={() => {
+                      markFactReadInteraction(factReadTokenRef.current);
+                      void trackAnalyticsEvent({
+                        entityId: fact.id,
+                        entityType: "fact",
+                        eventName: "source_clicked",
+                      });
+                    }}
+                    source={fact.source}
+                    sourceUrl={fact.sourceUrl}
+                  />
                   </div>
                 </div>
 
@@ -870,6 +998,7 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
                         setLiked,
                         likeFact,
                         unlikeFact,
+                        "fact_liked",
                       )
                     }
                     className={`grid h-14 w-14 place-items-center rounded-full border border-white/15 backdrop-blur-xl transition hover:scale-105 ${
@@ -891,6 +1020,7 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
                         setSaved,
                         saveFact,
                         unsaveFact,
+                        "fact_saved",
                       )
                     }
                     className={`grid h-14 w-14 place-items-center rounded-full border border-white/15 backdrop-blur-xl transition hover:scale-105 ${
@@ -1004,18 +1134,22 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
         </div>
       )}
 
-      <div className="pointer-events-none fixed inset-x-0 bottom-6 z-30 flex justify-center px-5">
-        <div className="flex items-center gap-3 rounded-full border border-white/10 bg-black/25 px-4 py-3 text-sm text-white/65 backdrop-blur-xl">
-          <span className="h-7 w-[1px] overflow-hidden rounded-full bg-white/25">
-            <span className="block h-3 w-full animate-[pulse_1.2s_ease-in-out_infinite] rounded-full bg-white" />
-          </span>
-          {isLoadingMoreFacts
-            ? "Chargement..."
-            : hasMoreFacts || activeFactIndex < facts.length - 1
-              ? "Swipe pour continuer"
-              : "Fin du flux pour cette session"}
+      {(showSwipeHint ||
+        isLoadingMoreFacts ||
+        (!hasMoreFacts && activeFactIndex >= facts.length - 1)) && (
+        <div className="pointer-events-none fixed inset-x-0 bottom-6 z-30 flex justify-center px-5">
+          <div className="grumm-scroll-float flex items-center gap-3 rounded-full border border-white/10 bg-black/25 px-4 py-3 text-sm text-white/65 backdrop-blur-xl">
+            <span className="h-7 w-[1px] overflow-hidden rounded-full bg-white/25">
+              <span className="block h-3 w-full animate-[pulse_1.2s_ease-in-out_infinite] rounded-full bg-white" />
+            </span>
+            {isLoadingMoreFacts
+              ? "Chargement..."
+              : hasMoreFacts || activeFactIndex < facts.length - 1
+                ? "Swiper pour continuer"
+                : "Fin du flux pour cette session"}
+          </div>
         </div>
-      </div>
+      )}
 
       <style jsx>{`
         @keyframes confettiFloat {

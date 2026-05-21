@@ -2,7 +2,9 @@
 
 import { Inter } from "next/font/google";
 import Link from "next/link";
+import { Bookmark, Eye, Heart, Layers3, Mail, Pencil, Target, Trophy } from "lucide-react";
 import { useEffect, useState } from "react";
+import { trackAnalyticsEvent } from "@/lib/analytics/web";
 import { getBadgeInfo } from "@/lib/badges";
 import { getUserProfileSummary } from "@/lib/profile";
 import type { UserProfileSummary } from "@/lib/profile";
@@ -22,6 +24,12 @@ const inter = Inter({
 });
 
 const FACTS_PER_PAGE = 5;
+const profileStatIcons = {
+  completedGoals: Target,
+  liked: Heart,
+  saved: Bookmark,
+  viewed: Eye,
+};
 
 function ProfileSkeleton() {
   return (
@@ -51,7 +59,10 @@ function ProgressPanel({ profile }: { profile: UserProfileSummary }) {
       <div className="flex min-h-[148px] flex-col justify-between rounded-lg border border-white/10 bg-white/[0.055] p-5 shadow-2xl backdrop-blur-xl">
         <div className="flex items-center justify-between gap-4 text-sm">
           <div>
-            <p className="font-bold text-white">Progression quotidienne</p>
+            <p className="flex items-center gap-2 font-bold text-white center">
+              <Target className="h-4 w-4 text-[#ffd166]" aria-hidden="true" />
+              Progression quotidienne
+            </p>
             <p className="mt-1 text-xs text-white/45">
               Faits uniques vus aujourd&apos;hui
             </p>
@@ -76,7 +87,10 @@ function ProgressPanel({ profile }: { profile: UserProfileSummary }) {
       <div className="flex min-h-[148px] flex-col justify-between rounded-lg border border-white/10 bg-white/[0.04] p-5 shadow-2xl backdrop-blur-xl">
         <div className="flex items-center justify-between gap-4 text-sm">
           <div>
-            <p className="font-bold text-white">Prochain grade</p>
+            <p className="flex items-center gap-2 font-bold text-white">
+              <Trophy className="h-4 w-4 text-[#ffd166]" aria-hidden="true" />
+              Prochain grade
+            </p>
             <p className="mt-1 text-xs text-white/45">
               {badge.nextThreshold
                 ? `Cap vers ${badge.nextThreshold} objectifs`
@@ -112,7 +126,10 @@ function ThemeInsightsPanel({ profile }: { profile: UserProfileSummary }) {
       <div className="flex items-center justify-between gap-4">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#ffd166]">
-            Thèmes vus
+            <span className="inline-flex items-center gap-2">
+              <Layers3 className="h-4 w-4" aria-hidden="true" />
+              Thèmes vus
+            </span>
           </p>
           <h2 className="mt-2 text-xl font-extrabold tracking-[-0.04em]">
             Tes thèmes les plus consultés
@@ -155,6 +172,32 @@ function ThemeInsightsPanel({ profile }: { profile: UserProfileSummary }) {
         </div>
       )}
     </section>
+  );
+}
+
+function ProfileStatCard({
+  label,
+  type,
+  value,
+}: {
+  label: string;
+  type: keyof typeof profileStatIcons;
+  value: number;
+}) {
+  const Icon = profileStatIcons[type];
+
+  return (
+    <div className="rounded-lg border border-white/10 bg-white/[0.055] p-5 shadow-2xl backdrop-blur-xl">
+      <div className="grid h-11 w-11 place-items-center rounded-[14px] border border-[#ffd166]/20 bg-[#ffd166]/10 text-[#ffd166]">
+        <Icon className="h-5 w-5" aria-hidden="true" />
+      </div>
+      <p className="mt-4 text-4xl font-extrabold tracking-[-0.05em]">
+        {value}
+      </p>
+      <p className="mt-2 text-xs font-bold uppercase tracking-[0.2em] text-white/50">
+        {label}
+      </p>
+    </div>
   );
 }
 
@@ -253,6 +296,10 @@ function ProfileContent() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    void trackAnalyticsEvent({ eventName: "profile_opened" });
+  }, []);
+
+  useEffect(() => {
     let isMounted = true;
 
     async function loadProfile() {
@@ -344,7 +391,10 @@ function ProfileContent() {
                     {gradeTitle}
                   </p>
                   {profile.email && (
-                    <p className="mt-2 text-sm text-white/45">{profile.email}</p>
+                    <p className="mt-2 flex items-center gap-2 text-sm font-semibold text-white/45">
+                      <Mail className="h-4 w-4" aria-hidden="true" />
+                      {profile.email}
+                    </p>
                   )}
                 </div>
 
@@ -352,30 +402,17 @@ function ProfileContent() {
                   href="/profile/edit"
                   className={premiumPrimaryCtaClassName}
                 >
+                  <Pencil className="mr-2 h-4 w-4" aria-hidden="true" />
                   Modifier le profil
                 </Link>
               </div>
             </section>
 
             <section className="grid gap-4 lg:grid-cols-4">
-              {[
-                ["Faits aimes", profile.likedCount],
-                ["Faits enregistrés", profile.savedCount],
-                ["Faits uniques vus", profile.uniqueViewsCount],
-                ["Objectifs realises", profile.completedDailyGoals],
-              ].map(([label, value]) => (
-                <div
-                  key={label}
-                  className="rounded-lg border border-white/10 bg-white/[0.055] p-5 shadow-2xl backdrop-blur-xl"
-                >
-                  <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#ffd166]">
-                    {label}
-                  </p>
-                  <p className="mt-4 text-4xl font-extrabold tracking-[-0.05em]">
-                    {value}
-                  </p>
-                </div>
-              ))}
+              <ProfileStatCard label="Faits aimés" type="liked" value={profile.likedCount} />
+              <ProfileStatCard label="Faits enregistrés" type="saved" value={profile.savedCount} />
+              <ProfileStatCard label="Faits vus" type="viewed" value={profile.uniqueViewsCount} />
+              <ProfileStatCard label="Objectifs atteints" type="completedGoals" value={profile.completedDailyGoals} />
             </section>
 
             <ProgressPanel profile={profile} />

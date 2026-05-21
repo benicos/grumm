@@ -10,17 +10,17 @@ export default function ContactPage() {
     <InfoPageShell
       eyebrow="Contact"
       title="Une question, une idée, une correction."
-      intro="Velora est conçu pour rester clair et fiable. Les retours éditoriaux, techniques ou produit sont les bienvenus."
+      intro="Grumm est conçu pour rester clair et fiable. Les retours éditoriaux, techniques ou produit sont les bienvenus."
     >
       <section>
         <h2 className="text-xl font-extrabold text-white">Nous écrire</h2>
         <p className="mt-3">
           Pour une question générale ou une demande liée à ton compte, écris à{" "}
           <a
-            href="mailto:contact@velora.app"
+            href="mailto:contact@grumm.app"
             className="font-bold text-[#ffd166] underline decoration-white/0 underline-offset-4 transition hover:decoration-[#ffd166]/70"
           >
-            contact@velora.app
+            contact@grumm.app
           </a>
           .
         </p>

@@ -4,7 +4,7 @@ import { StyleSheet, Text, View } from "react-native";
 
 import { colors } from "../theme/colors";
 import type { FeedFact } from "../types/domain";
-import { VeloraLogo } from "./VeloraLogo";
+import { GrummLogo } from "./GrummLogo";
 
 type FactShareStoryProps = {
   fact: FeedFact;
@@ -29,9 +29,9 @@ export const FactShareStory = forwardRef<View, FactShareStoryProps>(({ fact }, r
 
       <View style={styles.header}>
         <View style={styles.logoMark}>
-          <VeloraLogo size={30} />
+          <GrummLogo size={30} />
         </View>
-        <Text style={styles.brand}>Velora</Text>
+        <Text style={styles.brand}>Grumm.</Text>
       </View>
 
       <View style={styles.body}>
@@ -52,7 +52,7 @@ export const FactShareStory = forwardRef<View, FactShareStoryProps>(({ fact }, r
         <Text style={styles.source} numberOfLines={2}>
           Source : {fact.source}
         </Text>
-        <Text style={styles.url}>velora.app</Text>
+        <Text style={styles.url}>grumm.app</Text>
       </View>
     </LinearGradient>
   </View>

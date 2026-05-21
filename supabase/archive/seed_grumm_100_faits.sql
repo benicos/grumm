@@ -1,4 +1,4 @@
--- Seed Velora : catégories + 100 faits publiés
+-- Seed Grumm : catégories + 100 faits publiés
 -- À exécuter dans Supabase SQL Editor.
 -- La requête est idempotente pour les catégories et évite de réinsérer un fait si son slug existe déjà.
 

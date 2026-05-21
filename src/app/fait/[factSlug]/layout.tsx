@@ -1,4 +1,7 @@
-export {
-  default,
-  generateMetadata,
-} from "../../fact/[factSlug]/layout";
+export default function LegacyFactLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return children;
+}

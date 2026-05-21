@@ -102,7 +102,7 @@ export function logAppError(error: unknown, context?: ErrorContext) {
     return;
   }
 
-  console.warn("[Velora]", formatAppError(error, { context }), error);
+  console.warn("[Grumm]", formatAppError(error, { context }), error);
 }
 
 export function getConfiguredErrorMessage() {

@@ -4,7 +4,7 @@ import { type ReactNode, useMemo, useState } from "react";
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { VeloraButton } from "../components/VeloraButton";
+import { GrummButton } from "../components/GrummButton";
 import { useAuth } from "../context/AuthContext";
 import { getUsernameValidationMessage, normalizeUsername } from "../lib/slug";
 import { colors } from "../theme/colors";
@@ -59,7 +59,7 @@ export function AuthScreen() {
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.header}>
-            <Text style={styles.eyebrow}>Compte Velora</Text>
+            <Text style={styles.eyebrow}>Compte Grumm.</Text>
             <Text style={styles.title}>{isLogin ? "Reprendre ta découverte" : "Créer ton accès"}</Text>
             <Text style={styles.copy}>
               {isLogin
@@ -119,10 +119,10 @@ export function AuthScreen() {
           {error ? <Text style={styles.error}>{error}</Text> : null}
 
           <View style={styles.actions}>
-            <VeloraButton disabled={!email || password.length < 6 || (!isLogin && !username)} isLoading={isSubmitting} onPress={submit}>
+            <GrummButton disabled={!email || password.length < 6 || (!isLogin && !username)} isLoading={isSubmitting} onPress={submit}>
               {isLogin ? "Se connecter" : "Créer le compte"}
-            </VeloraButton>
-            <VeloraButton
+            </GrummButton>
+            <GrummButton
               onPress={() => {
                 setError(null);
                 setMode(isLogin ? "register" : "login");
@@ -130,7 +130,7 @@ export function AuthScreen() {
               variant="ghost"
             >
               {isLogin ? "Créer un compte" : "J'ai déjà un compte"}
-            </VeloraButton>
+            </GrummButton>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>

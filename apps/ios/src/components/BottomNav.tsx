@@ -3,7 +3,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { colors } from "../theme/colors";
-import { VeloraLogo } from "./VeloraLogo";
+import { GrummLogo } from "./GrummLogo";
 
 export type MobileTab = "discover" | "explore" | "saved" | "profile";
 
@@ -28,7 +28,7 @@ export function BottomNav({ activeTab, onChange }: BottomNavProps) {
         ))}
 
         <View pointerEvents="none" style={styles.logoSlot}>
-          <VeloraLogo size={48} />
+          <GrummLogo size={48} />
         </View>
 
         {tabs.slice(2).map((tab) => (

@@ -88,7 +88,7 @@ export async function getFactMetadataBySlug(slug: string) {
   if (!supabase) {
     return {
       title: fallbackTitle,
-      description: "Un fait court et mémorable à découvrir sur Velora.",
+      description: "Un fait court et mémorable à découvrir sur Grumm.",
       themeName: null,
       themeSlug: null,
       canonicalPath: `/fact/${slug}`,
@@ -109,7 +109,7 @@ export async function getFactMetadataBySlug(slug: string) {
   return {
     title: data?.title ?? fallbackTitle,
     description: stripToDescription(
-      data?.hook || data?.content || "Un fait court et mémorable à découvrir sur Velora.",
+      data?.hook || data?.content || "Un fait court et mémorable à découvrir sur Grumm.",
     ),
     themeName: category?.name ?? null,
     themeSlug: category?.slug ?? null,

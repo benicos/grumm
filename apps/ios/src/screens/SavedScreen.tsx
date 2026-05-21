@@ -1,4 +1,5 @@
 import * as Haptics from "expo-haptics";
+import { LinearGradient } from "expo-linear-gradient";
 import { Bookmark, Share2 } from "lucide-react-native";
 import { useCallback, useEffect, useState } from "react";
 import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
@@ -6,7 +7,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { FactDetailView } from "../components/FactDetailView";
 import { LoadingState, ScreenState } from "../components/ScreenState";
-import { VeloraButton } from "../components/VeloraButton";
+import { GrummButton } from "../components/GrummButton";
 import { userMessages } from "../config/app";
 import { useAuth } from "../context/AuthContext";
 import { getFactActions, getSavedFacts, toggleLike, toggleSave } from "../lib/facts";
@@ -134,7 +135,7 @@ export function SavedScreen({ onRequireAuth }: SavedScreenProps) {
   }
 
   return (
-    <View style={[styles.wrap, { paddingTop: insets.top + 18 }]}>
+    <LinearGradient colors={["#07111f", "#101b2c", "#050812"]} style={[styles.wrap, { paddingTop: insets.top + 18 }]}>
       <View style={styles.header}>
         <Text style={styles.eyebrow}>Bibliothèque</Text>
         <Text style={styles.title}>Enregistrés</Text>
@@ -162,20 +163,20 @@ export function SavedScreen({ onRequireAuth }: SavedScreenProps) {
                 <Share2 color={colors.accent} size={16} strokeWidth={2.3} />
                 <Text style={styles.smallActionText}>Partager</Text>
               </Pressable>
-              <VeloraButton
+              <GrummButton
                 onPress={() => void handleToggleSave(item)}
                 style={styles.removeButton}
                 variant="secondary"
               >
                 Retirer
-              </VeloraButton>
+              </GrummButton>
             </View>
           </Pressable>
         )}
         showsVerticalScrollIndicator={false}
       />
       {shareStoryNode}
-    </View>
+    </LinearGradient>
   );
 }
 
@@ -188,10 +189,11 @@ const styles = StyleSheet.create({
     marginTop: 18,
   },
   card: {
-    backgroundColor: "rgba(255,255,255,0.045)",
-    borderBottomColor: "rgba(255,255,255,0.12)",
-    borderBottomWidth: 1,
-    paddingHorizontal: 4,
+    backgroundColor: "rgba(255,255,255,0.06)",
+    borderColor: "rgba(255,255,255,0.12)",
+    borderRadius: 24,
+    borderWidth: 1,
+    paddingHorizontal: 18,
     paddingVertical: 18,
   },
   cardText: {

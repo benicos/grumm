@@ -1,4 +1,4 @@
--- Seed Velora : hooks corrigés + 100 nouveaux faits
+-- Seed Grumm : hooks corrigés + 100 nouveaux faits
 -- Généré à partir de l’export fourni par l’utilisateur. À exécuter dans Supabase SQL Editor.
 BEGIN;
 

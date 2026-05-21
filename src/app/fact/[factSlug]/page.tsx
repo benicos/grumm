@@ -4,6 +4,14 @@ import { Inter } from "next/font/google";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { useRef } from "react";
+import {
+  finishFactRead,
+  markFactReadInteraction,
+  startFactRead,
+  trackAnalyticsEvent,
+  type FactReadToken,
+} from "@/lib/analytics/web";
 import {
   DEFAULT_DAILY_GOAL,
   getFactBySlug,
@@ -57,6 +65,7 @@ export default function FactDetailPage() {
   const [saved, setSaved] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [sharedFact, setSharedFact] = useState<FeedFact | null>(null);
+  const factReadTokenRef = useRef<FactReadToken | null>(null);
 
   const showNotice = (message: string) => {
     setNotice(message);
@@ -127,6 +136,36 @@ export default function FactDetailPage() {
     );
   }, [fact?.id, isAuthenticated, isLoading, profile?.daily_goal]);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    void finishFactRead(factReadTokenRef.current);
+    factReadTokenRef.current = null;
+
+    if (!fact?.id) {
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    startFactRead(fact.id)
+      .then((token) => {
+        if (cancelled) {
+          void finishFactRead(token);
+          return;
+        }
+
+        factReadTokenRef.current = token;
+      })
+      .catch(() => undefined);
+
+    return () => {
+      cancelled = true;
+      void finishFactRead(factReadTokenRef.current);
+      factReadTokenRef.current = null;
+    };
+  }, [fact?.id]);
+
   const toggleProtectedAction = async (
     isActive: boolean,
     setter: (value: boolean) => void,
@@ -145,6 +184,7 @@ export default function FactDetailPage() {
     }
 
     setter(!isActive);
+    markFactReadInteraction(factReadTokenRef.current);
 
     try {
       const result = isActive
@@ -154,6 +194,15 @@ export default function FactDetailPage() {
       if (!result.ok) {
         setter(isActive);
         router.push("/login");
+        return;
+      }
+
+      if (!isActive) {
+        void trackAnalyticsEvent({
+          entityId: fact.id,
+          entityType: "fact",
+          eventName: enableAction === likeFact ? "fact_liked" : "fact_saved",
+        });
       }
     } catch {
       setter(isActive);
@@ -166,6 +215,12 @@ export default function FactDetailPage() {
       return;
     }
 
+    markFactReadInteraction(factReadTokenRef.current);
+    void trackAnalyticsEvent({
+      entityId: fact.id,
+      entityType: "fact",
+      eventName: "fact_shared",
+    });
     setSharedFact(fact);
   };
 
@@ -286,6 +341,14 @@ export default function FactDetailPage() {
           <div className="mt-10">
             <FactSource
               accent={fact.accent}
+              onSourceClick={() => {
+                markFactReadInteraction(factReadTokenRef.current);
+                void trackAnalyticsEvent({
+                  entityId: fact.id,
+                  entityType: "fact",
+                  eventName: "source_clicked",
+                });
+              }}
               source={fact.source}
               sourceUrl={fact.sourceUrl}
             />

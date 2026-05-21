@@ -56,7 +56,7 @@ export default function FactShareModal({ fact, onClose }: FactShareModalProps) {
   }
 
   const activeFact = fact;
-  const fileName = `velora-${activeFact.slug}-story.png`;
+  const fileName = `grumm-${activeFact.slug}-story.png`;
   const title = truncateText(activeFact.title, 76);
   const detail = truncateText(activeFact.detail, 170);
   const source = truncateText(activeFact.source, 68);
@@ -245,7 +245,7 @@ export default function FactShareModal({ fact, onClose }: FactShareModalProps) {
                       V
                     </span>
                     <span className="text-[12px] font-black tracking-[-0.03em]">
-                      Velora
+                      Grumm.
                     </span>
                   </div>
                   <p className="max-w-[150px] text-right text-[11px] font-bold text-white/40">

@@ -5,7 +5,7 @@ const nextConfig: NextConfig = {
     return [
       {
         source: "/faits",
-        destination: "/discover",
+        destination: "/facts",
         permanent: false,
       },
       {
@@ -16,6 +16,11 @@ const nextConfig: NextConfig = {
       {
         source: "/fait/:factSlug",
         destination: "/fact/:factSlug",
+        permanent: false,
+      },
+      {
+        source: "/profil/edit",
+        destination: "/profile/edit",
         permanent: false,
       },
       {

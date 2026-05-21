@@ -3,7 +3,7 @@ import FactFeed from "./FactFeed";
 
 export const metadata: Metadata = {
   title: "Découvrir",
-  description: "Le flux Velora pour apprendre un fait court et mémorable.",
+  description: "Le flux Grumm pour apprendre un fait court et mémorable.",
 };
 
 export default function DiscoverPage() {

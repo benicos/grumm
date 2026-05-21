@@ -1,1 +1,5 @@
-export { default } from "../profile/page";
+import { redirect } from "next/navigation";
+
+export default function LegacyProfilPage() {
+  redirect("/profile");
+}

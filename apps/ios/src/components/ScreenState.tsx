@@ -1,7 +1,8 @@
-import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 
 import { colors } from "../theme/colors";
-import { VeloraButton } from "./VeloraButton";
+import { GrummButton } from "./GrummButton";
+import { GrummLoader } from "./GrummLoader";
 
 type ScreenStateProps = {
   actionLabel?: string;
@@ -15,29 +16,19 @@ export function ScreenState({ actionLabel, message, onAction, title }: ScreenSta
     <View style={styles.wrap}>
       <Text style={styles.title}>{title}</Text>
       <Text style={styles.message}>{message}</Text>
-      {actionLabel && onAction ? <VeloraButton onPress={onAction} style={styles.action}>{actionLabel}</VeloraButton> : null}
+      {actionLabel && onAction ? <GrummButton onPress={onAction} style={styles.action}>{actionLabel}</GrummButton> : null}
     </View>
   );
 }
 
-export function LoadingState({ label = "Chargement de Velora..." }: { label?: string }) {
-  return (
-    <View style={styles.wrap}>
-      <ActivityIndicator color={colors.accent} size="large" />
-      <Text style={styles.loading}>{label}</Text>
-    </View>
-  );
+export function LoadingState({ label = "Chargement de Grumm." }: { label?: string }) {
+  return <GrummLoader label={label} />;
 }
 
 const styles = StyleSheet.create({
   action: {
     marginTop: 24,
     minWidth: 190,
-  },
-  loading: {
-    color: colors.muted,
-    fontSize: 14,
-    marginTop: 18,
   },
   message: {
     color: colors.muted,

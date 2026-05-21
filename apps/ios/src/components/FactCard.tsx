@@ -11,6 +11,7 @@ type FactCardProps = {
   fact: FeedFact;
   height: number;
   onShare: () => void;
+  onSourcePress?: () => void;
   onToggleLike: () => void;
   onToggleSave: () => void;
 };
@@ -25,7 +26,7 @@ function getGradientColors(fact: FeedFact): [string, string, string] {
   return ["#07111f", fact.accent, "#050812"];
 }
 
-export function FactCard({ actions, fact, height, onShare, onToggleLike, onToggleSave }: FactCardProps) {
+export function FactCard({ actions, fact, height, onShare, onSourcePress, onToggleLike, onToggleSave }: FactCardProps) {
   const insets = useSafeAreaInsets();
   const sourceUrl = fact.sourceUrl?.trim();
 
@@ -60,7 +61,13 @@ export function FactCard({ actions, fact, height, onShare, onToggleLike, onToggl
             </View>
 
             {sourceUrl ? (
-              <Pressable onPress={() => Linking.openURL(sourceUrl)} style={styles.sourceLink}>
+              <Pressable
+                onPress={() => {
+                  onSourcePress?.();
+                  Linking.openURL(sourceUrl);
+                }}
+                style={styles.sourceLink}
+              >
                 <Text style={styles.source} numberOfLines={1}>
                   Source : {fact.source}
                 </Text>

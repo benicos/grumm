@@ -1,1 +1,7 @@
-export { default, metadata } from "../profile/layout";
+export default function LegacyProfileLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return children;
+}

@@ -80,6 +80,60 @@ export type AdminDashboardData = {
   recentProfiles: AdminProfile[];
 };
 
+export type AdminAnalyticsData = {
+  overview: {
+    anonymousVisitors: number;
+    averageSessionSeconds: number;
+    factsPerSession: number;
+    factsRead: number;
+    signedInUsers: number;
+    totalSessions: number;
+    uniqueVisitors: number;
+  };
+  platforms: {
+    count: number;
+    label: string;
+    percent: number;
+  }[];
+  engagement: {
+    interactionRate: number;
+    likes: number;
+    saves: number;
+    shares: number;
+    sourceClicks: number;
+  };
+  reading: {
+    averageReadSeconds: number;
+    completionRate: number;
+    topLikedFacts: AdminAnalyticsFactStat[];
+    topReadFacts: AdminAnalyticsFactStat[];
+    topSavedFacts: AdminAnalyticsFactStat[];
+  };
+  retention: {
+    averageReturnFrequency: number;
+    returnedAtLeast2Times: number;
+    returnedAfter7Days: number;
+  };
+  categories: {
+    bestEngagementThemes: AdminAnalyticsThemeStat[];
+    topOpenedThemes: AdminAnalyticsThemeStat[];
+  };
+};
+
+export type AdminAnalyticsFactStat = {
+  id: string;
+  slug: string;
+  title: string;
+  value: number;
+};
+
+export type AdminAnalyticsThemeStat = {
+  accent: string;
+  name: string;
+  slug: string;
+  value: number;
+};
+
 type AdminMutationResult =
   | { ok: true; message: string }
   | { ok: false; message: string };
@@ -191,6 +245,43 @@ function requirePermission(
   if (!hasPermission(auth, permission)) {
     throw new Error("Permission insuffisante.");
   }
+}
+
+async function getAdminUserIds(supabase: AdminClient) {
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("id")
+    .eq("role", "administrateur");
+
+  if (error) {
+    throwAdminError(error, "load excluded admin users", "profiles");
+  }
+
+  return new Set((data ?? []).map((profile) => profile.id));
+}
+
+function excludeAdminUsers<T extends { user_id?: string | null }>(
+  rows: T[],
+  adminUserIds: Set<string>,
+) {
+  return rows.filter((row) => !row.user_id || !adminUserIds.has(row.user_id));
+}
+
+function isAdminAnalyticsEvent(event: AnalyticsEventRow) {
+  if (event.event_name !== "page_viewed") {
+    return false;
+  }
+
+  if (
+    typeof event.metadata !== "object" ||
+    event.metadata === null ||
+    Array.isArray(event.metadata)
+  ) {
+    return false;
+  }
+
+  const path = event.metadata.path;
+  return typeof path === "string" && path.startsWith("/admin");
 }
 
 type AdminUserFactRelation = {
@@ -345,6 +436,11 @@ export async function getAdminDashboardData(): Promise<AdminDashboardData> {
 
   const today = new Date().toISOString().slice(0, 10);
   const adminRole = hasPermission(auth, "users.manage");
+  const adminUserIds = adminRole
+    ? await getAdminUserIds(auth.supabase)
+    : new Set<string>();
+  const adminUserFilter =
+    adminUserIds.size > 0 ? `(${[...adminUserIds].join(",")})` : null;
   let factsCountRequest = auth.supabase
     .from("facts")
     .select("id", { count: "exact", head: true });
@@ -363,6 +459,23 @@ export async function getAdminDashboardData(): Promise<AdminDashboardData> {
     .select(ADMIN_FACT_SELECT)
     .order("created_at", { ascending: false })
     .limit(6);
+  let viewsCountRequest = auth.supabase
+    .from("user_fact_views")
+    .select("id", { count: "exact", head: true });
+  let goalsTodayCountRequest = auth.supabase
+    .from("user_daily_progress")
+    .select("id", { count: "exact", head: true })
+    .eq("progress_date", today)
+    .eq("goal_completed", true);
+
+  if (adminUserFilter) {
+    viewsCountRequest = viewsCountRequest.not("user_id", "in", adminUserFilter);
+    goalsTodayCountRequest = goalsTodayCountRequest.not(
+      "user_id",
+      "in",
+      adminUserFilter,
+    );
+  }
 
   if (!adminRole) {
     factsCountRequest = factsCountRequest.eq("author_id", auth.user.id);
@@ -390,25 +503,21 @@ export async function getAdminDashboardData(): Promise<AdminDashboardData> {
     auth.supabase
       .from("categories")
       .select("id", { count: "exact", head: true }),
-    auth.supabase
-      .from("user_fact_views")
-      .select("id", { count: "exact", head: true }),
-    auth.supabase
-      .from("user_daily_progress")
-      .select("id", { count: "exact", head: true })
-      .eq("progress_date", today)
-      .eq("goal_completed", true),
+    viewsCountRequest,
+    goalsTodayCountRequest,
     pendingFactsRequest,
     recentFactsRequest,
     adminRole
       ? auth.supabase
           .from("profiles")
           .select("id", { count: "exact", head: true })
+          .neq("role", "administrateur")
       : Promise.resolve({ count: 0, error: null }),
     adminRole
       ? auth.supabase
           .from("profiles")
           .select("*")
+          .neq("role", "administrateur")
           .order("created_at", { ascending: false })
           .limit(6)
       : Promise.resolve({ data: [], error: null }),
@@ -454,6 +563,379 @@ export async function getAdminDashboardData(): Promise<AdminDashboardData> {
     pendingFactsCount: pendingFactsCount.count ?? 0,
     recentFacts: hydratedRecentFacts,
     recentProfiles: (recentProfiles.data ?? []) as AdminProfile[],
+  };
+}
+
+type AnalyticsSessionRow = Database["public"]["Tables"]["analytics_sessions"]["Row"];
+type AnalyticsEventRow = Database["public"]["Tables"]["analytics_events"]["Row"];
+type FactReadEventRow = Database["public"]["Tables"]["fact_read_events"]["Row"];
+type FactStatRow = {
+  id: string;
+  slug: string;
+  title: string;
+  categories:
+    | { name: string | null; slug: string | null; accent_color: string | null }
+    | { name: string | null; slug: string | null; accent_color: string | null }[]
+    | null;
+};
+
+function getAnalyticsIdentity(row: {
+  anonymous_id: string | null;
+  user_id: string | null;
+}) {
+  if (row.user_id) {
+    return `user:${row.user_id}`;
+  }
+
+  if (row.anonymous_id) {
+    return `anon:${row.anonymous_id}`;
+  }
+
+  return null;
+}
+
+function average(values: number[]) {
+  const validValues = values.filter((value) => Number.isFinite(value));
+
+  if (validValues.length === 0) {
+    return 0;
+  }
+
+  return Math.round(
+    validValues.reduce((total, value) => total + value, 0) / validValues.length,
+  );
+}
+
+function percent(value: number, total: number) {
+  if (total <= 0) {
+    return 0;
+  }
+
+  return Math.round((value / total) * 100);
+}
+
+function countBy<T extends string>(values: T[]) {
+  return values.reduce((map, value) => {
+    map.set(value, (map.get(value) ?? 0) + 1);
+    return map;
+  }, new Map<T, number>());
+}
+
+function getFactCategory(fact?: FactStatRow | null) {
+  const category = Array.isArray(fact?.categories)
+    ? fact.categories[0]
+    : fact?.categories;
+
+  if (!category?.slug || !category.name) {
+    return null;
+  }
+
+  return {
+    accent: category.accent_color ?? "#fbbf24",
+    name: category.name,
+    slug: category.slug,
+  };
+}
+
+function toFactStats(
+  counts: Map<string, number>,
+  factsById: Map<string, FactStatRow>,
+  limit = 10,
+): AdminAnalyticsFactStat[] {
+  return [...counts.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, limit)
+    .map(([id, value]) => {
+      const fact = factsById.get(id);
+
+      return {
+        id,
+        slug: fact?.slug ?? id,
+        title: fact?.title ?? "Fait supprimé ou indisponible",
+        value,
+      };
+    });
+}
+
+function toThemeStats(
+  counts: Map<string, AdminAnalyticsThemeStat>,
+  limit = 10,
+) {
+  return [...counts.values()].sort((a, b) => b.value - a.value).slice(0, limit);
+}
+
+export async function getAdminAnalyticsData(): Promise<AdminAnalyticsData> {
+  const auth = await getAuthenticatedAdminClient();
+
+  if (!auth.ok) {
+    throw new Error(auth.message);
+  }
+
+  if (auth.role !== "administrateur") {
+    throw new Error("Accès réservé aux administrateurs.");
+  }
+
+  const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  const adminUserIds = await getAdminUserIds(auth.supabase);
+  const [sessionsResult, eventsResult, readsResult, likesResult, savesResult] =
+    await Promise.all([
+      auth.supabase
+        .from("analytics_sessions")
+        .select("*")
+        .gte("started_at", since)
+        .order("started_at", { ascending: false })
+        .limit(5000),
+      auth.supabase
+        .from("analytics_events")
+        .select("*")
+        .gte("created_at", since)
+        .order("created_at", { ascending: false })
+        .limit(6000),
+      auth.supabase
+        .from("fact_read_events")
+        .select("*")
+        .gte("created_at", since)
+        .order("created_at", { ascending: false })
+        .limit(6000),
+      auth.supabase
+        .from("likes")
+        .select("fact_id,created_at,user_id")
+        .gte("created_at", since)
+        .limit(6000),
+      auth.supabase
+        .from("saves")
+        .select("fact_id,created_at,user_id")
+        .gte("created_at", since)
+        .limit(6000),
+    ]);
+
+  const error =
+    sessionsResult.error ??
+    eventsResult.error ??
+    readsResult.error ??
+    likesResult.error ??
+    savesResult.error;
+
+  if (error) {
+    throwAdminError(error, "load admin analytics", "analytics");
+  }
+
+  const sessions = excludeAdminUsers(
+    (sessionsResult.data ?? []) as AnalyticsSessionRow[],
+    adminUserIds,
+  );
+  const events = excludeAdminUsers(
+    (eventsResult.data ?? []) as AnalyticsEventRow[],
+    adminUserIds,
+  ).filter((event) => !isAdminAnalyticsEvent(event));
+  const reads = excludeAdminUsers(
+    (readsResult.data ?? []) as FactReadEventRow[],
+    adminUserIds,
+  );
+  const likes = excludeAdminUsers(
+    (likesResult.data ?? []) as { fact_id: string; user_id: string | null }[],
+    adminUserIds,
+  );
+  const saves = excludeAdminUsers(
+    (savesResult.data ?? []) as { fact_id: string; user_id: string | null }[],
+    adminUserIds,
+  );
+  const factIds = [
+    ...new Set([
+      ...reads.map((row) => row.fact_id),
+      ...likes.map((row) => row.fact_id),
+      ...saves.map((row) => row.fact_id),
+      ...events
+        .filter((row) => row.entity_type === "fact" && row.entity_id)
+        .map((row) => row.entity_id as string),
+    ]),
+  ];
+  const factsResult =
+    factIds.length > 0
+      ? await auth.supabase
+          .from("facts")
+          .select("id,slug,title,categories(name,slug,accent_color)")
+          .in("id", factIds)
+      : { data: [], error: null };
+
+  if (factsResult.error) {
+    throwAdminError(factsResult.error, "load analytics facts", "facts");
+  }
+
+  const factsById = new Map(
+    ((factsResult.data ?? []) as FactStatRow[]).map((fact) => [fact.id, fact]),
+  );
+  const visitors = new Set(
+    sessions.map(getAnalyticsIdentity).filter((value): value is string => Boolean(value)),
+  );
+  const signedInUsers = new Set(
+    sessions.map((session) => session.user_id).filter((value): value is string => Boolean(value)),
+  );
+  const anonymousVisitors = new Set(
+    sessions
+      .filter((session) => !session.user_id)
+      .map((session) => session.anonymous_id)
+      .filter((value): value is string => Boolean(value)),
+  );
+  const platformCounts = countBy(
+    sessions.map((session) => session.platform.toUpperCase()),
+  );
+  const readCounts = countBy(reads.map((row) => row.fact_id));
+  const likeCounts = countBy(likes.map((row) => row.fact_id));
+  const saveCounts = countBy(saves.map((row) => row.fact_id));
+  const likesEvents = events.filter((event) => event.event_name === "fact_liked").length;
+  const savesEvents = events.filter((event) => event.event_name === "fact_saved").length;
+  const shares = events.filter((event) => event.event_name === "fact_shared").length;
+  const sourceClicks = events.filter((event) => event.event_name === "source_clicked").length;
+  const categoryOpenedEvents = events.filter(
+    (event) => event.event_name === "category_opened",
+  );
+  const sessionsByIdentity = new Map<string, AnalyticsSessionRow[]>();
+
+  sessions.forEach((session) => {
+    const identity = getAnalyticsIdentity(session);
+
+    if (!identity) {
+      return;
+    }
+
+    sessionsByIdentity.set(identity, [
+      ...(sessionsByIdentity.get(identity) ?? []),
+      session,
+    ]);
+  });
+
+  const returnedAtLeast2Times = [...sessionsByIdentity.values()].filter(
+    (rows) => rows.length >= 2,
+  ).length;
+  const returnedAfter7Days = [...sessionsByIdentity.values()].filter((rows) => {
+    const times = rows.map((row) => new Date(row.started_at).getTime());
+
+    return Math.max(...times) - Math.min(...times) >= 7 * 24 * 60 * 60 * 1000;
+  }).length;
+  const topOpenedThemes = new Map<string, AdminAnalyticsThemeStat>();
+  const bestEngagementThemes = new Map<string, AdminAnalyticsThemeStat>();
+
+  reads.forEach((read) => {
+    const category = getFactCategory(factsById.get(read.fact_id));
+
+    if (!category) {
+      return;
+    }
+
+    const current = topOpenedThemes.get(category.slug);
+    topOpenedThemes.set(category.slug, {
+      ...category,
+      value: (current?.value ?? 0) + 1,
+    });
+  });
+
+  categoryOpenedEvents.forEach((event) => {
+    const slug =
+      typeof event.metadata === "object" &&
+      event.metadata &&
+      !Array.isArray(event.metadata) &&
+      typeof event.metadata.slug === "string"
+        ? event.metadata.slug
+        : null;
+    const name =
+      typeof event.metadata === "object" &&
+      event.metadata &&
+      !Array.isArray(event.metadata) &&
+      typeof event.metadata.name === "string"
+        ? event.metadata.name
+        : slug;
+
+    if (!slug || !name) {
+      return;
+    }
+
+    const current = topOpenedThemes.get(slug);
+    topOpenedThemes.set(slug, {
+      accent: "#fbbf24",
+      name,
+      slug,
+      value: (current?.value ?? 0) + 1,
+    });
+  });
+
+  events
+    .filter((event) =>
+      ["fact_liked", "fact_saved", "fact_shared", "source_clicked"].includes(
+        event.event_name,
+      ),
+    )
+    .forEach((event) => {
+      if (!event.entity_id) {
+        return;
+      }
+
+      const category = getFactCategory(factsById.get(event.entity_id));
+
+      if (!category) {
+        return;
+      }
+
+      const current = bestEngagementThemes.get(category.slug);
+      bestEngagementThemes.set(category.slug, {
+        ...category,
+        value: (current?.value ?? 0) + 1,
+      });
+    });
+
+  return {
+    overview: {
+      anonymousVisitors: anonymousVisitors.size,
+      averageSessionSeconds: average(
+        sessions
+          .map((session) => session.duration_seconds ?? 0)
+          .filter((duration) => duration > 0),
+      ),
+      factsPerSession:
+        sessions.length > 0
+          ? Number((reads.length / sessions.length).toFixed(1))
+          : 0,
+      factsRead: reads.length,
+      signedInUsers: signedInUsers.size,
+      totalSessions: sessions.length,
+      uniqueVisitors: visitors.size,
+    },
+    platforms: [...platformCounts.entries()].map(([label, count]) => ({
+      count,
+      label,
+      percent: percent(count, sessions.length),
+    })),
+    engagement: {
+      interactionRate: percent(likesEvents + savesEvents + shares, Math.max(reads.length, 1)),
+      likes: likesEvents || likes.length,
+      saves: savesEvents || saves.length,
+      shares,
+      sourceClicks,
+    },
+    reading: {
+      averageReadSeconds: average(
+        reads
+          .map((read) => read.duration_seconds ?? 0)
+          .filter((duration) => duration > 0),
+      ),
+      completionRate: percent(
+        reads.filter((read) => read.completed).length,
+        reads.length,
+      ),
+      topLikedFacts: toFactStats(likeCounts, factsById),
+      topReadFacts: toFactStats(readCounts, factsById),
+      topSavedFacts: toFactStats(saveCounts, factsById),
+    },
+    retention: {
+      averageReturnFrequency:
+        visitors.size > 0 ? Number((sessions.length / visitors.size).toFixed(1)) : 0,
+      returnedAtLeast2Times,
+      returnedAfter7Days,
+    },
+    categories: {
+      bestEngagementThemes: toThemeStats(bestEngagementThemes),
+      topOpenedThemes: toThemeStats(topOpenedThemes),
+    },
   };
 }
 

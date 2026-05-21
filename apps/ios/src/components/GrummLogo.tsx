@@ -3,7 +3,7 @@ import { StyleSheet, Text, View } from "react-native";
 
 import { colors } from "../theme/colors";
 
-export function VeloraLogo({ size = 46 }: { size?: number }) {
+export function GrummLogo({ size = 46 }: { size?: number }) {
   return (
     <View style={[styles.shadow, { height: size, width: size }]}>
       <LinearGradient
@@ -12,7 +12,7 @@ export function VeloraLogo({ size = 46 }: { size?: number }) {
         end={{ x: 1, y: 1 }}
         style={styles.logo}
       >
-        <Text style={[styles.letter, { fontSize: Math.round(size * 0.43) }]}>V</Text>
+        <Text style={[styles.letter, { fontSize: Math.round(size * 0.43) }]}>G</Text>
       </LinearGradient>
     </View>
   );

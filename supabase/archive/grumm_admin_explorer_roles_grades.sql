@@ -40,7 +40,7 @@ values
   (
     'administrateur',
     'Administrateur',
-    'Acces complet a l''administration Velora.',
+    'Acces complet a l''administration Grumm.',
     '["facts.read","profile.manage","interactions.manage","admin.access","facts.create","facts.manage","facts.publish","themes.manage","users.manage","users.delete","roles.manage","grades.manage"]'::jsonb,
     true
   )

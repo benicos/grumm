@@ -10,7 +10,7 @@ export default function AboutPage() {
     <InfoPageShell
       eyebrow="À propos"
       title="Une curiosité courte, dense et mémorable."
-      intro="Velora transforme la découverte de faits en une expérience verticale, immersive et facile à reprendre chaque jour."
+      intro="Grumm transforme la découverte de faits en une expérience verticale, immersive et facile à reprendre chaque jour."
     >
       <section>
         <h2 className="text-xl font-extrabold text-white">Notre intention</h2>

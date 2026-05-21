@@ -13,7 +13,7 @@ import type {
 } from "../types/domain";
 import { getBadgeInfo, getGoalCelebrationMessage, type GradeDefinition } from "./badges";
 import { slugify } from "./slug";
-import { getSupabaseClient } from "./supabase";
+import { getSupabaseClient, withSupabaseTimeout } from "./supabase";
 
 type FeedRpcRow = {
   accent_color: string | null;
@@ -101,6 +101,33 @@ type ExplorerThemeRpcRow = CategoryRow & {
 
 const relatedFactSelect =
   "fact_id,facts(id,slug,title,hook,content,source,source_url,tone,accent_color,categories(name,slug,tone,accent_color))";
+const CACHE_TTL_MS = 45_000;
+
+type CacheEntry<T> = {
+  expiresAt: number;
+  value: T;
+};
+
+const feedCache = new Map<string, CacheEntry<FeedFact[]>>();
+const explorerCache = new Map<string, CacheEntry<ExplorerData>>();
+
+function getCached<T>(cache: Map<string, CacheEntry<T>>, key: string) {
+  const entry = cache.get(key);
+
+  if (!entry || Date.now() > entry.expiresAt) {
+    cache.delete(key);
+    return null;
+  }
+
+  return entry.value;
+}
+
+function setCached<T>(cache: Map<string, CacheEntry<T>>, key: string, value: T) {
+  cache.set(key, {
+    expiresAt: Date.now() + CACHE_TTL_MS,
+    value,
+  });
+}
 
 function getCategory(fact: NonNullable<RelatedFactRow["facts"]>): RelatedCategory | null {
   const category = Array.isArray(fact.categories)
@@ -246,55 +273,85 @@ export async function getFeedFacts(options?: {
   excludeIds?: string[];
   limit?: number;
 }) {
+  const canUseCache = !options?.excludeIds?.length;
+  const cacheKey = `feed:${options?.limit ?? mobileConfig.feedBatchSize}`;
+  const cachedFacts = canUseCache ? getCached(feedCache, cacheKey) : null;
+
+  if (cachedFacts) {
+    return cachedFacts;
+  }
+
   const supabase = getSupabaseClient();
-  const { data, error } = await supabase.rpc("get_discover_feed", {
-    p_exclude_ids: options?.excludeIds ?? [],
-    p_limit: options?.limit ?? mobileConfig.feedBatchSize,
-    p_theme_slug: null,
-  });
+  const { data, error } = await withSupabaseTimeout(
+    supabase.rpc("get_discover_feed", {
+      p_exclude_ids: options?.excludeIds ?? [],
+      p_limit: options?.limit ?? mobileConfig.feedBatchSize,
+      p_theme_slug: null,
+    }),
+  );
 
   if (error) {
     throw new Error(userMessages.genericLoadError);
   }
 
-  return ((data ?? []) as FeedRpcRow[]).map(mapFeedFact);
+  const facts = ((data ?? []) as FeedRpcRow[]).map(mapFeedFact);
+
+  if (canUseCache) {
+    setCached(feedCache, cacheKey, facts);
+  }
+
+  return facts;
 }
 
 export async function getExplorerData(options?: { query?: string }): Promise<ExplorerData> {
   const supabase = getSupabaseClient();
   const query = options?.query?.trim().replace(/[%,_]/g, " ").replace(/\s+/g, " ") ?? "";
+  const cacheKey = `explorer:${query || "default"}`;
+  const cachedData = getCached(explorerCache, cacheKey);
 
-  const themesResult = await supabase.rpc("get_explorer_themes", {
-    p_limit: query ? 24 : 18,
-    p_query: query || null,
-  });
+  if (cachedData) {
+    return cachedData;
+  }
+
+  const themesResult = await withSupabaseTimeout(
+    supabase.rpc("get_explorer_themes", {
+      p_limit: query ? 24 : 18,
+      p_query: query || null,
+    }),
+  );
 
   if (themesResult.error) {
     throw new Error(userMessages.genericLoadError);
   }
 
   const factsResult = query
-    ? await supabase.rpc("search_published_facts", {
-        p_limit: 24,
-        p_query: query,
-      })
-    : await supabase.rpc("get_discover_feed", {
-      p_exclude_ids: [],
-      p_limit: 12,
-      p_theme_slug: null,
-    });
+    ? await withSupabaseTimeout(
+        supabase.rpc("search_published_facts", {
+          p_limit: 24,
+          p_query: query,
+        }),
+      )
+    : await withSupabaseTimeout(
+        supabase.rpc("get_discover_feed", {
+          p_exclude_ids: [],
+          p_limit: 12,
+          p_theme_slug: null,
+        }),
+      );
 
   if (factsResult.error) {
     throw new Error(userMessages.genericLoadError);
   }
 
-  const recentFactsResult = await supabase
-    .from("facts")
-    .select("id,slug,title,hook,content,source,source_url,tone,accent_color,categories(name,slug,tone,accent_color)")
-    .eq("status", "published")
-    .order("published_at", { ascending: false, nullsFirst: false })
-    .order("created_at", { ascending: false })
-    .limit(8);
+  const recentFactsResult = await withSupabaseTimeout(
+    supabase
+      .from("facts")
+      .select("id,slug,title,hook,content,source,source_url,tone,accent_color,categories(name,slug,tone,accent_color)")
+      .eq("status", "published")
+      .order("published_at", { ascending: false, nullsFirst: false })
+      .order("created_at", { ascending: false })
+      .limit(8),
+  );
 
   const recentFacts = recentFactsResult.error
     ? []
@@ -302,11 +359,15 @@ export async function getExplorerData(options?: { query?: string }): Promise<Exp
         .map((fact) => (fact ? mapRelatedFact({ fact_id: fact.id, facts: fact }) : null))
         .filter((fact): fact is FeedFact => Boolean(fact));
 
-  return {
+  const explorerData = {
     categories: ((themesResult.data ?? []) as ExplorerThemeRpcRow[]).map(mapExplorerTheme),
     facts: ((factsResult.data ?? []) as FeedRpcRow[]).map(mapFeedFact),
     recentFacts,
   };
+
+  setCached(explorerCache, cacheKey, explorerData);
+
+  return explorerData;
 }
 
 export async function getFactActions(factIds: string[]) {
@@ -327,8 +388,8 @@ export async function getFactActions(factIds: string[]) {
   }
 
   const [likesResult, savesResult] = await Promise.all([
-    supabase.from("likes").select("fact_id").eq("user_id", user.id).in("fact_id", factIds),
-    supabase.from("saves").select("fact_id").eq("user_id", user.id).in("fact_id", factIds),
+    withSupabaseTimeout(supabase.from("likes").select("fact_id").eq("user_id", user.id).in("fact_id", factIds)),
+    withSupabaseTimeout(supabase.from("saves").select("fact_id").eq("user_id", user.id).in("fact_id", factIds)),
   ]);
 
   if (likesResult.error || savesResult.error) {
@@ -356,9 +417,11 @@ export async function toggleLike(factId: string, isLiked: boolean) {
     throw new Error(userMessages.authRequired);
   }
 
-  const result = isLiked
-    ? await supabase.from("likes").delete().eq("user_id", user.id).eq("fact_id", factId)
-    : await supabase.from("likes").insert({ fact_id: factId, user_id: user.id });
+  const result = await withSupabaseTimeout(
+    isLiked
+      ? supabase.from("likes").delete().eq("user_id", user.id).eq("fact_id", factId)
+      : supabase.from("likes").insert({ fact_id: factId, user_id: user.id }),
+  );
 
   if (result.error) {
     throw new Error("Cette action n'a pas pu être effectuée.");
@@ -375,9 +438,11 @@ export async function toggleSave(factId: string, isSaved: boolean) {
     throw new Error(userMessages.authRequired);
   }
 
-  const result = isSaved
-    ? await supabase.from("saves").delete().eq("user_id", user.id).eq("fact_id", factId)
-    : await supabase.from("saves").insert({ fact_id: factId, user_id: user.id });
+  const result = await withSupabaseTimeout(
+    isSaved
+      ? supabase.from("saves").delete().eq("user_id", user.id).eq("fact_id", factId)
+      : supabase.from("saves").insert({ fact_id: factId, user_id: user.id }),
+  );
 
   if (result.error) {
     throw new Error("Cette action n'a pas pu être effectuée.");
@@ -409,17 +474,21 @@ export async function getTodayDailyProgress(dailyGoal?: number): Promise<DailyPr
   }
 
   const [{ data, error }, completedResult] = await Promise.all([
-    supabase
-      .from("user_daily_progress")
-      .select("facts_read_count,daily_goal,goal_completed")
-      .eq("user_id", user.id)
-      .eq("progress_date", todayKey())
-      .maybeSingle(),
-    supabase
-      .from("user_daily_progress")
-      .select("id", { count: "exact", head: true })
-      .eq("user_id", user.id)
-      .eq("goal_completed", true),
+    withSupabaseTimeout(
+      supabase
+        .from("user_daily_progress")
+        .select("facts_read_count,daily_goal,goal_completed")
+        .eq("user_id", user.id)
+        .eq("progress_date", todayKey())
+        .maybeSingle(),
+    ),
+    withSupabaseTimeout(
+      supabase
+        .from("user_daily_progress")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", user.id)
+        .eq("goal_completed", true),
+    ),
   ]);
 
   if (error) {
@@ -450,11 +519,13 @@ export async function recordFactView(factId: string, dailyGoal?: number): Promis
     return emptyDailyProgress(dailyGoal);
   }
 
-  const { data, error } = await supabase.rpc("record_fact_read", {
-    p_daily_goal: dailyGoal ?? mobileConfig.dailyGoal,
-    p_fact_id: factId,
-    p_progress_date: todayKey(),
-  });
+  const { data, error } = await withSupabaseTimeout(
+    supabase.rpc("record_fact_read", {
+      p_daily_goal: dailyGoal ?? mobileConfig.dailyGoal,
+      p_fact_id: factId,
+      p_progress_date: todayKey(),
+    }),
+  );
 
   if (error) {
     return emptyDailyProgress(dailyGoal);
@@ -490,11 +561,13 @@ export async function getSavedFacts() {
     throw new Error(userMessages.authRequired);
   }
 
-  const { data, error } = await supabase
-    .from("saves")
-    .select(relatedFactSelect)
-    .eq("user_id", user.id)
-    .order("created_at", { ascending: false });
+  const { data, error } = await withSupabaseTimeout(
+    supabase
+      .from("saves")
+      .select(relatedFactSelect)
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false }),
+  );
 
   if (error) {
     throw new Error(userMessages.genericLoadError);
@@ -525,26 +598,32 @@ export async function getProfileSummary(): Promise<ProfileSummary> {
     savedFactsResult,
     viewedThemesResult,
   ] = await Promise.all([
-    supabase.from("profiles").select("username,daily_goal,role").eq("id", user.id).maybeSingle(),
-    supabase.from("likes").select("id", { count: "exact", head: true }).eq("user_id", user.id),
-    supabase.from("saves").select("id", { count: "exact", head: true }).eq("user_id", user.id),
-    supabase.from("user_fact_views").select("id", { count: "exact", head: true }).eq("user_id", user.id),
-    supabase
-      .from("user_daily_progress")
-      .select("progress_date,facts_read_count,goal_completed")
-      .eq("user_id", user.id)
-      .order("progress_date", { ascending: false }),
-    supabase
-      .from("grades")
-      .select("id,slug,name,required_goals,description,badge,display_order")
-      .order("required_goals", { ascending: true })
-      .order("display_order", { ascending: true }),
-    supabase.from("likes").select(relatedFactSelect).eq("user_id", user.id).order("created_at", { ascending: false }).limit(8),
-    supabase.from("saves").select(relatedFactSelect).eq("user_id", user.id).order("created_at", { ascending: false }).limit(8),
-    supabase
-      .from("user_fact_views")
-      .select("fact_id,facts(categories(name,slug,tone,accent_color))")
-      .eq("user_id", user.id),
+    withSupabaseTimeout(supabase.from("profiles").select("username,daily_goal,role").eq("id", user.id).maybeSingle()),
+    withSupabaseTimeout(supabase.from("likes").select("id", { count: "exact", head: true }).eq("user_id", user.id)),
+    withSupabaseTimeout(supabase.from("saves").select("id", { count: "exact", head: true }).eq("user_id", user.id)),
+    withSupabaseTimeout(supabase.from("user_fact_views").select("id", { count: "exact", head: true }).eq("user_id", user.id)),
+    withSupabaseTimeout(
+      supabase
+        .from("user_daily_progress")
+        .select("progress_date,facts_read_count,goal_completed")
+        .eq("user_id", user.id)
+        .order("progress_date", { ascending: false }),
+    ),
+    withSupabaseTimeout(
+      supabase
+        .from("grades")
+        .select("id,slug,name,required_goals,description,badge,display_order")
+        .order("required_goals", { ascending: true })
+        .order("display_order", { ascending: true }),
+    ),
+    withSupabaseTimeout(supabase.from("likes").select(relatedFactSelect).eq("user_id", user.id).order("created_at", { ascending: false }).limit(8)),
+    withSupabaseTimeout(supabase.from("saves").select(relatedFactSelect).eq("user_id", user.id).order("created_at", { ascending: false }).limit(8)),
+    withSupabaseTimeout(
+      supabase
+        .from("user_fact_views")
+        .select("fact_id,facts(categories(name,slug,tone,accent_color))")
+        .eq("user_id", user.id),
+    ),
   ]);
 
   const blockingError =

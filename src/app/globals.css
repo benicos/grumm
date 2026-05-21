@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 :root {
-  --background: #132338;
+  --background: #07111f;
   --foreground: #ffffff;
 }
 
@@ -25,4 +25,66 @@ body {
   100% {
     transform: translateX(320%);
   }
+}
+
+@keyframes grummCtaGradient {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@keyframes grummScrollFloat {
+  0%,
+  100% {
+    opacity: 0.62;
+    transform: translate3d(0, -3px, 0);
+  }
+  50% {
+    opacity: 1;
+    transform: translate3d(0, 5px, 0);
+  }
+}
+
+.grumm-primary-cta {
+  position: relative;
+  overflow: hidden;
+  background-image: linear-gradient(135deg, #ffe6a8 0%, #ffd166 28%, #6ae3c0 70%, #ffffff 100%);
+  background-size: 180% 180%;
+  animation: grummCtaGradient 7s ease-in-out infinite;
+  box-shadow:
+    0 22px 70px rgba(255, 209, 102, 0.28),
+    0 12px 38px rgba(106, 227, 192, 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.58);
+}
+
+.grumm-primary-cta::after {
+  content: "";
+  position: absolute;
+  inset: 1px;
+  border-radius: inherit;
+  background: linear-gradient(180deg, rgba(255,255,255,0.42), transparent 42%);
+  opacity: 0.48;
+  pointer-events: none;
+}
+
+.grumm-primary-cta:hover {
+  transform: translateY(-2px) scale(1.015);
+  box-shadow:
+    0 28px 90px rgba(106, 227, 192, 0.24),
+    0 18px 60px rgba(255, 209, 102, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.7);
+}
+
+.grumm-primary-cta:active {
+  transform: translateY(0) scale(0.985);
+}
+
+.grumm-scroll-float {
+  animation: grummScrollFloat 1.8s ease-in-out infinite;
 }

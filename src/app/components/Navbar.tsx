@@ -135,9 +135,9 @@ export default function Navbar({ fixed = false }: NavbarProps) {
             onClick={() => setIsOpen(false)}
           >
             <span className="grid h-[38px] w-[38px] place-items-center rounded-[14px] bg-gradient-to-br from-[#ffd166] to-[#6ae3c0] font-black text-[#06111d] shadow-[0_10px_30px_rgba(255,209,102,0.25)]">
-              V
+              G
             </span>
-            <span>VELORA</span>
+            <span>Grumm.</span>
           </Link>
 
           <nav className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-12 font-bold uppercase lg:flex">
@@ -176,9 +176,9 @@ export default function Navbar({ fixed = false }: NavbarProps) {
                 onClick={() => setIsOpen(false)}
               >
                 <span className="grid h-[38px] w-[38px] place-items-center rounded-[14px] bg-gradient-to-br from-[#ffd166] to-[#6ae3c0] font-black text-[#06111d] shadow-[0_10px_30px_rgba(255,209,102,0.25)]">
-                  V
+                  G
                 </span>
-                <span>VELORA</span>
+                <span>Grumm.</span>
               </Link>
 
               <button

@@ -11,7 +11,7 @@ export async function generateMetadata({
 
   return {
     title,
-    description: `Découvrir les faits Velora liés au thème ${title}.`,
+    description: `Découvrir les faits Grumm liés au thème ${title}.`,
   };
 }
 

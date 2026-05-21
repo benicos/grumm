@@ -1,9 +1,10 @@
 export const siteConfig = {
-  name: "Velora",
+  officialName: "Grumm",
+  name: "Grumm.",
   description:
-    "Découvre des faits courts, mémorables et immersifs dans une expérience premium.",
-  fallbackUrl: "https://velora.app",
-  publicUrl: process.env.NEXT_PUBLIC_SITE_URL ?? "https://velora.app",
+    "Grumm est une expérience de découverte verticale pour apprendre vite, retenir facilement et raconter ce qui marque.",
+  fallbackUrl: "https://grumm.app",
+  publicUrl: process.env.NEXT_PUBLIC_SITE_URL ?? "https://grumm.app",
 } as const;
 
 export const appRoutes = {
@@ -54,7 +55,7 @@ export const footerLinks = [
 
 export const socialShareConfig = {
   fallbackMessage:
-    "Le partage direct d’image n’est pas disponible ici. Télécharge l’image puis publie-la dans ta story Instagram.",
+    "Le partage direct d’image n’est pas disponible ici, mais tu peux toujours télécharger l’image et la partager à ta guise !",
   story: {
     height: 1920,
     pixelRatio: 3,

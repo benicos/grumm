@@ -2,7 +2,8 @@
 
 import { Inter } from "next/font/google";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { trackAnalyticsEvent } from "@/lib/analytics/web";
 import { getExplorerData } from "@/lib/facts";
 import type { CategorySummary, FeedFact } from "@/lib/facts";
 import { getToneBackground } from "@/lib/gradients";
@@ -119,6 +120,14 @@ function ThemeCard({ theme }: { theme: CategorySummary }) {
   return (
     <Link
       href={`/discover/theme/${theme.slug}`}
+      onClick={() =>
+        void trackAnalyticsEvent({
+          entityId: theme.id,
+          entityType: "category",
+          eventName: "category_opened",
+          metadata: { name: theme.name, slug: theme.slug },
+        })
+      }
       className={`group relative min-h-[205px] overflow-hidden rounded-lg border border-white/10 ${toneBackground.className} p-6 shadow-[0_28px_90px_rgba(0,0,0,0.2)] transition hover:-translate-y-1 hover:border-white/25`}
       style={toneBackground.style}
     >
@@ -144,68 +153,83 @@ function ThemeCard({ theme }: { theme: CategorySummary }) {
 
 export default function ExplorerPage() {
   const [query, setQuery] = useState("");
+  const [submittedQuery, setSubmittedQuery] = useState("");
   const [themes, setThemes] = useState<CategorySummary[]>([]);
   const [facts, setFacts] = useState<FeedFact[]>([]);
   const [recentFacts, setRecentFacts] = useState<FeedFact[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const normalizedQuery = query.trim().toLowerCase();
+  const normalizedQuery = submittedQuery.trim().toLowerCase();
+  const hasActiveSearch = normalizedQuery.length > 0;
   const [sessionSeed] = useState(() => `${Date.now()}:${Math.random()}`);
   const visibleFacts = useMemo(() => {
-    const selectedFacts = normalizedQuery
+    const selectedFacts = hasActiveSearch
       ? facts
       : shuffleItems(facts, `${sessionSeed}:facts`);
 
-    return selectedFacts.slice(0, normalizedQuery ? 12 : 6);
-  }, [facts, normalizedQuery, sessionSeed]);
+    return selectedFacts.slice(0, hasActiveSearch ? 24 : 6);
+  }, [facts, hasActiveSearch, sessionSeed]);
   const visibleThemes = useMemo(() => {
-    const selectedThemes = normalizedQuery
+    const selectedThemes = hasActiveSearch
       ? themes
       : shuffleItems(themes, `${sessionSeed}:themes`);
 
-    return selectedThemes.slice(0, normalizedQuery ? 18 : 6);
-  }, [normalizedQuery, sessionSeed, themes]);
+    return selectedThemes.slice(0, hasActiveSearch ? 18 : 6);
+  }, [hasActiveSearch, sessionSeed, themes]);
   const visibleRecentFacts = recentFacts.slice(0, 6);
 
+  const loadExplorer = useCallback(async (searchValue?: string) => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const searchTerm = searchValue?.trim();
+      const data = await getExplorerData({
+        query: searchTerm || undefined,
+      });
+
+      setThemes(data.categories);
+      setFacts(data.facts);
+      setRecentFacts(data.recentFacts);
+    } catch (loadError) {
+      setError(
+        loadError instanceof Error
+          ? loadError.message
+          : "Explorer est indisponible.",
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
-    let isMounted = true;
+    queueMicrotask(() => {
+      void loadExplorer();
+    });
+  }, [loadExplorer]);
 
-    const timeout = window.setTimeout(async () => {
-      setIsLoading(true);
-      setError(null);
+  function runSearch() {
+    const nextQuery = query.trim();
+    setSubmittedQuery(nextQuery);
+    if (nextQuery) {
+      void trackAnalyticsEvent({
+        eventName: "search_used",
+        metadata: { query: nextQuery },
+      });
+    }
+    void loadExplorer(nextQuery || undefined);
+  }
 
-      try {
-        const data = await getExplorerData({
-          query: normalizedQuery || undefined,
-        });
+  function submitSearch(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    runSearch();
+  }
 
-        if (!isMounted) {
-          return;
-        }
-
-        setThemes(data.categories);
-        setFacts(data.facts);
-        setRecentFacts(data.recentFacts);
-      } catch (loadError) {
-        if (isMounted) {
-          setError(
-            loadError instanceof Error
-              ? loadError.message
-              : "Explorer est indisponible.",
-          );
-        }
-      } finally {
-        if (isMounted) {
-          setIsLoading(false);
-        }
-      }
-    }, normalizedQuery ? 240 : 0);
-
-    return () => {
-      isMounted = false;
-      window.clearTimeout(timeout);
-    };
-  }, [normalizedQuery]);
+  function clearSearch() {
+    setQuery("");
+    setSubmittedQuery("");
+    void loadExplorer();
+  }
 
   if (error && !isLoading) {
     return (
@@ -223,7 +247,7 @@ export default function ExplorerPage() {
 
   return (
     <div
-      className={`${inter.className} relative min-h-screen overflow-x-hidden bg-[#132338] text-white`}
+      className={`${inter.className} relative min-h-screen overflow-x-hidden bg-[#07111f] text-white`}
     >
       <HeroBackground />
       <Navbar />
@@ -235,37 +259,113 @@ export default function ExplorerPage() {
               Explorer
             </div>
 
-            <h1 className="text-[clamp(2.5rem,6vw,5.2rem)] font-semibold leading-[0.96] tracking-[-0.055em] text-white">
+            <h1 className="bg-[linear-gradient(120deg,#ffffff_0%,#ffe4a1_40%,#6ae3c0_78%,#ffffff_100%)] bg-clip-text text-[clamp(2.6rem,6vw,5.2rem)] font-extrabold leading-[0.98] text-transparent [text-wrap:balance]">
               Trouve le fait qui va te rester en tête.
             </h1>
 
-            <label className="mx-auto mt-10 flex max-w-3xl items-center gap-3 rounded-md bg-white/[0.07] px-5 py-4 text-left text-white shadow-sm ring-1 ring-white/10 backdrop-blur-xl">
-              <SearchIcon />
+            <form
+              onSubmit={submitSearch}
+              className="mx-auto mt-10 flex max-w-3xl items-center gap-3 rounded-[22px] border border-white/12 bg-white/[0.075] px-4 py-3 text-left text-white shadow-[0_24px_80px_rgba(0,0,0,0.28),0_0_60px_rgba(106,227,192,0.10)] backdrop-blur-2xl transition focus-within:border-[#6ae3c0]/45 focus-within:bg-white/[0.095] focus-within:shadow-[0_28px_95px_rgba(0,0,0,0.32),0_0_70px_rgba(106,227,192,0.18)] sm:px-5"
+            >
+              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-[14px] bg-white/8 text-[#6ae3c0]">
+                <SearchIcon />
+              </span>
               <input
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    event.preventDefault();
+                    runSearch();
+                  }
+                }}
                 placeholder="Ocean, NASA, cerveau, histoire, Einstein..."
-                className="w-full bg-transparent text-base text-white outline-none placeholder:text-white/42"
+                className="min-w-0 flex-1 bg-transparent text-base font-semibold text-white outline-none placeholder:text-white/42"
               />
-            </label>
+              {hasActiveSearch ? (
+                <button
+                  type="button"
+                  onClick={clearSearch}
+                  className="hidden rounded-[14px] border border-white/10 px-4 py-2 text-sm font-extrabold text-white/62 transition hover:border-white/20 hover:text-white sm:inline-flex"
+                >
+                  Effacer
+                </button>
+              ) : null}
+              <button
+                type="submit"
+                className="rounded-[14px] bg-gradient-to-r from-[#ffd166] to-[#6ae3c0] px-4 py-2 text-sm font-extrabold text-[#07111f] shadow-[0_12px_34px_rgba(255,209,102,0.2)] transition hover:-translate-y-0.5 active:translate-y-0"
+              >
+                Rechercher
+              </button>
+            </form>
           </div>
         </section>
 
+        {hasActiveSearch ? (
+          <section className="pb-20">
+            <div className="mb-6 flex flex-wrap items-end justify-between gap-6">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.22em] text-[#ffd166]">
+                  Recherche
+                </p>
+                <h2 className="mt-2 text-3xl font-extrabold">
+                  Résultats pour “{submittedQuery}”
+                </h2>
+              </div>
+            </div>
+
+            {isLoading ? (
+              <ExplorerSkeleton cards={6} />
+            ) : visibleFacts.length > 0 ? (
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {visibleFacts.map((fact) => (
+                  <FactCard key={fact.id} fact={fact} />
+                ))}
+              </div>
+            ) : (
+              <div className="overflow-hidden rounded-[24px] border border-white/10 bg-white/[0.065] p-6 shadow-[0_24px_90px_rgba(0,0,0,0.24)] backdrop-blur-2xl sm:p-8">
+                <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#ffd166]">
+                  Aucun résultat
+                </p>
+                <h2 className="mt-3 text-2xl font-extrabold text-white">
+                  Aucun fait ne correspond à cette recherche.
+                </h2>
+                <p className="mt-3 max-w-2xl text-sm leading-6 text-white/62">
+                  Essaie un autre mot-clé ou repars des collections de Grumm. pour
+                  découvrir de nouveaux thèmes.
+                </p>
+                <div className="mt-6 flex flex-wrap gap-3">
+                  <Link
+                    href="/facts/theme"
+                    className="rounded-[14px] border border-white/10 bg-white/[0.07] px-4 py-3 text-sm font-extrabold text-white transition hover:border-white/20 hover:bg-white/[0.1]"
+                  >
+                    Découvrir les thèmes
+                  </Link>
+                  <Link
+                    href="/facts"
+                    className="rounded-[14px] bg-gradient-to-r from-[#ffd166] to-[#6ae3c0] px-4 py-3 text-sm font-extrabold text-[#07111f]"
+                  >
+                    Découvrir les faits
+                  </Link>
+                </div>
+              </div>
+            )}
+          </section>
+        ) : (
+          <>
         <section className="pb-12">
           <div className="mb-6 flex items-end justify-between gap-6">
             <div>
               <p className="text-xs font-bold uppercase tracking-[0.22em] text-[#ffd166]">
-                {normalizedQuery ? "Recherche" : "À découvrir"}
+                À découvrir
               </p>
               <h2 className="mt-2 text-3xl font-extrabold tracking-[-0.04em]">
-                {normalizedQuery ? "Résultats pertinents" : "Faits aléatoires"}
+                Faits aléatoires
               </h2>
             </div>
-            {!normalizedQuery && (
               <Link href="/discover" className="text-sm font-bold text-[#ffd166]">
                 Ouvrir le flux
               </Link>
-            )}
           </div>
 
           {isLoading ? (
@@ -290,7 +390,7 @@ export default function ExplorerPage() {
                 Thèmes
               </p>
               <h2 className="mt-2 text-3xl font-extrabold tracking-[-0.04em]">
-                {normalizedQuery ? "Thèmes liés" : "Thèmes à explorer"}
+                Thèmes à explorer
               </h2>
             </div>
           </div>
@@ -310,7 +410,6 @@ export default function ExplorerPage() {
           )}
         </section>
 
-        {!normalizedQuery && (
           <section className="pb-20">
             <div className="mb-6 flex items-end justify-between gap-6">
               <div>
@@ -337,6 +436,7 @@ export default function ExplorerPage() {
               </div>
             )}
           </section>
+          </>
         )}
       </main>
       <Footer />

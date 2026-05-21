@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { appRoutes } from "@/config/app";
+import { trackAnalyticsEvent } from "@/lib/analytics/web";
 import { signInWithEmail, signUpWithEmail } from "@/lib/auth";
 import { consumeAuthRedirect, getLegacyNextParam } from "@/lib/authRedirect";
 import {
@@ -104,24 +105,34 @@ export default function AuthForm({ mode }: AuthFormProps) {
     }
 
     await refreshUser();
+    void trackAnalyticsEvent({
+      eventName: isLogin ? "login_completed" : "signup_completed",
+    });
     router.replace(getRedirectTarget());
   }
 
   return (
     <form
       onSubmit={handleSubmit}
-      className="w-full max-w-md rounded-lg border border-white/10 bg-white/[0.06] p-6 shadow-2xl backdrop-blur-xl"
+      className="relative w-full max-w-md overflow-hidden rounded-[28px] border border-white/12 bg-[#07111f]/62 p-6 shadow-[0_30px_100px_rgba(0,0,0,0.34),inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-2xl sm:p-7"
     >
-      <div>
-        <p className="text-xs font-bold uppercase tracking-[0.22em] text-[#ffd166]">
-          Velora
+      <div className="absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-[#ffd166]/55 to-transparent" />
+      <div className="absolute -right-16 -top-16 h-48 w-48 rounded-full bg-[#ffd166]/12 blur-3xl" />
+      <div className="relative">
+        <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#ffd166]">
+          Grumm.
         </p>
-        <h1 className="mt-3 text-3xl font-extrabold tracking-[-0.04em] text-white">
-          {isLogin ? "Connexion" : "Inscription"}
+        <h1 className="mt-3 text-3xl font-extrabold leading-tight text-white">
+          {isLogin ? "Reprendre la découverte" : "Créer ton accès"}
         </h1>
+        <p className="mt-3 text-sm font-semibold leading-6 text-white/56">
+          {isLogin
+            ? "Retrouve tes sauvegardes, ta progression et ton rythme de lecture."
+            : "Un compte suffit pour synchroniser tes lectures et garder les faits qui comptent."}
+        </p>
       </div>
 
-      <div className="mt-8 space-y-4">
+      <div className="relative mt-8 space-y-4">
         {!isLogin && (
           <label className="block">
             <span className="text-sm font-semibold text-white/72">
@@ -140,7 +151,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
               required
               minLength={3}
               maxLength={24}
-              className="mt-2 w-full rounded-md border border-white/10 bg-black/20 px-4 py-3 text-white outline-none transition placeholder:text-white/35 focus:border-[#ffd166]"
+              className="mt-2 w-full rounded-[16px] border border-white/10 bg-white/[0.055] px-4 py-3 text-white outline-none transition placeholder:text-white/35 focus:border-[#ffd166] focus:bg-white/[0.08]"
               placeholder="LeSavantFou06"
             />
             <span className="mt-2 block text-xs leading-5 text-white/45">
@@ -165,7 +176,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
             type="email"
             autoComplete="email"
             required
-            className="mt-2 w-full rounded-md border border-white/10 bg-black/20 px-4 py-3 text-white outline-none transition placeholder:text-white/35 focus:border-[#ffd166]"
+            className="mt-2 w-full rounded-[16px] border border-white/10 bg-white/[0.055] px-4 py-3 text-white outline-none transition placeholder:text-white/35 focus:border-[#ffd166] focus:bg-white/[0.08]"
             placeholder="mail@exemple.fr"
           />
           <FieldError message={fieldErrors.email} />
@@ -196,7 +207,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
             autoComplete={isLogin ? "current-password" : "new-password"}
             required
             minLength={6}
-            className="mt-2 w-full rounded-md border border-white/10 bg-black/20 px-4 py-3 text-white outline-none transition placeholder:text-white/35 focus:border-[#ffd166]"
+            className="mt-2 w-full rounded-[16px] border border-white/10 bg-white/[0.055] px-4 py-3 text-white outline-none transition placeholder:text-white/35 focus:border-[#ffd166] focus:bg-white/[0.08]"
             placeholder="6 caractères minimum"
           />
           <FieldError message={fieldErrors.password} />
@@ -212,7 +223,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
       <button
         type="submit"
         disabled={isSubmitting}
-        className={`${premiumPrimaryCtaClassName} mt-6 w-full`}
+        className={`${premiumPrimaryCtaClassName} relative mt-6 w-full`}
       >
         {isSubmitting
           ? "Chargement..."
@@ -221,7 +232,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
             : "Créer mon compte"}
       </button>
 
-      <p className="mt-5 text-center text-sm text-white/62">
+      <p className="relative mt-5 text-center text-sm text-white/62">
         {isLogin ? "Pas encore de compte ?" : "Deja un compte ?"}{" "}
         <button
           type="button"

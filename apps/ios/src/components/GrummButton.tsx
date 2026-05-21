@@ -4,7 +4,7 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, ViewStyle } from "react
 
 import { colors } from "../theme/colors";
 
-type VeloraButtonProps = {
+type GrummButtonProps = {
   children: ReactNode;
   disabled?: boolean;
   isLoading?: boolean;
@@ -13,14 +13,14 @@ type VeloraButtonProps = {
   variant?: "primary" | "secondary" | "ghost";
 };
 
-export function VeloraButton({
+export function GrummButton({
   children,
   disabled = false,
   isLoading = false,
   onPress,
   style,
   variant = "primary",
-}: VeloraButtonProps) {
+}: GrummButtonProps) {
   const isDisabled = disabled || isLoading;
 
   if (variant === "primary") {

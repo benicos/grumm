@@ -20,10 +20,10 @@ export default function Error({
 
   return (
     <div className="bg-[#132338]">
-      <title>Erreur | Velora</title>
+      <title>Erreur | Grumm.</title>
       <AppState
         eyebrow="Erreur"
-        title="Velora a perdu le fil."
+        title="Grumm. a perdu le fil."
         description="Une erreur inattendue est survenue. Tu peux relancer la page ou revenir à Découvrir."
         primaryHref="/discover"
         primaryLabel="Retour à Découvrir"

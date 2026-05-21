@@ -4,8 +4,9 @@ import { AppState } from "react-native";
 
 import { mobileConfig, userMessages } from "../config/app";
 import type { SessionProfile } from "../types/domain";
+import { trackMobileAnalyticsEvent } from "../lib/analytics";
 import { getUsernameValidationMessage, normalizeUsername } from "../lib/slug";
-import { clearSupabaseAuthStorage, getSupabaseClient } from "../lib/supabase";
+import { clearSupabaseAuthStorage, getSupabaseClient, withSupabaseTimeout } from "../lib/supabase";
 
 type AuthContextValue = {
   error: string | null;
@@ -65,11 +66,13 @@ async function resolveProfile(session: Session | null): Promise<SessionProfile |
   }
 
   const supabase = getSupabaseClient();
-  const { data, error } = await supabase
-    .from("profiles")
-    .select("username,daily_goal,role")
-    .eq("id", session.user.id)
-    .maybeSingle();
+  const { data, error } = await withSupabaseTimeout(
+    supabase
+      .from("profiles")
+      .select("username,daily_goal,role")
+      .eq("id", session.user.id)
+      .maybeSingle(),
+  );
 
   if (error) {
     throw new Error(userMessages.genericLoadError);
@@ -96,7 +99,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     async function bootstrap() {
       try {
         const supabase = getSupabaseClient();
-        const { data, error: sessionError } = await supabase.auth.getSession();
+        const { data, error: sessionError } = await withSupabaseTimeout(
+          supabase.auth.getSession(),
+          "La session met trop de temps à répondre.",
+        );
 
         if (sessionError) {
           if (isInvalidRefreshTokenError(sessionError)) {
@@ -179,6 +185,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (nextError) {
       setTimeout(() => {
         setError(getAuthErrorMessage(nextError));
+        setIsLoading(false);
       }, 0);
     }
 
@@ -199,10 +206,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       session,
       signIn: async (email, password) => {
         const supabase = getSupabaseClient();
-        const { data, error: signInError } = await supabase.auth.signInWithPassword({
-          email: email.trim(),
-          password,
-        });
+        const { data, error: signInError } = await withSupabaseTimeout(
+          supabase.auth.signInWithPassword({
+            email: email.trim(),
+            password,
+          }),
+        );
 
         if (signInError) {
           throw new Error(getAuthErrorMessage(signInError) ?? "Reconnecte-toi pour continuer.");
@@ -210,6 +219,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         setSession(data.session);
         setProfile(await resolveProfile(data.session));
+        void trackMobileAnalyticsEvent({ eventName: "login_completed" });
       },
       signOut: async () => {
         const supabase = getSupabaseClient();
@@ -227,9 +237,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           throw new Error(usernameMessage);
         }
 
-        const { data: isAvailable, error: usernameError } = await supabase.rpc("is_username_available", {
-          p_username: username,
-        });
+        const { data: isAvailable, error: usernameError } = await withSupabaseTimeout(
+          supabase.rpc("is_username_available", {
+            p_username: username,
+          }),
+        );
 
         if (usernameError) {
           throw new Error("Nous n'avons pas pu vérifier ce pseudo.");
@@ -239,24 +251,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           throw new Error("Ce nom d'utilisateur est déjà pris.");
         }
 
-        const { data, error: signUpError } = await supabase.auth.signUp({
-          email: email.trim(),
-          password,
-          options: {
-            data: {
-              username,
+        const { data, error: signUpError } = await withSupabaseTimeout(
+          supabase.auth.signUp({
+            email: email.trim(),
+            password,
+            options: {
+              data: {
+                username,
+              },
             },
-          },
-        });
+          }),
+        );
 
         if (signUpError) {
           throw new Error(getAuthErrorMessage(signUpError) ?? "Inscription impossible pour le moment.");
         }
 
         if (data.user && data.session) {
-          const { error: profileError } = await supabase
-            .from("profiles")
-            .upsert({ id: data.user.id, username }, { onConflict: "id" });
+          const { error: profileError } = await withSupabaseTimeout(
+            supabase
+              .from("profiles")
+              .upsert({ id: data.user.id, username }, { onConflict: "id" }),
+          );
 
           if (profileError) {
             throw new Error("Nous n'avons pas pu finaliser ton profil.");
@@ -265,6 +281,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         setSession(data.session);
         setProfile(await resolveProfile(data.session));
+        void trackMobileAnalyticsEvent({ eventName: "signup_completed" });
       },
     }),
     [error, isLoading, profile, session],

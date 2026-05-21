@@ -1,6 +1,6 @@
-# Velora
+# Grumm
 
-Velora est une application Next.js App Router avec Tailwind CSS et Supabase
+Grumm est une application Next.js App Router avec Tailwind CSS et Supabase
 pour l'authentification, les données, la progression de lecture et les rôles.
 
 ## Développement
@@ -51,19 +51,16 @@ Vercel. À vérifier dans le dashboard Vercel :
 
 ## Supabase
 
-Appliquer les migrations SQL dans l'ordre logique :
+Les fichiers canoniques sont désormais consolidés :
 
-1. `supabase/schema.sql` pour une base neuve.
-2. `supabase/velora_urls_progress.sql` si la base existait avant les slugs et la
-   progression.
-3. `supabase/velora_seed_20_more_facts.sql` pour enrichir les contenus.
-4. `supabase/velora_roles_profile_admin.sql` pour les rôles, policies admin,
-   reset des vues et progression enrichie.
-5. `supabase/velora_role_trigger_fix.sql` si une base existante a déjà le
-   trigger de protection des rôles et bloque les migrations ou les updates
-   administrateur.
-6. `supabase/velora_fact_review_feed.sql` pour le workflow de validation des
-   faits, les policies RLS durcies et le feed aleatoire pondere.
+1. `supabase/schema.sql` contient le schéma complet : tables, types, contraintes,
+   index, RLS, policies, fonctions et triggers.
+2. `supabase/seed.sql` contient les données initiales utiles : thèmes, faits de
+   démonstration et contenus enrichis.
+
+Les anciens fragments SQL ont été déplacés dans `supabase/archive/` pour garder
+une trace de migration, mais ils ne sont plus le chemin recommandé pour une base
+neuve.
 
 Premier administrateur :
 
@@ -97,7 +94,7 @@ Parcours critiques :
 ## Version iOS de test
 
 Une première application iOS Expo/React Native est disponible dans `apps/ios`.
-Elle réutilise Supabase et les mécaniques Velora sans embarquer le site dans une
+Elle réutilise Supabase et les mécaniques Grumm sans embarquer le site dans une
 WebView.
 
 Commandes principales :

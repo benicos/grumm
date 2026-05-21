@@ -1,10 +1,11 @@
-"use client";
+import { redirect } from "next/navigation";
 
-import { useParams } from "next/navigation";
-import FactFeed from "../../../discover/FactFeed";
+export default async function LegacyThemeFactsPage({
+  params,
+}: {
+  params: Promise<{ themeSlug: string }>;
+}) {
+  const { themeSlug } = await params;
 
-export default function ThemeFactsPage() {
-  const params = useParams<{ themeSlug: string }>();
-
-  return <FactFeed themeSlug={params.themeSlug} />;
+  redirect(`/discover/theme/${themeSlug}`);
 }

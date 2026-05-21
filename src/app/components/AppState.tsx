@@ -12,7 +12,7 @@ type AppStateProps = {
 };
 
 export function AppState({
-  eyebrow = "Velora",
+  eyebrow = "Grumm.",
   title,
   description,
   primaryHref = "/",
