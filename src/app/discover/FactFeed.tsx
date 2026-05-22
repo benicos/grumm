@@ -669,7 +669,7 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
     swipeHintTimerRef.current = window.setTimeout(() => {
       setShowSwipeHint(true);
       swipeHintTimerRef.current = null;
-    }, 8000);
+    }, 10000);
 
     return () => {
       if (swipeHintTimerRef.current !== null) {

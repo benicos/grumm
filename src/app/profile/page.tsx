@@ -244,18 +244,18 @@ function FactList({
               key={fact.id}
               className="group py-4 transition hover:translate-x-1"
             >
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.16em] text-[#ffd166]">
+                  {fact.category}
+                </span>
+                <FactSource
+                  className="max-w-[48%] text-xs text-white/42"
+                  label=""
+                  source={fact.source}
+                  sourceUrl={fact.sourceUrl}
+                />
+              </div>
               <Link href={`/fact/${fact.slug}`} className="block">
-                <div className="mb-3 flex items-center justify-between gap-3">
-                  <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.16em] text-[#ffd166]">
-                    {fact.category}
-                  </span>
-                  <FactSource
-                    className="max-w-[48%] text-xs text-white/42"
-                    label=""
-                    source={fact.source}
-                    sourceUrl={fact.sourceUrl}
-                  />
-                </div>
                 <p className="text-base font-bold leading-snug tracking-[-0.03em] transition group-hover:text-[#ffe2a3]">
                   {fact.title}
                 </p>

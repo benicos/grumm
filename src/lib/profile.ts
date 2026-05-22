@@ -23,6 +23,7 @@ type RelatedFactRow = {
         title: string;
         hook: string | null;
         content: string;
+        long_content?: string | null;
         source: string;
         source_url?: string | null;
         tone: string | null;
@@ -121,6 +122,7 @@ function mapRelatedFact(row: RelatedFactRow): FeedFact | null {
     title: fact.title,
     hook: fact.hook?.trim() || null,
     detail: fact.content,
+    longContent: fact.long_content?.trim() || null,
     source: fact.source || "Source non renseignee",
     sourceUrl: fact.source_url ?? null,
     tone:
@@ -155,7 +157,7 @@ function getProfileErrorMessage(error: unknown) {
 }
 
 const RELATED_FACT_SELECT =
-  "fact_id,facts(id,slug,title,hook,content,source,source_url,tone,accent_color,categories(name,slug,tone,accent_color))";
+  "fact_id,facts(id,slug,title,hook,content,long_content,source,source_url,tone,accent_color,categories(name,slug,tone,accent_color))";
 const VIEWED_FACT_SELECT =
   "fact_id,facts(categories(name,slug,tone,accent_color))";
 

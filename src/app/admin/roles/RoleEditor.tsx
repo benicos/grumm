@@ -1,22 +1,20 @@
 "use client";
 
-import Link from "next/link";
-import { FormEvent, useEffect, useState } from "react";
-import {
-  getAdminRole,
-  saveAdminRole,
-} from "@/lib/admin";
+import type { FormEvent } from "react";
+import { useEffect, useState } from "react";
+import { getAdminRole, saveAdminRole } from "@/lib/admin";
 import {
   PERMISSION_LABELS,
   PERMISSIONS,
   type PermissionKey,
 } from "@/lib/roles";
+import { AdminBackLink, AdminField } from "../forms";
 import {
   AdminButton,
-  AdminMessage,
-  AdminPageHeader,
-  AdminPanel,
-} from "../components";
+  AdminCard,
+  AdminNotice,
+  AdminPageHeading,
+} from "../ui";
 
 type RoleFormState = {
   description: string;
@@ -34,12 +32,12 @@ const emptyRole: RoleFormState = {
 
 export default function RoleEditor({ roleSlug }: { roleSlug?: string }) {
   const [form, setForm] = useState<RoleFormState>(emptyRole);
-  const [isSystem, setIsSystem] = useState(false);
-  const [isLoading, setIsLoading] = useState(Boolean(roleSlug));
-  const [isBusy, setIsBusy] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
+  const [systemRole, setSystemRole] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const isEditing = Boolean(roleSlug);
+  const [message, setMessage] = useState<string | null>(null);
+  const [loading, setLoading] = useState(Boolean(roleSlug));
+  const [busy, setBusy] = useState(false);
+  const editing = Boolean(roleSlug);
 
   useEffect(() => {
     if (!roleSlug) {
@@ -47,37 +45,45 @@ export default function RoleEditor({ roleSlug }: { roleSlug?: string }) {
     }
 
     const currentRoleSlug = roleSlug;
-    let isMounted = true;
+    let mounted = true;
 
     async function loadRole() {
       try {
         const role = await getAdminRole(currentRoleSlug);
 
-        if (isMounted && role) {
-          setForm({
-            description: role.description ?? "",
-            name: role.name,
-            permissions: Array.isArray(role.permissions)
-              ? (role.permissions.filter(
-                  (permission): permission is PermissionKey =>
-                    typeof permission === "string",
-                ) as PermissionKey[])
-              : [],
-            slug: role.slug,
-          });
-          setIsSystem(role.is_system);
+        if (!mounted) {
+          return;
         }
+
+        if (!role) {
+          setError("Ce rôle est introuvable.");
+          return;
+        }
+
+        setForm({
+          description: role.description ?? "",
+          name: role.name,
+          permissions: Array.isArray(role.permissions)
+            ? (role.permissions.filter(
+                (permission): permission is PermissionKey =>
+                  typeof permission === "string" &&
+                  PERMISSIONS.includes(permission as PermissionKey),
+              ) as PermissionKey[])
+            : [],
+          slug: role.slug,
+        });
+        setSystemRole(role.is_system);
       } catch (loadError) {
-        if (isMounted) {
+        if (mounted) {
           setError(
             loadError instanceof Error
               ? loadError.message
-              : "Impossible de charger le rôle.",
+              : "Le rôle ne peut pas être chargé.",
           );
         }
       } finally {
-        if (isMounted) {
-          setIsLoading(false);
+        if (mounted) {
+          setLoading(false);
         }
       }
     }
@@ -85,7 +91,7 @@ export default function RoleEditor({ roleSlug }: { roleSlug?: string }) {
     void loadRole();
 
     return () => {
-      isMounted = false;
+      mounted = false;
     };
   }, [roleSlug]);
 
@@ -100,13 +106,13 @@ export default function RoleEditor({ roleSlug }: { roleSlug?: string }) {
 
   async function submitRole(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setIsBusy(true);
-    setMessage(null);
+    setBusy(true);
     setError(null);
+    setMessage(null);
 
     const result = await saveAdminRole(form);
 
-    setIsBusy(false);
+    setBusy(false);
 
     if (!result.ok) {
       setError(result.message);
@@ -115,115 +121,91 @@ export default function RoleEditor({ roleSlug }: { roleSlug?: string }) {
 
     setMessage(result.message);
 
-    if (!isEditing) {
+    if (!editing) {
       setForm(emptyRole);
     }
   }
 
   return (
     <>
-      <AdminPageHeader
-        eyebrow="Sécurité"
-        title={isEditing ? "Modifier un rôle" : "Créer un rôle"}
-        description="Les permissions cochées sont utilisées par l'admin et les politiques de sécurité."
-        action={
-          <Link
-            href="/admin/roles"
-            className="rounded-md border border-slate-700 bg-slate-900 px-4 py-2 text-sm font-extrabold text-slate-200 hover:bg-slate-800"
-          >
-            Retour aux rôles
-          </Link>
-        }
+      <AdminPageHeading
+        current={editing ? "Modifier un rôle" : "Créer un rôle"}
+        title={editing ? "Modifier un rôle" : "Créer un rôle"}
+        description="Permissions utilisées par l’administration et les politiques Supabase."
+        action={<AdminBackLink href="/admin/roles">Retour aux rôles</AdminBackLink>}
       />
+      <AdminNotice message={message} />
+      <AdminNotice message={error} tone="error" />
 
-      <AdminMessage message={message} tone="success" />
-      <AdminMessage message={error} tone="error" />
-
-      <AdminPanel className="p-5">
-        {isLoading ? (
-          <div className="h-96 animate-pulse rounded-md bg-slate-900" />
+      <AdminCard className="p-6">
+        {loading ? (
+          <div className="h-96 animate-pulse rounded-2xl bg-gray-100" />
         ) : (
           <form onSubmit={submitRole} className="grid gap-5">
-            {isSystem && (
-              <div className="rounded-md border border-[#465fff]/20 bg-[#465fff]/10 p-3 text-sm font-semibold text-[#dbeafe]">
-                Rôle système protégé. Le rôle administrateur doit conserver les permissions critiques.
-              </div>
-            )}
+            {systemRole ? (
+              <p className="rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-700">
+                Rôle système : vérifie les permissions critiques avant
+                d’enregistrer.
+              </p>
+            ) : null}
 
-            <div className="grid gap-4 lg:grid-cols-2">
-              <label className="block">
-                <span className="text-sm font-bold text-slate-300">Nom</span>
-                <input
-                  value={form.name}
-                  onChange={(event) =>
-                    setForm((current) => ({ ...current, name: event.target.value }))
-                  }
-                  className="mt-2 w-full rounded-md border border-slate-800 bg-slate-900 px-3 py-2.5 text-sm text-white outline-none focus:border-[#465fff]"
-                />
-              </label>
-              <label className="block">
-                <span className="text-sm font-bold text-slate-300">
-                  Identifiant
-                </span>
-                <input
-                  value={form.slug}
-                  disabled={isSystem}
-                  onChange={(event) =>
-                    setForm((current) => ({ ...current, slug: event.target.value }))
-                  }
-                  className="mt-2 w-full rounded-md border border-slate-800 bg-slate-900 px-3 py-2.5 text-sm text-white outline-none focus:border-[#465fff] disabled:opacity-60"
-                />
-              </label>
-            </div>
-
-            <label className="block">
-              <span className="text-sm font-bold text-slate-300">Description</span>
-              <textarea
-                value={form.description}
-                onChange={(event) =>
-                  setForm((current) => ({
-                    ...current,
-                    description: event.target.value,
-                  }))
+            <div className="grid gap-5 lg:grid-cols-2">
+              <AdminField
+                label="Nom"
+                value={form.name}
+                onChange={(name) =>
+                  setForm((current) => ({ ...current, name }))
                 }
-                className="mt-2 min-h-24 w-full rounded-md border border-slate-800 bg-slate-900 px-3 py-2.5 text-sm text-white outline-none focus:border-[#465fff]"
               />
-            </label>
+              <AdminField
+                label="Identifiant"
+                value={form.slug}
+                onChange={(slug) =>
+                  setForm((current) => ({ ...current, slug }))
+                }
+              />
+            </div>
+            <AdminField
+              label="Description"
+              textarea
+              rows={3}
+              value={form.description}
+              onChange={(description) =>
+                setForm((current) => ({ ...current, description }))
+              }
+            />
 
-            <div>
-              <p className="text-sm font-bold text-slate-300">Permissions</p>
-              <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            <section>
+              <h2 className="text-sm font-medium text-gray-700">
+                Permissions
+              </h2>
+              <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
                 {PERMISSIONS.map((permission) => (
                   <label
                     key={permission}
-                    className="flex items-center gap-3 rounded-md border border-slate-800 bg-slate-900 px-3 py-3 text-sm text-slate-200"
+                    className="flex min-h-14 items-center gap-3 rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-700"
                   >
                     <input
                       type="checkbox"
                       checked={form.permissions.includes(permission)}
                       onChange={() => togglePermission(permission)}
-                      className="h-4 w-4 accent-[#465fff]"
+                      className="h-4 w-4 shrink-0 accent-[#465fff]"
                     />
                     <span>{PERMISSION_LABELS[permission]}</span>
                   </label>
                 ))}
               </div>
-            </div>
+            </section>
 
             <div className="flex flex-wrap gap-3">
-              <AdminButton type="submit" disabled={isBusy}>
+              <AdminButton type="submit" disabled={busy}>
                 Enregistrer
               </AdminButton>
-              <Link
-                href="/admin/roles"
-                className="rounded-md border border-slate-700 bg-slate-900 px-4 py-2 text-sm font-extrabold text-slate-200 hover:bg-slate-800"
-              >
-                Annuler
-              </Link>
+              <AdminBackLink href="/admin/roles">Annuler</AdminBackLink>
             </div>
           </form>
         )}
-      </AdminPanel>
+      </AdminCard>
     </>
   );
 }

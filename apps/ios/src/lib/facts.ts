@@ -29,6 +29,7 @@ type FeedRpcRow = {
   category_slug: string;
   category_tone: string;
   content: string;
+  long_content?: string | null;
   hook: string | null;
   id: string;
   slug: string;
@@ -106,7 +107,7 @@ type ExplorerThemeRpcRow = CategoryRow & {
 };
 
 const relatedFactSelect =
-  "fact_id,facts(id,slug,title,hook,content,source,source_url,tone,accent_color,categories(name,slug,tone,accent_color))";
+  "fact_id,facts(id,slug,title,hook,content,long_content,source,source_url,tone,accent_color,categories(name,slug,tone,accent_color))";
 const CACHE_TTL_MS = 45_000;
 
 type CacheEntry<T> = {
@@ -151,6 +152,7 @@ function mapFeedFact(row: FeedRpcRow): FeedFact {
     category: row.category_name ?? "Général",
     categorySlug: row.category_slug ?? "general",
     detail: row.content,
+    longContent: row.long_content?.trim() || null,
     hook: row.hook?.trim() || null,
     id: row.id,
     slug: row.slug || slugify(row.title),
@@ -175,6 +177,7 @@ function mapRelatedFact(row: RelatedFactRow): FeedFact | null {
     category: category?.name ?? "Général",
     categorySlug: category?.slug ?? "general",
     detail: fact.content,
+    longContent: fact.long_content?.trim() || null,
     hook: fact.hook?.trim() || null,
     id: fact.id,
     slug: fact.slug || slugify(fact.title),
@@ -358,7 +361,7 @@ export async function getExplorerData(options?: { query?: string }): Promise<Exp
   const recentFactsResult = await withSupabaseTimeout(
     supabase
       .from("facts")
-      .select("id,slug,title,hook,content,source,source_url,tone,accent_color,categories(name,slug,tone,accent_color)")
+      .select("id,slug,title,hook,content,long_content,source,source_url,tone,accent_color,categories(name,slug,tone,accent_color)")
       .eq("status", "published")
       .order("published_at", { ascending: false, nullsFirst: false })
       .order("created_at", { ascending: false })

@@ -1,23 +1,25 @@
 "use client";
 
-import Link from "next/link";
-import { FormEvent, useEffect, useState } from "react";
+import type { FormEvent } from "react";
+import { useEffect, useState } from "react";
 import {
   FACT_STATUS_LABELS,
   getAdminFact,
   getAdminFacts,
   saveAdminFact,
+  type AdminCategory,
+  type AdminFact,
+  type FactStatus,
 } from "@/lib/admin";
-import { trackAnalyticsEvent } from "@/lib/analytics/web";
-import type { AdminCategory, AdminFact, FactStatus } from "@/lib/admin";
 import { hasPermission } from "@/lib/roles";
 import { useAuth } from "../../auth/AuthProvider";
+import { AdminBackLink, AdminField, adminFieldClassName } from "../forms";
 import {
   AdminButton,
-  AdminMessage,
-  AdminPageHeader,
-  AdminPanel,
-} from "../components";
+  AdminCard,
+  AdminNotice,
+  AdminPageHeading,
+} from "../ui";
 
 type FactFormState = {
   advancedSlug: string;
@@ -25,6 +27,7 @@ type FactFormState = {
   content: string;
   hook: string;
   id: string;
+  long_content: string;
   source: string;
   source_url: string;
   status: FactStatus;
@@ -39,13 +42,14 @@ const factStatuses: FactStatus[] = [
   "archived",
 ];
 
-function emptyFact(canPublish: boolean): FactFormState {
+function getEmptyFact(canPublish: boolean): FactFormState {
   return {
     advancedSlug: "",
     category_id: "",
     content: "",
     hook: "",
     id: "",
+    long_content: "",
     source: "",
     source_url: "",
     status: canPublish ? "published" : "pending_review",
@@ -60,6 +64,7 @@ function factToForm(fact: AdminFact): FactFormState {
     content: fact.content,
     hook: fact.hook ?? "",
     id: fact.id,
+    long_content: fact.long_content ?? "",
     source: fact.source,
     source_url: fact.source_url ?? "",
     status: fact.status,
@@ -67,123 +72,85 @@ function factToForm(fact: AdminFact): FactFormState {
   };
 }
 
-function Field({
-  label,
-  onChange,
-  textarea,
-  type = "text",
-  value,
-}: {
-  label: string;
-  onChange: (value: string) => void;
-  textarea?: boolean;
-  type?: string;
-  value: string;
-}) {
-  return (
-    <label className="block">
-      <span className="text-sm font-bold text-slate-300">{label}</span>
-      {textarea ? (
-        <textarea
-          value={value}
-          onChange={(event) => onChange(event.target.value)}
-          className="mt-2 min-h-36 w-full rounded-md border border-slate-800 bg-slate-900 px-3 py-2.5 text-sm text-white outline-none focus:border-[#465fff]"
-        />
-      ) : (
-        <input
-          value={value}
-          onChange={(event) => onChange(event.target.value)}
-          type={type}
-          className="mt-2 w-full rounded-md border border-slate-800 bg-slate-900 px-3 py-2.5 text-sm text-white outline-none focus:border-[#465fff]"
-        />
-      )}
-    </label>
-  );
-}
-
 export default function FactEditor({ factId }: { factId?: string }) {
   const { profile } = useAuth();
   const canPublish = hasPermission(profile, "facts.publish");
   const [categories, setCategories] = useState<AdminCategory[]>([]);
-  const [form, setForm] = useState<FactFormState>(() => emptyFact(canPublish));
-  const [isLoading, setIsLoading] = useState(true);
-  const [isBusy, setIsBusy] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
+  const [form, setForm] = useState<FactFormState>(() =>
+    getEmptyFact(canPublish),
+  );
   const [error, setError] = useState<string | null>(null);
-  const isEditing = Boolean(factId);
+  const [message, setMessage] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const editing = Boolean(factId);
 
   useEffect(() => {
-    let isMounted = true;
-    const currentFactId = factId;
+    let mounted = true;
 
-    async function loadForm() {
+    async function loadFact() {
       try {
-        if (currentFactId) {
-          const result = await getAdminFact(currentFactId);
+        const result = factId
+          ? await getAdminFact(factId)
+          : await getAdminFacts({ pageSize: 1 });
 
-          if (!isMounted) {
-            return;
-          }
-
-          setCategories(result.categories);
-          setForm(
-            result.fact
-              ? factToForm(result.fact)
-              : {
-                  ...emptyFact(canPublish),
-                  category_id: result.categories[0]?.id ?? "",
-                },
-          );
-        } else {
-          const result = await getAdminFacts({ pageSize: 1 });
-
-          if (!isMounted) {
-            return;
-          }
-
-          setCategories(result.categories);
-          setForm({
-            ...emptyFact(canPublish),
-            category_id: result.categories[0]?.id ?? "",
-          });
+        if (!mounted) {
+          return;
         }
+
+        setCategories(result.categories);
+
+        if ("fact" in result && result.fact) {
+          setForm(factToForm(result.fact));
+          return;
+        }
+
+        if ("fact" in result && !result.fact) {
+          setError("Ce fait est introuvable.");
+        }
+
+        setForm({
+          ...getEmptyFact(canPublish),
+          category_id: result.categories[0]?.id ?? "",
+        });
       } catch (loadError) {
-        if (isMounted) {
+        if (mounted) {
           setError(
             loadError instanceof Error
               ? loadError.message
-              : "Impossible de charger le formulaire.",
+              : "Le formulaire du fait ne peut pas être chargé.",
           );
         }
       } finally {
-        if (isMounted) {
-          setIsLoading(false);
+        if (mounted) {
+          setLoading(false);
         }
       }
     }
 
-    void loadForm();
+    void loadFact();
 
     return () => {
-      isMounted = false;
+      mounted = false;
     };
   }, [canPublish, factId]);
 
   async function submitFact(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setIsBusy(true);
-    setMessage(null);
+    setBusy(true);
     setError(null);
+    setMessage(null);
 
     const result = await saveAdminFact({
       ...form,
       advancedSlug: form.advancedSlug || undefined,
       id: form.id || undefined,
+      long_content: form.long_content || null,
       source_url: form.source_url || null,
       status: canPublish ? form.status : undefined,
     });
 
-    setIsBusy(false);
+    setBusy(false);
 
     if (!result.ok) {
       setError(result.message);
@@ -191,17 +158,10 @@ export default function FactEditor({ factId }: { factId?: string }) {
     }
 
     setMessage(result.message);
-    void trackAnalyticsEvent({
-      entityType: "fact",
-      eventName: isEditing ? "admin_fact_updated" : "admin_fact_created",
-      metadata: {
-        status: canPublish ? form.status : "pending_review",
-      },
-    });
 
-    if (!isEditing) {
+    if (!editing) {
       setForm({
-        ...emptyFact(canPublish),
+        ...getEmptyFact(canPublish),
         category_id: form.category_id,
       });
     }
@@ -209,70 +169,62 @@ export default function FactEditor({ factId }: { factId?: string }) {
 
   return (
     <>
-      <AdminPageHeader
-        eyebrow="Contenu"
-        title={isEditing ? "Modifier un fait" : "Créer un fait"}
+      <AdminPageHeading
+        current={editing ? "Modifier un fait" : "Créer un fait"}
+        title={editing ? "Modifier un fait" : "Créer un fait"}
         description={
           canPublish
-            ? "Edition complete avec statut de publication."
-            : "Les nouveaux faits sont envoyes en validation."
+            ? "Contenu court, lecture longue et statut de publication."
+            : "Les nouveaux faits sont envoyés en validation."
         }
-        action={
-          <Link
-            href="/admin/facts"
-            className="rounded-md border border-slate-700 bg-slate-900 px-4 py-2 text-sm font-extrabold text-slate-200 hover:bg-slate-800"
-          >
-            Retour aux faits
-          </Link>
-        }
+        action={<AdminBackLink href="/admin/facts">Retour aux faits</AdminBackLink>}
       />
+      <AdminNotice message={message} />
+      <AdminNotice message={error} tone="error" />
 
-      <AdminMessage message={message} tone="success" />
-      <AdminMessage message={error} tone="error" />
-
-      <AdminPanel className="p-5">
-        {isLoading ? (
-          <div className="h-96 animate-pulse rounded-md bg-slate-900" />
+      <AdminCard className="p-6">
+        {loading ? (
+          <div className="h-96 animate-pulse rounded-2xl bg-gray-100" />
         ) : (
           <form onSubmit={submitFact} className="grid gap-5">
-            {isEditing && (
-              <div className="rounded-md border border-slate-800 bg-slate-900 p-3 text-xs text-slate-400">
-                Statut actuel :{" "}
-                <span className="font-bold text-slate-200">
-                  {FACT_STATUS_LABELS[form.status]}
-                </span>
-              </div>
-            )}
-
-            <div className="grid gap-4 lg:grid-cols-2">
-              <Field
+            <div className="grid gap-5 lg:grid-cols-2">
+              <AdminField
                 label="Titre"
                 value={form.title}
-                onChange={(value) =>
-                  setForm((current) => ({ ...current, title: value }))
+                onChange={(title) =>
+                  setForm((current) => ({ ...current, title }))
                 }
               />
-              <Field
-                label="Hook"
+              <AdminField
+                label="Accroche"
                 value={form.hook}
-                onChange={(value) =>
-                  setForm((current) => ({ ...current, hook: value }))
+                onChange={(hook) =>
+                  setForm((current) => ({ ...current, hook }))
                 }
               />
             </div>
 
-            <Field
-              label="Contenu"
+            <AdminField
+              label="Contenu court"
               textarea
               value={form.content}
-              onChange={(value) =>
-                setForm((current) => ({ ...current, content: value }))
+              onChange={(content) =>
+                setForm((current) => ({ ...current, content }))
+              }
+            />
+            <AdminField
+              label="Contenu long"
+              textarea
+              rows={8}
+              value={form.long_content}
+              onChange={(long_content) =>
+                setForm((current) => ({ ...current, long_content }))
               }
             />
 
-            <div className="grid gap-4 lg:grid-cols-2">
-              <label className="block">
-                <span className="text-sm font-bold text-slate-300">Thème</span>
+            <div className="grid gap-5 lg:grid-cols-2">
+              <label className="block text-sm font-medium text-gray-700">
+                Thème
                 <select
                   value={form.category_id}
                   onChange={(event) =>
@@ -281,7 +233,7 @@ export default function FactEditor({ factId }: { factId?: string }) {
                       category_id: event.target.value,
                     }))
                   }
-                  className="mt-2 w-full rounded-md border border-slate-800 bg-slate-900 px-3 py-2.5 text-sm text-white outline-none focus:border-[#465fff]"
+                  className={adminFieldClassName}
                 >
                   {categories.map((category) => (
                     <option key={category.id} value={category.id}>
@@ -290,10 +242,9 @@ export default function FactEditor({ factId }: { factId?: string }) {
                   ))}
                 </select>
               </label>
-
               {canPublish ? (
-                <label className="block">
-                  <span className="text-sm font-bold text-slate-300">Statut</span>
+                <label className="block text-sm font-medium text-gray-700">
+                  Statut
                   <select
                     value={form.status}
                     onChange={(event) =>
@@ -302,7 +253,7 @@ export default function FactEditor({ factId }: { factId?: string }) {
                         status: event.target.value as FactStatus,
                       }))
                     }
-                    className="mt-2 w-full rounded-md border border-slate-800 bg-slate-900 px-3 py-2.5 text-sm text-white outline-none focus:border-[#465fff]"
+                    className={adminFieldClassName}
                   >
                     {factStatuses.map((status) => (
                       <option key={status} value={status}>
@@ -312,65 +263,47 @@ export default function FactEditor({ factId }: { factId?: string }) {
                   </select>
                 </label>
               ) : (
-                <div className="rounded-md border border-[#465fff]/20 bg-[#465fff]/10 p-3 text-sm font-semibold text-[#dbeafe]">
+                <p className="rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-700">
                   Statut automatique : en attente de validation.
-                </div>
+                </p>
               )}
             </div>
 
-            <div className="grid gap-4 lg:grid-cols-2">
-              <Field
+            <div className="grid gap-5 lg:grid-cols-2">
+              <AdminField
                 label="Source"
                 value={form.source}
-                onChange={(value) =>
-                  setForm((current) => ({ ...current, source: value }))
+                onChange={(source) =>
+                  setForm((current) => ({ ...current, source }))
                 }
               />
-              <Field
-                label="URL source"
+              <AdminField
+                label="URL de la source"
                 type="url"
                 value={form.source_url}
-                onChange={(value) =>
-                  setForm((current) => ({ ...current, source_url: value }))
+                onChange={(source_url) =>
+                  setForm((current) => ({ ...current, source_url }))
                 }
               />
             </div>
 
-            <details className="rounded-md border border-slate-800 bg-slate-900 p-3">
-              <summary className="cursor-pointer text-sm font-bold text-slate-300">
-                Options avancees
-              </summary>
-              <div className="mt-3">
-                <Field
-                  label="Slug force"
-                  value={form.advancedSlug}
-                  onChange={(value) =>
-                    setForm((current) => ({
-                      ...current,
-                      advancedSlug: value,
-                    }))
-                  }
-                />
-                <p className="mt-2 text-xs leading-5 text-slate-500">
-                  Laisse vide pour regenerer automatiquement depuis le titre.
-                </p>
-              </div>
-            </details>
+            <AdminField
+              label="Slug personnalisé"
+              value={form.advancedSlug}
+              onChange={(advancedSlug) =>
+                setForm((current) => ({ ...current, advancedSlug }))
+              }
+            />
 
             <div className="flex flex-wrap gap-3">
-              <AdminButton type="submit" disabled={isBusy}>
+              <AdminButton type="submit" disabled={busy}>
                 {canPublish ? "Enregistrer" : "Envoyer en validation"}
               </AdminButton>
-              <Link
-                href="/admin/facts"
-                className="rounded-md border border-slate-700 bg-slate-900 px-4 py-2 text-sm font-extrabold text-slate-200 hover:bg-slate-800"
-              >
-                Annuler
-              </Link>
+              <AdminBackLink href="/admin/facts">Annuler</AdminBackLink>
             </div>
           </form>
         )}
-      </AdminPanel>
+      </AdminCard>
     </>
   );
 }

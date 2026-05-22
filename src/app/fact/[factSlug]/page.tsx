@@ -312,6 +312,17 @@ export default function FactDetailPage() {
             {fact.detail}
           </p>
 
+          {fact.longContent ? (
+            <section className="mt-8 max-w-3xl rounded-[22px] border border-white/10 bg-black/18 p-5 text-white/78 sm:p-6">
+              <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#ffd166]">
+                En savoir plus
+              </p>
+              <div className="mt-4 whitespace-pre-wrap text-base leading-8 sm:text-lg">
+                {fact.longContent}
+              </div>
+            </section>
+          ) : null}
+
           {fact.hook ? (
             <div className="mt-8 max-w-3xl rounded-[18px] border border-white/10 bg-white/[0.055] p-5 text-sm font-semibold leading-6 text-white/68">
               À retenir : {fact.hook}

@@ -62,6 +62,11 @@ Les anciens fragments SQL ont été déplacés dans `supabase/archive/` pour gar
 une trace de migration, mais ils ne sont plus le chemin recommandé pour une base
 neuve.
 
+`supabase/schema.sql` est aussi relancable sur une base Grumm partiellement
+existante : les ajouts utilisent des formes idempotentes et conservent les
+donnees. Les conflits de types externes ou de lignes orphelines qui exigent une
+operation destructive restent signales en commentaire SQL pour revue manuelle.
+
 Premier administrateur :
 
 ```sql

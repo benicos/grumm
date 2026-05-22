@@ -1,6 +1,7 @@
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { gradeIconOptions, paginationConfig } from "@/config/app";
 import { getBadgeInfo } from "@/lib/badges";
+import { isCommercialCollaborationSlug } from "@/lib/commercial";
 import { formatAppError, getConfiguredErrorMessage } from "@/lib/errors";
 import type { PermissionKey, UserRole } from "@/lib/roles";
 import {
@@ -80,6 +81,12 @@ export type AdminDashboardData = {
   recentProfiles: AdminProfile[];
 };
 
+export type AdminDashboardSeriesPoint = {
+  label: string;
+  current: number;
+  previous: number;
+};
+
 export type AdminAnalyticsData = {
   overview: {
     anonymousVisitors: number;
@@ -118,6 +125,15 @@ export type AdminAnalyticsData = {
     bestEngagementThemes: AdminAnalyticsThemeStat[];
     topOpenedThemes: AdminAnalyticsThemeStat[];
   };
+  series: {
+    factReads: AdminDashboardSeriesPoint[];
+    registrations: AdminDashboardSeriesPoint[];
+    visitors: AdminDashboardSeriesPoint[];
+  };
+  topInteractions: {
+    facts: AdminAnalyticsFactStat[];
+    themes: AdminAnalyticsThemeStat[];
+  };
 };
 
 export type AdminAnalyticsFactStat = {
@@ -143,7 +159,7 @@ type AdminClient = Extract<AdminAuth, { ok: true }>["supabase"];
 
 const DEFAULT_PAGE_SIZE: number = paginationConfig.adminDefaultPageSize;
 const ADMIN_FACT_SELECT =
-  "id,category_id,slug,title,hook,content,source,source_url,status,published_at,display_order,tone,accent_color,created_at,updated_at,categories(name,slug)";
+  "id,category_id,slug,title,hook,content,long_content,source,source_url,status,published_at,display_order,tone,accent_color,created_at,updated_at,categories(name,slug)";
 
 function normalizeSearchTerm(query?: string) {
   return query?.trim().replace(/[%,_]/g, " ").replace(/\s+/g, " ") ?? "";
@@ -621,6 +637,124 @@ function countBy<T extends string>(values: T[]) {
   }, new Map<T, number>());
 }
 
+function getLocalDayKey(value: string) {
+  return value.slice(0, 10);
+}
+
+function getDayKey(date: Date) {
+  return date.toISOString().slice(0, 10);
+}
+
+function getDashboardWindow(days = 14) {
+  const currentStart = new Date();
+  currentStart.setUTCHours(0, 0, 0, 0);
+  currentStart.setUTCDate(currentStart.getUTCDate() - (days - 1));
+
+  const previousStart = new Date(currentStart);
+  previousStart.setUTCDate(previousStart.getUTCDate() - days);
+
+  return {
+    currentStart,
+    days,
+    previousStart,
+  };
+}
+
+function buildDailySeries(
+  currentCounts: Map<string, number>,
+  previousCounts: Map<string, number>,
+  currentStart: Date,
+  days: number,
+): AdminDashboardSeriesPoint[] {
+  return Array.from({ length: days }, (_, index) => {
+    const currentDay = new Date(currentStart);
+    currentDay.setUTCDate(currentDay.getUTCDate() + index);
+
+    const previousDay = new Date(currentDay);
+    previousDay.setUTCDate(previousDay.getUTCDate() - days);
+
+    return {
+      current: currentCounts.get(getDayKey(currentDay)) ?? 0,
+      label: new Intl.DateTimeFormat("fr-FR", {
+        day: "2-digit",
+        month: "short",
+        timeZone: "UTC",
+      }).format(currentDay),
+      previous: previousCounts.get(getDayKey(previousDay)) ?? 0,
+    };
+  });
+}
+
+function countRowsByDay<T>(
+  rows: T[],
+  getTimestamp: (row: T) => string,
+  currentStart: Date,
+  days: number,
+) {
+  const previousStart = new Date(currentStart);
+  previousStart.setUTCDate(previousStart.getUTCDate() - days);
+  const current = new Map<string, number>();
+  const previous = new Map<string, number>();
+
+  rows.forEach((row) => {
+    const timestamp = getTimestamp(row);
+    const time = new Date(timestamp).getTime();
+    const key = getLocalDayKey(timestamp);
+
+    if (time >= currentStart.getTime()) {
+      current.set(key, (current.get(key) ?? 0) + 1);
+      return;
+    }
+
+    if (time >= previousStart.getTime()) {
+      previous.set(key, (previous.get(key) ?? 0) + 1);
+    }
+  });
+
+  return buildDailySeries(current, previous, currentStart, days);
+}
+
+function countVisitorsByDay(
+  sessions: AnalyticsSessionRow[],
+  currentStart: Date,
+  days: number,
+) {
+  const previousStart = new Date(currentStart);
+  previousStart.setUTCDate(previousStart.getUTCDate() - days);
+  const current = new Map<string, Set<string>>();
+  const previous = new Map<string, Set<string>>();
+
+  sessions.forEach((session) => {
+    const identity = getAnalyticsIdentity(session);
+
+    if (!identity) {
+      return;
+    }
+
+    const time = new Date(session.started_at).getTime();
+    const key = getLocalDayKey(session.started_at);
+    const target =
+      time >= currentStart.getTime()
+        ? current
+        : time >= previousStart.getTime()
+          ? previous
+          : null;
+
+    if (!target) {
+      return;
+    }
+
+    target.set(key, new Set([...(target.get(key) ?? []), identity]));
+  });
+
+  return buildDailySeries(
+    new Map([...current.entries()].map(([key, values]) => [key, values.size])),
+    new Map([...previous.entries()].map(([key, values]) => [key, values.size])),
+    currentStart,
+    days,
+  );
+}
+
 function getFactCategory(fact?: FactStatRow | null) {
   const category = Array.isArray(fact?.categories)
     ? fact.categories[0]
@@ -675,9 +809,10 @@ export async function getAdminAnalyticsData(): Promise<AdminAnalyticsData> {
     throw new Error("Accès réservé aux administrateurs.");
   }
 
+  const dashboardWindow = getDashboardWindow();
   const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
   const adminUserIds = await getAdminUserIds(auth.supabase);
-  const [sessionsResult, eventsResult, readsResult, likesResult, savesResult] =
+  const [sessionsResult, eventsResult, readsResult, likesResult, savesResult, profilesResult] =
     await Promise.all([
       auth.supabase
         .from("analytics_sessions")
@@ -707,6 +842,12 @@ export async function getAdminAnalyticsData(): Promise<AdminAnalyticsData> {
         .select("fact_id,created_at,user_id")
         .gte("created_at", since)
         .limit(6000),
+      auth.supabase
+        .from("profiles")
+        .select("id,created_at,role")
+        .gte("created_at", dashboardWindow.previousStart.toISOString())
+        .neq("role", "administrateur")
+        .limit(6000),
     ]);
 
   const error =
@@ -714,7 +855,8 @@ export async function getAdminAnalyticsData(): Promise<AdminAnalyticsData> {
     eventsResult.error ??
     readsResult.error ??
     likesResult.error ??
-    savesResult.error;
+    savesResult.error ??
+    profilesResult.error;
 
   if (error) {
     throwAdminError(error, "load admin analytics", "analytics");
@@ -737,9 +879,17 @@ export async function getAdminAnalyticsData(): Promise<AdminAnalyticsData> {
     adminUserIds,
   );
   const saves = excludeAdminUsers(
-    (savesResult.data ?? []) as { fact_id: string; user_id: string | null }[],
+    (savesResult.data ?? []) as {
+      created_at: string;
+      fact_id: string;
+      user_id: string | null;
+    }[],
     adminUserIds,
   );
+  const registrations = (profilesResult.data ?? []) as {
+    created_at: string;
+    id: string;
+  }[];
   const factIds = [
     ...new Set([
       ...reads.map((row) => row.fact_id),
@@ -765,6 +915,12 @@ export async function getAdminAnalyticsData(): Promise<AdminAnalyticsData> {
   const factsById = new Map(
     ((factsResult.data ?? []) as FactStatRow[]).map((fact) => [fact.id, fact]),
   );
+  const publicReads = reads.filter(
+    (read) =>
+      !isCommercialCollaborationSlug(
+        getFactCategory(factsById.get(read.fact_id))?.slug,
+      ),
+  );
   const visitors = new Set(
     sessions.map(getAnalyticsIdentity).filter((value): value is string => Boolean(value)),
   );
@@ -780,9 +936,13 @@ export async function getAdminAnalyticsData(): Promise<AdminAnalyticsData> {
   const platformCounts = countBy(
     sessions.map((session) => session.platform.toUpperCase()),
   );
-  const readCounts = countBy(reads.map((row) => row.fact_id));
+  const readCounts = countBy(publicReads.map((row) => row.fact_id));
   const likeCounts = countBy(likes.map((row) => row.fact_id));
   const saveCounts = countBy(saves.map((row) => row.fact_id));
+  const interactionCounts = countBy([
+    ...likes.map((row) => row.fact_id),
+    ...saves.map((row) => row.fact_id),
+  ]);
   const likesEvents = events.filter((event) => event.event_name === "fact_liked").length;
   const savesEvents = events.filter((event) => event.event_name === "fact_saved").length;
   const shares = events.filter((event) => event.event_name === "fact_shared").length;
@@ -816,7 +976,7 @@ export async function getAdminAnalyticsData(): Promise<AdminAnalyticsData> {
   const topOpenedThemes = new Map<string, AdminAnalyticsThemeStat>();
   const bestEngagementThemes = new Map<string, AdminAnalyticsThemeStat>();
 
-  reads.forEach((read) => {
+  publicReads.forEach((read) => {
     const category = getFactCategory(factsById.get(read.fact_id));
 
     if (!category) {
@@ -883,6 +1043,18 @@ export async function getAdminAnalyticsData(): Promise<AdminAnalyticsData> {
       });
     });
 
+  events
+    .filter(
+      (event) =>
+        event.entity_type === "fact" &&
+        event.entity_id &&
+        ["fact_shared", "source_clicked"].includes(event.event_name),
+    )
+    .forEach((event) => {
+      const factId = event.entity_id as string;
+      interactionCounts.set(factId, (interactionCounts.get(factId) ?? 0) + 1);
+    });
+
   return {
     overview: {
       anonymousVisitors: anonymousVisitors.size,
@@ -893,9 +1065,9 @@ export async function getAdminAnalyticsData(): Promise<AdminAnalyticsData> {
       ),
       factsPerSession:
         sessions.length > 0
-          ? Number((reads.length / sessions.length).toFixed(1))
+          ? Number((publicReads.length / sessions.length).toFixed(1))
           : 0,
-      factsRead: reads.length,
+      factsRead: publicReads.length,
       signedInUsers: signedInUsers.size,
       totalSessions: sessions.length,
       uniqueVisitors: visitors.size,
@@ -906,7 +1078,10 @@ export async function getAdminAnalyticsData(): Promise<AdminAnalyticsData> {
       percent: percent(count, sessions.length),
     })),
     engagement: {
-      interactionRate: percent(likesEvents + savesEvents + shares, Math.max(reads.length, 1)),
+      interactionRate: percent(
+        likesEvents + savesEvents + shares,
+        Math.max(publicReads.length, 1),
+      ),
       likes: likesEvents || likes.length,
       saves: savesEvents || saves.length,
       shares,
@@ -914,13 +1089,13 @@ export async function getAdminAnalyticsData(): Promise<AdminAnalyticsData> {
     },
     reading: {
       averageReadSeconds: average(
-        reads
+        publicReads
           .map((read) => read.duration_seconds ?? 0)
           .filter((duration) => duration > 0),
       ),
       completionRate: percent(
-        reads.filter((read) => read.completed).length,
-        reads.length,
+        publicReads.filter((read) => read.completed).length,
+        publicReads.length,
       ),
       topLikedFacts: toFactStats(likeCounts, factsById),
       topReadFacts: toFactStats(readCounts, factsById),
@@ -935,6 +1110,29 @@ export async function getAdminAnalyticsData(): Promise<AdminAnalyticsData> {
     categories: {
       bestEngagementThemes: toThemeStats(bestEngagementThemes),
       topOpenedThemes: toThemeStats(topOpenedThemes),
+    },
+    series: {
+      factReads: countRowsByDay(
+        publicReads,
+        (read) => read.created_at,
+        dashboardWindow.currentStart,
+        dashboardWindow.days,
+      ),
+      registrations: countRowsByDay(
+        registrations,
+        (profile) => profile.created_at,
+        dashboardWindow.currentStart,
+        dashboardWindow.days,
+      ),
+      visitors: countVisitorsByDay(
+        sessions,
+        dashboardWindow.currentStart,
+        dashboardWindow.days,
+      ),
+    },
+    topInteractions: {
+      facts: toFactStats(interactionCounts, factsById, 5),
+      themes: toThemeStats(bestEngagementThemes, 5),
     },
   };
 }
@@ -1019,7 +1217,7 @@ export async function getAdminFacts({
 
   if (searchTerm) {
     factsRequest = factsRequest.or(
-      `title.ilike.%${searchTerm}%,hook.ilike.%${searchTerm}%,content.ilike.%${searchTerm}%,source.ilike.%${searchTerm}%,slug.ilike.%${searchTerm}%`,
+      `title.ilike.%${searchTerm}%,hook.ilike.%${searchTerm}%,content.ilike.%${searchTerm}%,long_content.ilike.%${searchTerm}%,source.ilike.%${searchTerm}%,slug.ilike.%${searchTerm}%`,
     );
   }
 
@@ -1610,6 +1808,7 @@ export async function saveAdminFact(input: {
   content: string;
   hook?: string | null;
   id?: string;
+  long_content?: string | null;
   source: string;
   source_url: string | null;
   status?: FactStatus;
@@ -1639,6 +1838,7 @@ export async function saveAdminFact(input: {
       category_id: input.category_id,
       content: input.content.trim(),
       hook: hook || null,
+      long_content: input.long_content?.trim() || null,
       published_at:
         status === "published" ? new Date().toISOString() : null,
       slug,

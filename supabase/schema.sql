@@ -1,6 +1,8 @@
 -- Schema complet Grumm
 -- Fichier canonique g?n?r? pour Grumm.
--- ? appliquer sur une base neuve ou comme r?f?rence de consolidation.
+-- ? appliquer sur une base neuve ou une base Grumm deja amorcee.
+-- Les mises a niveau ci-dessous ajoutent les objets manquants sans DROP TABLE
+-- ni purge. Les changements destructifs restent documentes en commentaire.
 
 -- ==================================================
 -- Source consolid?e : schema.sql
@@ -9,7 +11,19 @@
 create extension if not exists pgcrypto;
 create extension if not exists unaccent with schema public;
 
-create type public.fact_status as enum ('draft', 'published', 'archived');
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_type
+    join pg_namespace on pg_namespace.oid = pg_type.typnamespace
+    where pg_namespace.nspname = 'public'
+      and pg_type.typname = 'fact_status'
+  ) then
+    create type public.fact_status as enum ('draft', 'published', 'archived');
+  end if;
+end;
+$$;
 
 create or replace function public.slugify_text(value text)
 returns text
@@ -36,7 +50,7 @@ as $$
   );
 $$;
 
-create table public.categories (
+create table if not exists public.categories (
   id uuid primary key default gen_random_uuid(),
   name text not null,
   slug text not null unique,
@@ -46,13 +60,14 @@ create table public.categories (
   updated_at timestamptz not null default now()
 );
 
-create table public.facts (
+create table if not exists public.facts (
   id uuid primary key default gen_random_uuid(),
   category_id uuid not null references public.categories(id) on delete restrict,
   slug text not null unique,
   title text not null,
   hook text not null,
   content text not null,
+  long_content text,
   source text not null,
   source_url text,
   status public.fact_status not null default 'draft',
@@ -64,7 +79,7 @@ create table public.facts (
   updated_at timestamptz not null default now()
 );
 
-create table public.profiles (
+create table if not exists public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
   username text not null unique check (username ~ '^[a-z0-9_]{3,24}$'),
   avatar_url text,
@@ -73,7 +88,7 @@ create table public.profiles (
   updated_at timestamptz not null default now()
 );
 
-create table public.likes (
+create table if not exists public.likes (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users(id) on delete cascade,
   fact_id uuid not null references public.facts(id) on delete cascade,
@@ -81,7 +96,7 @@ create table public.likes (
   constraint likes_user_id_fact_id_key unique (user_id, fact_id)
 );
 
-create table public.saves (
+create table if not exists public.saves (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users(id) on delete cascade,
   fact_id uuid not null references public.facts(id) on delete cascade,
@@ -89,14 +104,14 @@ create table public.saves (
   constraint saves_user_id_fact_id_key unique (user_id, fact_id)
 );
 
-create table public.views (
+create table if not exists public.views (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users(id) on delete cascade,
   fact_id uuid not null references public.facts(id) on delete cascade,
   viewed_at timestamptz not null default now()
 );
 
-create table public.user_fact_views (
+create table if not exists public.user_fact_views (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users(id) on delete cascade,
   fact_id uuid not null references public.facts(id) on delete cascade,
@@ -104,7 +119,7 @@ create table public.user_fact_views (
   constraint user_fact_views_user_id_fact_id_key unique (user_id, fact_id)
 );
 
-create table public.user_daily_progress (
+create table if not exists public.user_daily_progress (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users(id) on delete cascade,
   progress_date date not null,
@@ -118,19 +133,74 @@ create table public.user_daily_progress (
   constraint user_daily_progress_user_id_date_key unique (user_id, progress_date)
 );
 
-create index categories_slug_idx on public.categories (slug);
-create index facts_status_published_at_idx on public.facts (status, published_at desc);
-create index facts_slug_idx on public.facts (slug);
-create index facts_category_id_idx on public.facts (category_id);
-create index likes_user_id_idx on public.likes (user_id);
-create index likes_fact_id_idx on public.likes (fact_id);
-create index saves_user_id_idx on public.saves (user_id);
-create index saves_fact_id_idx on public.saves (fact_id);
-create index views_user_id_viewed_at_idx on public.views (user_id, viewed_at desc);
-create index views_fact_id_idx on public.views (fact_id);
-create index user_fact_views_user_id_idx on public.user_fact_views (user_id);
-create index user_fact_views_fact_id_idx on public.user_fact_views (fact_id);
-create index user_daily_progress_user_id_date_idx on public.user_daily_progress (user_id, progress_date desc);
+alter table public.categories add column if not exists name text;
+alter table public.categories add column if not exists slug text;
+alter table public.categories add column if not exists accent_color text not null default '#ffd166';
+alter table public.categories add column if not exists tone text not null default 'from-[#0b1424] via-[#132744] to-[#f0a95a]';
+alter table public.categories add column if not exists created_at timestamptz not null default now();
+alter table public.categories add column if not exists updated_at timestamptz not null default now();
+
+alter table public.facts add column if not exists category_id uuid;
+alter table public.facts add column if not exists slug text;
+alter table public.facts add column if not exists title text;
+alter table public.facts add column if not exists hook text;
+alter table public.facts add column if not exists content text;
+alter table public.facts add column if not exists long_content text;
+alter table public.facts add column if not exists source text;
+alter table public.facts add column if not exists source_url text;
+alter table public.facts add column if not exists status public.fact_status not null default 'draft';
+alter table public.facts add column if not exists published_at timestamptz;
+alter table public.facts add column if not exists display_order integer not null default 0;
+alter table public.facts add column if not exists tone text;
+alter table public.facts add column if not exists accent_color text;
+alter table public.facts add column if not exists created_at timestamptz not null default now();
+alter table public.facts add column if not exists updated_at timestamptz not null default now();
+
+alter table public.profiles add column if not exists username text;
+alter table public.profiles add column if not exists avatar_url text;
+alter table public.profiles add column if not exists daily_goal integer not null default 10;
+alter table public.profiles add column if not exists created_at timestamptz not null default now();
+alter table public.profiles add column if not exists updated_at timestamptz not null default now();
+
+alter table public.likes add column if not exists user_id uuid;
+alter table public.likes add column if not exists fact_id uuid;
+alter table public.likes add column if not exists created_at timestamptz not null default now();
+alter table public.saves add column if not exists user_id uuid;
+alter table public.saves add column if not exists fact_id uuid;
+alter table public.saves add column if not exists created_at timestamptz not null default now();
+alter table public.views add column if not exists user_id uuid;
+alter table public.views add column if not exists fact_id uuid;
+alter table public.views add column if not exists viewed_at timestamptz not null default now();
+
+alter table public.user_fact_views add column if not exists user_id uuid;
+alter table public.user_fact_views add column if not exists fact_id uuid;
+alter table public.user_fact_views add column if not exists first_viewed_at timestamptz not null default now();
+alter table public.user_daily_progress add column if not exists user_id uuid;
+alter table public.user_daily_progress add column if not exists progress_date date;
+alter table public.user_daily_progress add column if not exists viewed_fact_ids uuid[] not null default '{}';
+alter table public.user_daily_progress add column if not exists facts_read_count integer not null default 0;
+alter table public.user_daily_progress add column if not exists daily_goal integer not null default 10;
+alter table public.user_daily_progress add column if not exists goal_completed boolean not null default false;
+alter table public.user_daily_progress add column if not exists completed_at timestamptz;
+alter table public.user_daily_progress add column if not exists created_at timestamptz not null default now();
+alter table public.user_daily_progress add column if not exists updated_at timestamptz not null default now();
+
+-- Existing installations with incompatible column types or orphan rows need a
+-- reviewed manual migration before adding stricter NOT NULL/FK constraints.
+
+create index if not exists categories_slug_idx on public.categories (slug);
+create index if not exists facts_status_published_at_idx on public.facts (status, published_at desc);
+create index if not exists facts_slug_idx on public.facts (slug);
+create index if not exists facts_category_id_idx on public.facts (category_id);
+create index if not exists likes_user_id_idx on public.likes (user_id);
+create index if not exists likes_fact_id_idx on public.likes (fact_id);
+create index if not exists saves_user_id_idx on public.saves (user_id);
+create index if not exists saves_fact_id_idx on public.saves (fact_id);
+create index if not exists views_user_id_viewed_at_idx on public.views (user_id, viewed_at desc);
+create index if not exists views_fact_id_idx on public.views (fact_id);
+create index if not exists user_fact_views_user_id_idx on public.user_fact_views (user_id);
+create index if not exists user_fact_views_fact_id_idx on public.user_fact_views (fact_id);
+create index if not exists user_daily_progress_user_id_date_idx on public.user_daily_progress (user_id, progress_date desc);
 
 create or replace function public.set_updated_at()
 returns trigger
@@ -142,10 +212,12 @@ begin
 end;
 $$;
 
+drop trigger if exists categories_set_updated_at on public.categories;
 create trigger categories_set_updated_at
 before update on public.categories
 for each row execute function public.set_updated_at();
 
+drop trigger if exists facts_set_updated_at on public.facts;
 create trigger facts_set_updated_at
 before update on public.facts
 for each row execute function public.set_updated_at();
@@ -176,14 +248,17 @@ begin
 end;
 $$;
 
+drop trigger if exists facts_set_slug on public.facts;
 create trigger facts_set_slug
 before insert or update of title, slug on public.facts
 for each row execute function public.set_fact_slug();
 
+drop trigger if exists profiles_set_updated_at on public.profiles;
 create trigger profiles_set_updated_at
 before update on public.profiles
 for each row execute function public.set_updated_at();
 
+drop trigger if exists user_daily_progress_set_updated_at on public.user_daily_progress;
 create trigger user_daily_progress_set_updated_at
 before update on public.user_daily_progress
 for each row execute function public.set_updated_at();
@@ -195,14 +270,13 @@ security definer
 set search_path = public
 as $$
 begin
-  if public.normalize_username(new.raw_user_meta_data->>'username') is null then
-    raise exception 'username_required';
-  end if;
-
   insert into public.profiles (id, username, avatar_url)
   values (
     new.id,
-    public.normalize_username(new.raw_user_meta_data->>'username'),
+    coalesce(
+      public.normalize_username(new.raw_user_meta_data->>'username'),
+      concat('user_', left(replace(new.id::text, '-', ''), 19))
+    ),
     nullif(new.raw_user_meta_data->>'avatar_url', '')
   )
   on conflict (id) do nothing;
@@ -211,6 +285,7 @@ begin
 end;
 $$;
 
+drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
 after insert on auth.users
 for each row execute function public.handle_new_user();
@@ -223,6 +298,27 @@ alter table public.saves enable row level security;
 alter table public.views enable row level security;
 alter table public.user_fact_views enable row level security;
 alter table public.user_daily_progress enable row level security;
+
+drop policy if exists "Public can read categories" on public.categories;
+drop policy if exists "Public can read published facts" on public.facts;
+drop policy if exists "Users can read own profile" on public.profiles;
+drop policy if exists "Public can check usernames" on public.profiles;
+drop policy if exists "Users can create own profile" on public.profiles;
+drop policy if exists "Users can update own profile" on public.profiles;
+drop policy if exists "Users can read own likes" on public.likes;
+drop policy if exists "Users can create own likes" on public.likes;
+drop policy if exists "Users can delete own likes" on public.likes;
+drop policy if exists "Users can read own saves" on public.saves;
+drop policy if exists "Users can create own saves" on public.saves;
+drop policy if exists "Users can delete own saves" on public.saves;
+drop policy if exists "Users can read own views" on public.views;
+drop policy if exists "Users can create own views" on public.views;
+drop policy if exists "Users can delete own views" on public.views;
+drop policy if exists "Users can read own fact views" on public.user_fact_views;
+drop policy if exists "Users can create own fact views" on public.user_fact_views;
+drop policy if exists "Users can read own daily progress" on public.user_daily_progress;
+drop policy if exists "Users can create own daily progress" on public.user_daily_progress;
+drop policy if exists "Users can update own daily progress" on public.user_daily_progress;
 
 create policy "Public can read categories"
 on public.categories for select
@@ -305,6 +401,12 @@ create policy "Users can update own daily progress"
 on public.user_daily_progress for update
 using (auth.uid() = user_id)
 with check (auth.uid() = user_id);
+
+-- PostgreSQL cannot CREATE OR REPLACE a RETURNS TABLE function when a
+-- previously applied migration changed its OUT columns. Rebuild this function
+-- object from the schema before the consolidated versions below are applied;
+-- no table data is touched.
+drop function if exists public.record_fact_read(uuid, date, integer);
 
 create or replace function public.record_fact_read(
   p_fact_id uuid,
@@ -481,11 +583,11 @@ security definer
 set search_path = public
 as $$
 declare
-  v_username text := public.normalize_username(new.raw_user_meta_data->>'username');
+  v_username text := coalesce(
+    public.normalize_username(new.raw_user_meta_data->>'username'),
+    concat('user_', left(replace(new.id::text, '-', ''), 19))
+  );
 begin
-  if v_username is null then
-    raise exception 'username_required';
-  end if;
 
   insert into public.profiles (id, username, avatar_url)
   values (
@@ -776,11 +878,11 @@ security definer
 set search_path = public
 as $$
 declare
-  v_username text := public.normalize_username(new.raw_user_meta_data->>'username');
+  v_username text := coalesce(
+    public.normalize_username(new.raw_user_meta_data->>'username'),
+    concat('user_', left(replace(new.id::text, '-', ''), 19))
+  );
 begin
-  if v_username is null then
-    raise exception 'username_required';
-  end if;
 
   insert into public.profiles (id, username, avatar_url)
   values (
@@ -1116,11 +1218,11 @@ security definer
 set search_path = public
 as $$
 declare
-  v_username text := public.normalize_username(new.raw_user_meta_data->>'username');
+  v_username text := coalesce(
+    public.normalize_username(new.raw_user_meta_data->>'username'),
+    concat('user_', left(replace(new.id::text, '-', ''), 19))
+  );
 begin
-  if v_username is null then
-    raise exception 'username_required';
-  end if;
 
   insert into public.profiles (id, username, avatar_url, role)
   values (
@@ -1342,7 +1444,9 @@ drop constraint if exists facts_status_check;
 alter table public.facts
 alter column status type text using status::text;
 
-drop type if exists public.fact_status;
+-- Keep public.fact_status when upgrading existing databases. Facts are migrated
+-- to text below; removing a type automatically is unnecessary and destructive
+-- for any external view/function that still references the enum.
 
 alter table public.facts
 alter column status set default 'draft';
@@ -1370,6 +1474,7 @@ grant select (
   title,
   hook,
   content,
+  long_content,
   source,
   source_url,
   status,

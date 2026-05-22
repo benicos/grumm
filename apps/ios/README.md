@@ -81,7 +81,7 @@ IPhone physique :
 Prochaines étapes recommandées :
 
 - Ajouter des icônes et splash screens Grumm définitifs.
-- Ajouter deep links et OAuth si nécessaire.
+- Ajouter les deep links nécessaires.
 - Renforcer les tests sur iPhone réel.
 - Préparer `eas.json` et utiliser EAS Build.
 - Générer un build interne TestFlight.

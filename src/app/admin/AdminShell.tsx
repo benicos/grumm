@@ -1,9 +1,20 @@
 "use client";
 
 import Link from "next/link";
+import {
+  BookOpen,
+  ChevronDown,
+  GraduationCap,
+  LayoutDashboard,
+  Menu,
+  Search,
+  Settings,
+  ShieldCheck,
+  Tags,
+  Users,
+  X,
+} from "lucide-react";
 import { notFound, usePathname, useRouter } from "next/navigation";
-import { Inter } from "next/font/google";
-import { Menu, X } from "lucide-react";
 import { useState } from "react";
 import { signOut } from "@/lib/auth";
 import {
@@ -14,41 +25,80 @@ import {
 } from "@/lib/roles";
 import { useAuth } from "../auth/AuthProvider";
 
-const inter = Inter({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700", "800"],
-});
-
-const baseLinks = [
-  { href: "/admin", label: "Tableau de bord", permission: "admin.access" },
-  { href: "/admin/facts", label: "Faits", permission: "facts.create" },
-  { href: "/admin/facts/pending", label: "Validation", permission: "facts.publish" },
-  { href: "/admin/themes", label: "Thèmes", permission: "themes.manage" },
-  { href: "/admin/users", label: "Utilisateurs", permission: "users.manage" },
-  { href: "/admin/analytics", label: "Analytics", permission: "admin.access" },
-  { href: "/admin/roles", label: "Rôles", permission: "roles.manage" },
-  { href: "/admin/grades", label: "Grades", permission: "grades.manage" },
+const navigation = [
+  {
+    heading: "Menu",
+    items: [
+      {
+        href: "/admin",
+        icon: LayoutDashboard,
+        label: "Tableau de bord",
+        permission: "admin.access",
+      },
+      {
+        href: "/admin/facts",
+        icon: BookOpen,
+        label: "Faits",
+        permission: "facts.create",
+      },
+      {
+        href: "/admin/themes",
+        icon: Tags,
+        label: "Thèmes",
+        permission: "themes.manage",
+      },
+    ],
+  },
+  {
+    heading: "Accès",
+    items: [
+      {
+        href: "/admin/users",
+        icon: Users,
+        label: "Utilisateurs",
+        permission: "users.manage",
+      },
+      {
+        href: "/admin/roles",
+        icon: ShieldCheck,
+        label: "Rôles",
+        permission: "roles.manage",
+      },
+      {
+        href: "/admin/grades",
+        icon: GraduationCap,
+        label: "Grades",
+        permission: "grades.manage",
+      },
+      {
+        href: "/admin/settings",
+        icon: Settings,
+        label: "Paramètres",
+        permission: "admin.access",
+      },
+    ],
+  },
 ] as const;
 
-function AdminShellSkeleton() {
+function isCurrentPath(pathname: string, href: string) {
+  return pathname === href || (href !== "/admin" && pathname.startsWith(`${href}/`));
+}
+
+function AdminLoadingShell() {
   return (
-    <div className={`${inter.className} min-h-screen bg-[#0b1220] text-slate-100`}>
-      <div className="grid min-h-screen lg:grid-cols-[280px_minmax(0,1fr)]">
-        <aside className="hidden border-r border-[#1d2939] bg-[#101828] p-5 lg:block">
-          <div className="h-9 w-32 animate-pulse rounded bg-[#1d2939]" />
-          <div className="mt-10 space-y-3">
-            {Array.from({ length: 5 }).map((_, index) => (
-              <div key={index} className="h-10 animate-pulse rounded bg-[#1d2939]" />
-            ))}
-          </div>
-        </aside>
-        <main className="p-6 lg:p-8">
-          <div className="h-10 w-64 animate-pulse rounded bg-[#1d2939]" />
-          <div className="mt-8 grid gap-4 lg:grid-cols-4">
-            {Array.from({ length: 4 }).map((_, index) => (
-              <div key={index} className="h-28 animate-pulse rounded-xl bg-[#1d2939]" />
-            ))}
-          </div>
+    <div className="min-h-screen bg-gray-50 text-gray-900">
+      <aside className="fixed inset-y-0 left-0 hidden w-[290px] border-r border-gray-200 bg-white p-6 xl:block">
+        <div className="h-9 w-36 animate-pulse rounded-lg bg-gray-100" />
+        <div className="mt-11 space-y-3">
+          {Array.from({ length: 7 }).map((_, index) => (
+            <div key={index} className="h-11 animate-pulse rounded-lg bg-gray-100" />
+          ))}
+        </div>
+      </aside>
+      <div className="xl:pl-[290px]">
+        <div className="h-20 border-b border-gray-200 bg-white" />
+        <main className="p-6">
+          <div className="h-8 w-64 animate-pulse rounded-lg bg-gray-100" />
         </main>
       </div>
     </div>
@@ -58,161 +108,166 @@ function AdminShellSkeleton() {
 export default function AdminShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
+  const [open, setOpen] = useState(false);
   const { displayName, isAuthenticated, isLoading, profile, refreshUser } =
     useAuth();
-  const role = profile?.role ?? "membre";
-  const roleLabel = getRoleLabel(role, profile?.roleName);
-  const canOpenAdmin = canAccessAdmin(profile);
-  const navLinks = baseLinks.filter((link) =>
-    hasPermission(profile, link.permission as PermissionKey),
-  );
+  const roleLabel = getRoleLabel(profile?.role, profile?.roleName);
+  const sections = navigation
+    .map((section) => ({
+      ...section,
+      items: section.items.filter((item) =>
+        hasPermission(profile, item.permission as PermissionKey),
+      ),
+    }))
+    .filter((section) => section.items.length > 0);
 
-  async function handleLogout() {
+  async function handleSignOut() {
     await signOut();
     await refreshUser();
     router.replace("/");
   }
 
   if (isLoading) {
-    return <AdminShellSkeleton />;
+    return <AdminLoadingShell />;
   }
 
-  if (!isAuthenticated) {
+  if (!isAuthenticated || !canAccessAdmin(profile)) {
     notFound();
   }
 
-  if (!canOpenAdmin) {
-    notFound();
-  }
+  const sidebar = (
+    <div className="flex h-full flex-col">
+      <div className="flex h-20 items-center px-6">
+        <Link href="/admin" className="flex items-center gap-3 text-gray-800">
+          <span className="grid h-10 w-10 place-items-center rounded-lg bg-[#465fff] text-sm font-bold text-white">
+            GR
+          </span>
+          <span>
+            <span className="block text-lg font-semibold leading-none">Admin</span>
+            <span className="mt-1 block text-xs text-gray-500">Espace Grumm</span>
+          </span>
+        </Link>
+      </div>
 
-  return (
-    <div className={`${inter.className} min-h-screen bg-[#0b1220] text-slate-100`}>
-      <div className="grid min-h-screen lg:grid-cols-[280px_minmax(0,1fr)]">
-        <aside className="hidden border-r border-[#1d2939] bg-[#101828] lg:block">
-          <div className="flex h-full flex-col p-5">
-            <Link href="/admin" className="flex items-center gap-3 font-extrabold">
-              <span className="grid h-9 w-9 place-items-center rounded-lg bg-[#465fff] text-white shadow-[0_12px_30px_rgba(70,95,255,0.28)]">
-                G
-              </span>
-              <span>Grumm Admin</span>
-            </Link>
-
-            <nav className="mt-8 space-y-1">
-              {navLinks.map((item) => {
-                const isActive =
-                  pathname === item.href ||
-                  (item.href !== "/admin" &&
-                    pathname.startsWith(`${item.href}/`) &&
-                    !(
-                      item.href === "/admin/facts" &&
-                      pathname.startsWith("/admin/facts/pending")
-                    ));
+      <nav className="flex-1 overflow-y-auto px-4 pb-6">
+        {sections.map((section) => (
+          <div key={section.heading} className="mb-7">
+            <p className="mb-3 px-3 text-xs font-medium uppercase text-gray-400">
+              {section.heading}
+            </p>
+            <div className="space-y-1">
+              {section.items.map((item) => {
+                const Icon = item.icon;
+                const active = isCurrentPath(pathname, item.href);
 
                 return (
                   <Link
                     key={item.href}
                     href={item.href}
-                    className={`block rounded-lg px-3 py-2 text-sm font-bold transition ${
-                      isActive
-                        ? "bg-[#465fff] text-white shadow-[0_12px_30px_rgba(70,95,255,0.20)]"
-                        : "text-slate-300 hover:bg-[#1d2939] hover:text-white"
+                    onClick={() => setOpen(false)}
+                    className={`flex h-11 items-center gap-3 rounded-lg px-3 text-sm font-medium transition ${
+                      active
+                        ? "bg-[#ecf3ff] text-[#465fff]"
+                        : "text-gray-700 hover:bg-gray-100"
                     }`}
                   >
+                    <Icon className="h-5 w-5 shrink-0" aria-hidden="true" />
                     {item.label}
                   </Link>
                 );
               })}
-            </nav>
-
-            <div className="mt-auto rounded-xl border border-[#1d2939] bg-[#1d2939]/72 p-4">
-              <p className="truncate text-sm font-bold">{displayName ?? "Compte"}</p>
-              <p className="mt-1 text-xs text-slate-400">{roleLabel}</p>
-              <div className="mt-4 grid gap-2">
-                <Link
-                  href="/discover"
-                  className="rounded-lg border border-[#344054] px-3 py-2 text-center text-xs font-bold text-slate-200 hover:bg-[#26364c]"
-                >
-                  Retour site
-                </Link>
-                <button
-                  type="button"
-                  onClick={handleLogout}
-                  className="rounded-lg border border-red-400/30 px-3 py-2 text-xs font-bold text-red-100 hover:bg-red-500/10"
-                >
-                  Déconnexion
-                </button>
-              </div>
             </div>
           </div>
-        </aside>
+        ))}
+      </nav>
 
-        <section className="min-w-0">
-          <header className="sticky top-0 z-20 border-b border-[#1d2939] bg-[#0b1220]/92 px-4 py-3 backdrop-blur lg:hidden">
-            <div className="flex items-center justify-between gap-3">
-              <Link
-                href="/admin"
-                className="flex items-center gap-2 font-extrabold"
-                onClick={() => setIsMobileNavOpen(false)}
-              >
-                <span className="grid h-8 w-8 place-items-center rounded-lg bg-[#465fff] text-white">
-                  G
-                </span>
-                <span>Grumm Admin</span>
-              </Link>
+      <div className="m-4 rounded-2xl bg-gray-100 p-4">
+        <p className="truncate text-sm font-semibold text-gray-800">
+          {displayName ?? "Compte administrateur"}
+        </p>
+        <p className="mt-1 text-xs text-gray-500">{roleLabel}</p>
+        <button
+          type="button"
+          onClick={handleSignOut}
+          className="mt-4 h-10 w-full rounded-lg border border-gray-200 bg-white px-3 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
+        >
+          Déconnexion
+        </button>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="min-h-screen bg-gray-50 text-gray-900">
+      <aside className="fixed inset-y-0 left-0 z-50 hidden w-[290px] border-r border-gray-200 bg-white xl:block">
+        {sidebar}
+      </aside>
+
+      {open ? (
+        <div className="fixed inset-0 z-50 xl:hidden">
+          <button
+            type="button"
+            aria-label="Fermer le menu admin"
+            onClick={() => setOpen(false)}
+            className="absolute inset-0 bg-gray-900/45"
+          />
+          <aside className="relative h-full w-[290px] border-r border-gray-200 bg-white shadow-2xl">
+            {sidebar}
+          </aside>
+        </div>
+      ) : null}
+
+      <div className="xl:pl-[290px]">
+        <header className="sticky top-0 z-40 h-20 border-b border-gray-200 bg-white">
+          <div className="flex h-full items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
+            <div className="flex min-w-0 flex-1 items-center gap-3">
               <button
                 type="button"
-                aria-expanded={isMobileNavOpen}
-                aria-label={isMobileNavOpen ? "Fermer la navigation admin" : "Ouvrir la navigation admin"}
-                onClick={() => setIsMobileNavOpen((current) => !current)}
-                className="grid h-10 w-10 place-items-center rounded-lg border border-[#344054] bg-[#101828] text-slate-100"
+                aria-label={open ? "Fermer le menu admin" : "Ouvrir le menu admin"}
+                onClick={() => setOpen((current) => !current)}
+                className="grid h-11 w-11 place-items-center rounded-lg border border-gray-200 text-gray-700 xl:hidden"
               >
-                {isMobileNavOpen ? (
+                {open ? (
                   <X className="h-5 w-5" aria-hidden="true" />
                 ) : (
                   <Menu className="h-5 w-5" aria-hidden="true" />
                 )}
               </button>
+              <label className="relative hidden w-full max-w-[430px] lg:block">
+                <span className="sr-only">Rechercher dans l’administration</span>
+                <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-500" />
+                <input
+                  placeholder="Rechercher ou saisir une commande..."
+                  className="h-12 w-full rounded-lg border border-gray-200 bg-white py-2.5 pl-12 pr-20 text-sm text-gray-800 outline-none placeholder:text-gray-400 focus:border-[#465fff]"
+                />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md border border-gray-200 px-2 py-1 text-xs text-gray-500">
+                  Ctrl K
+                </span>
+              </label>
             </div>
-            <div className="mt-2 flex items-center justify-between gap-3">
-              <span className="rounded-full border border-[#344054] px-3 py-1 text-xs font-bold text-slate-300">
+            <div className="flex items-center gap-3">
+              <span className="hidden rounded-full bg-gray-100 px-3 py-1.5 text-xs font-medium text-gray-600 sm:block">
                 {roleLabel}
               </span>
-              <span className="text-xs font-bold text-slate-500">
-                {navLinks.find((item) => pathname === item.href)?.label ?? "Admin"}
-              </span>
+              <button
+                type="button"
+                className="flex h-11 items-center gap-3 rounded-full border border-gray-200 bg-white pl-1 pr-3 text-left"
+              >
+                <span className="grid h-9 w-9 place-items-center rounded-full bg-[#ecf3ff] text-sm font-semibold text-[#465fff]">
+                  {(displayName ?? "A").slice(0, 1).toUpperCase()}
+                </span>
+                <span className="hidden max-w-32 truncate text-sm font-medium text-gray-700 sm:block">
+                  {displayName ?? "Admin"}
+                </span>
+                <ChevronDown className="h-4 w-4 text-gray-500" aria-hidden="true" />
+              </button>
             </div>
-            {isMobileNavOpen && (
-              <nav className="mt-3 grid gap-2 rounded-xl border border-[#1d2939] bg-[#101828] p-2 shadow-2xl">
-                {navLinks.map((item) => (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    onClick={() => setIsMobileNavOpen(false)}
-                    className={`rounded-lg px-3 py-2 text-sm font-bold ${
-                      pathname === item.href
-                        ? "bg-[#465fff] text-white"
-                        : "bg-[#1d2939] text-slate-200"
-                    }`}
-                  >
-                    {item.label}
-                  </Link>
-                ))}
-                <Link
-                  href="/discover"
-                  onClick={() => setIsMobileNavOpen(false)}
-                  className="rounded-lg bg-[#1d2939] px-3 py-2 text-sm font-bold text-slate-200"
-                >
-                  Site public
-                </Link>
-              </nav>
-            )}
-          </header>
+          </div>
+        </header>
 
-          <main className="mx-auto w-full max-w-[1440px] min-w-0 px-4 py-6 lg:px-8 lg:py-8">
-            {children}
-          </main>
-        </section>
+        <main className="mx-auto w-full max-w-screen-2xl p-4 md:p-6">
+          {children}
+        </main>
       </div>
     </div>
   );

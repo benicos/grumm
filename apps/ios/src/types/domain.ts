@@ -3,6 +3,7 @@ export type FeedFact = {
   category: string;
   categorySlug: string;
   detail: string;
+  longContent: string | null;
   hook: string | null;
   id: string;
   slug: string;
@@ -57,6 +58,7 @@ export type RelatedFactRow = {
             }[]
           | null;
         content: string;
+        long_content?: string | null;
         hook: string | null;
         id: string;
         slug?: string | null;

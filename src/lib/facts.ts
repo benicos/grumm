@@ -18,6 +18,7 @@ export type FeedFact = {
   title: string;
   hook: string | null;
   detail: string;
+  longContent: string | null;
   source: string;
   sourceUrl: string | null;
   tone: string;
@@ -74,6 +75,7 @@ type FactRow = {
   title: string;
   hook: string | null;
   content: string;
+  long_content?: string | null;
   source: string;
   source_url?: string | null;
   tone: string | null;
@@ -87,6 +89,7 @@ type FeedRpcRow = {
   title: string;
   hook: string | null;
   content: string;
+  long_content?: string | null;
   source: string;
   source_url: string | null;
   tone: string | null;
@@ -123,7 +126,7 @@ type RawDailyProgressRow = {
 };
 
 const FACT_SELECT =
-  "id,slug,title,hook,content,source,source_url,tone,accent_color,categories(id,name,slug,tone,accent_color)";
+  "id,slug,title,hook,content,long_content,source,source_url,tone,accent_color,categories(id,name,slug,tone,accent_color)";
 
 function categoryFromRelation(fact: FactRow) {
   return Array.isArray(fact.categories)
@@ -142,6 +145,7 @@ function mapFact(fact: FactRow): FeedFact {
     title: fact.title,
     hook: fact.hook?.trim() || null,
     detail: fact.content,
+    longContent: fact.long_content?.trim() || null,
     source: fact.source || "Source non renseignee",
     sourceUrl: fact.source_url ?? null,
     tone:
@@ -161,6 +165,7 @@ function mapFeedRpcFact(fact: FeedRpcRow): FeedFact {
     title: fact.title,
     hook: fact.hook?.trim() || null,
     detail: fact.content,
+    longContent: fact.long_content?.trim() || null,
     source: fact.source || "Source non renseignee",
     sourceUrl: fact.source_url ?? null,
     tone:

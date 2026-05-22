@@ -47,6 +47,7 @@ export type Database = {
           title: string;
           hook: string | null;
           content: string;
+          long_content: string | null;
           source: string;
           source_url: string | null;
           author_id: string | null;
@@ -65,6 +66,7 @@ export type Database = {
           title: string;
           hook?: string | null;
           content: string;
+          long_content?: string | null;
           source: string;
           source_url?: string | null;
           author_id?: string | null;
@@ -83,6 +85,7 @@ export type Database = {
           title?: string;
           hook?: string | null;
           content?: string;
+          long_content?: string | null;
           source?: string;
           source_url?: string | null;
           author_id?: string | null;

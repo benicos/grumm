@@ -49,6 +49,13 @@ export function FactDetailView({ actions, fact, onBack, onShare, onToggleLike, o
         <Text style={styles.title}>{fact.title}</Text>
         <Text style={styles.detail}>{fact.detail}</Text>
 
+        {fact.longContent ? (
+          <View style={styles.longContent}>
+            <Text style={styles.longContentLabel}>En savoir plus</Text>
+            <Text style={styles.longContentText}>{fact.longContent}</Text>
+          </View>
+        ) : null}
+
         {fact.hook ? (
           <View style={styles.takeaway}>
             <Text style={styles.takeawayLabel}>À retenir</Text>
@@ -174,6 +181,25 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     lineHeight: 25,
     marginTop: 7,
+  },
+  longContent: {
+    backgroundColor: "rgba(5,8,18,0.24)",
+    borderColor: "rgba(255,255,255,0.12)",
+    borderRadius: 22,
+    borderWidth: 1,
+    padding: 18,
+  },
+  longContentLabel: {
+    color: colors.accent,
+    fontSize: 11,
+    fontWeight: "900",
+    textTransform: "uppercase",
+  },
+  longContentText: {
+    color: "rgba(248,250,252,0.82)",
+    fontSize: 16,
+    lineHeight: 27,
+    marginTop: 10,
   },
   pressed: {
     opacity: 0.76,
