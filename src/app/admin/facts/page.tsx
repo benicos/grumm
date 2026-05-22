@@ -1,15 +1,19 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   deleteAdminFact,
   FACT_STATUS_LABELS,
+  getAdminCategories,
   getAdminFacts,
+  type AdminCategory,
   type AdminFact,
   type FactStatus,
 } from "@/lib/admin";
-import AdminListingPage from "../AdminListingPage";
+import AdminListingPage, {
+  type AdminListingFilterValues,
+} from "../AdminListingPage";
 
 const statusValues: FactStatus[] = [
   "archived",
@@ -22,19 +26,46 @@ const statusValues: FactStatus[] = [
 export default function AdminFactsPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const [categories, setCategories] = useState<AdminCategory[]>([]);
   const requestedStatus = searchParams.get("status");
   const status = statusValues.find((value) => value === requestedStatus);
+
+  useEffect(() => {
+    let mounted = true;
+
+    void getAdminCategories({ pageSize: 50 })
+      .then((result) => {
+        if (mounted) {
+          setCategories(result.items);
+        }
+      })
+      .catch(() => undefined);
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
   const loadFacts = useCallback(
     ({
+      filters,
       page,
       pageSize,
       query,
     }: {
+      filters: AdminListingFilterValues;
       page: number;
       pageSize: number;
       query: string;
-    }) => getAdminFacts({ page, pageSize, query, status }),
-    [status],
+    }) =>
+      getAdminFacts({
+        categoryId: filters.category,
+        page,
+        pageSize,
+        query,
+        status: statusValues.find((value) => value === filters.status),
+      }),
+    [],
   );
 
   return (
@@ -46,6 +77,31 @@ export default function AdminFactsPage() {
       actionLabel="Ajouter un fait"
       actionHref="/admin/facts/create"
       searchPlaceholder="Rechercher des faits..."
+      initialFilterValues={status ? { status } : undefined}
+      filters={[
+        {
+          id: "status",
+          label: "Statut",
+          options: [
+            { label: "Tous les statuts", value: "all" },
+            ...statusValues.map((value) => ({
+              label: FACT_STATUS_LABELS[value],
+              value,
+            })),
+          ],
+        },
+        {
+          id: "category",
+          label: "Thème",
+          options: [
+            { label: "Tous les thèmes", value: "all" },
+            ...categories.map((category) => ({
+              label: category.name,
+              value: category.id,
+            })),
+          ],
+        },
+      ]}
       empty="Aucun fait trouvé."
       loadRows={loadFacts}
       rowKey={(fact) => fact.id}
@@ -55,13 +111,8 @@ export default function AdminFactsPage() {
             void deleteAdminFact(fact.id).then(() => router.refresh());
           }
         },
-        onEdit: (fact) => router.push(`/admin/facts/${fact.id}`),
-        onView: (fact) =>
-          router.push(
-            fact.status === "published"
-              ? `/fact/${fact.slug}`
-              : `/admin/facts/${fact.id}`,
-          ),
+        onEdit: (fact) => router.push(`/admin/facts/${fact.id}/edit`),
+        onView: (fact) => router.push(`/admin/facts/${fact.id}`),
       }}
       columns={[
         {

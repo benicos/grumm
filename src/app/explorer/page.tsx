@@ -7,6 +7,10 @@ import { trackAnalyticsEvent } from "@/lib/analytics/web";
 import { getExplorerData } from "@/lib/facts";
 import type { CategorySummary, FeedFact } from "@/lib/facts";
 import { AppState } from "../components/AppState";
+import {
+  premiumPrimaryCtaClassName,
+  premiumTitleGradientClassName,
+} from "../components/buttonStyles";
 import FactSource from "../components/FactSource";
 import Footer from "../components/Footer";
 import HeroBackground from "../components/HeroBackground";
@@ -126,14 +130,16 @@ function ThemePill({ theme }: { theme: CategorySummary }) {
           metadata: { name: theme.name, slug: theme.slug },
         })
       }
-      className="group inline-flex min-w-0 items-center justify-center gap-3 rounded-full border border-white/10 bg-white/[0.065] px-4 py-3 text-sm font-extrabold text-white shadow-[0_16px_55px_rgba(0,0,0,0.18)] backdrop-blur-xl transition hover:-translate-y-0.5 hover:border-white/20 hover:bg-white/[0.09]"
+      className="group flex w-full min-w-0 items-center justify-center gap-3 rounded-full border border-white/10 bg-white/[0.065] px-4 py-3 text-sm font-extrabold text-white shadow-[0_16px_55px_rgba(0,0,0,0.18)] backdrop-blur-xl transition hover:-translate-y-0.5 hover:border-white/20 hover:bg-white/[0.09]"
     >
       <span
         className="h-2.5 w-2.5 rounded-full"
         style={{ backgroundColor: theme.accent }}
       />
-      <span className="truncate">{theme.name}</span>
-      <span className="rounded-full bg-black/22 px-2 py-0.5 text-xs text-white/58">
+      <span className="min-w-0 flex-1 break-words text-center sm:truncate">
+        {theme.name}
+      </span>
+      <span className="shrink-0 rounded-full bg-black/22 px-2 py-0.5 text-xs text-white/58">
         {count}
       </span>
     </Link>
@@ -177,6 +183,28 @@ export default function ExplorerPage() {
 
       setThemes(data.categories);
       setFacts(data.facts);
+
+      if (searchTerm) {
+        const noResult = data.facts.length === 0;
+        const metadata = {
+          no_result: noResult,
+          result_count: data.facts.length,
+          term: searchTerm,
+          theme_result_count: data.categories.length,
+        };
+
+        void trackAnalyticsEvent({
+          eventName: "explorer_search",
+          metadata,
+        });
+
+        if (noResult) {
+          void trackAnalyticsEvent({
+            eventName: "explorer_search_no_result",
+            metadata,
+          });
+        }
+      }
     } catch (loadError) {
       setError(
         loadError instanceof Error
@@ -197,12 +225,6 @@ export default function ExplorerPage() {
   function runSearch() {
     const nextQuery = query.trim();
     setSubmittedQuery(nextQuery);
-    if (nextQuery) {
-      void trackAnalyticsEvent({
-        eventName: "search_used",
-        metadata: { query: nextQuery },
-      });
-    }
     void loadExplorer(nextQuery || undefined);
   }
 
@@ -238,26 +260,28 @@ export default function ExplorerPage() {
       <HeroBackground />
       <Navbar />
 
-      <main className="relative z-10 mx-auto w-full max-w-[1180px] px-6 py-6 sm:py-7 lg:px-8">
+      <main className="relative z-10 mx-auto w-full max-w-[1180px] min-w-0 px-4 py-6 sm:px-6 sm:py-7 lg:px-8">
         <section className="flex min-h-[72vh] flex-col justify-center gap-10 pb-14 pt-6 text-center">
-          <div className="mx-auto max-w-4xl">
-            <h1 className="bg-[linear-gradient(120deg,#ffffff_0%,#ffe4a1_40%,#6ae3c0_78%,#ffffff_100%)] bg-clip-text text-[clamp(2.6rem,6vw,5.2rem)] font-extrabold leading-[0.98] text-transparent [text-wrap:balance]">
+          <div className="mx-auto w-full max-w-4xl min-w-0">
+            <h1 className={`${premiumTitleGradientClassName} mx-auto max-w-full text-[clamp(2rem,9vw,5.2rem)] font-extrabold leading-[1.02] [text-wrap:balance] sm:text-[clamp(2.6rem,6vw,5.2rem)] sm:leading-[0.98]`}>
               Trouve le fait qui va te rester en tête.
             </h1>
 
             <form
               onSubmit={submitSearch}
-              className="mx-auto mt-10 flex max-w-3xl items-center gap-3 rounded-[22px] border border-white/12 bg-white/[0.075] px-4 py-3 text-left text-white shadow-[0_24px_80px_rgba(0,0,0,0.28),0_0_60px_rgba(106,227,192,0.10)] backdrop-blur-2xl transition focus-within:border-[#6ae3c0]/45 focus-within:bg-white/[0.095] focus-within:shadow-[0_28px_95px_rgba(0,0,0,0.32),0_0_70px_rgba(106,227,192,0.18)] sm:px-5"
+              className="mx-auto mt-8 flex w-full max-w-3xl min-w-0 flex-col items-stretch gap-3 rounded-[22px] border border-white/12 bg-white/[0.075] px-3 py-3 text-left text-white shadow-[0_24px_80px_rgba(0,0,0,0.28),0_0_60px_rgba(106,227,192,0.10)] backdrop-blur-2xl transition focus-within:border-[#6ae3c0]/45 focus-within:bg-white/[0.095] focus-within:shadow-[0_28px_95px_rgba(0,0,0,0.32),0_0_70px_rgba(106,227,192,0.18)] sm:mt-10 sm:flex-row sm:items-center sm:px-5"
             >
-              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-[14px] bg-white/8 text-[#6ae3c0]">
-                <SearchIcon />
-              </span>
-              <input
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder="Espace, histoire, psychologie, NASA..."
-                className="min-w-0 flex-1 bg-transparent text-base font-semibold text-white outline-none placeholder:text-white/42"
-              />
+              <div className="flex min-w-0 flex-1 items-center gap-3">
+                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-[14px] bg-white/8 text-[#6ae3c0]">
+                  <SearchIcon />
+                </span>
+                <input
+                  value={query}
+                  onChange={(event) => setQuery(event.target.value)}
+                  placeholder="Espace, histoire, psychologie, NASA..."
+                  className="min-w-0 flex-1 bg-transparent text-base font-semibold text-white outline-none placeholder:text-white/42"
+                />
+              </div>
               {hasActiveSearch ? (
                 <button
                   type="button"
@@ -269,7 +293,7 @@ export default function ExplorerPage() {
               ) : null}
               <button
                 type="submit"
-                className="rounded-[14px] bg-gradient-to-r from-[#ffd166] to-[#6ae3c0] px-4 py-2 text-sm font-extrabold text-[#07111f] shadow-[0_12px_34px_rgba(255,209,102,0.2)] transition hover:-translate-y-0.5 active:translate-y-0"
+                className={`${premiumPrimaryCtaClassName} w-full rounded-[14px] px-4 py-2.5 sm:w-auto sm:py-2`}
               >
                 Rechercher
               </button>
@@ -319,7 +343,7 @@ export default function ExplorerPage() {
                   </Link>
                   <Link
                     href="/facts"
-                    className="rounded-[14px] bg-gradient-to-r from-[#ffd166] to-[#6ae3c0] px-4 py-3 text-sm font-extrabold text-[#07111f]"
+                    className={`${premiumPrimaryCtaClassName} rounded-[14px] px-4 py-3`}
                   >
                     Découvrir les faits
                   </Link>
@@ -338,12 +362,14 @@ export default function ExplorerPage() {
                     Quelques pistes
                   </p>
                   {visibleThemes.length > 0 ? (
-                    <div className="mx-auto grid max-w-4xl grid-cols-2 gap-3 sm:grid-cols-4">
+                    <div className="mx-auto grid w-full max-w-md grid-cols-1 gap-3 sm:max-w-4xl sm:grid-cols-4">
                       {visibleThemes.map((theme, index) => (
-                        <ThemePill
+                        <div
                           key={`${theme.id}:${theme.slug}:${index}`}
-                          theme={theme}
-                        />
+                          className={index >= 4 ? "hidden sm:block" : ""}
+                        >
+                          <ThemePill theme={theme} />
+                        </div>
                       ))}
                     </div>
                   ) : (

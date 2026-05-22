@@ -280,7 +280,7 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
     setter: Dispatch<SetStateAction<string[]>>,
     enableAction: (factId: string) => Promise<{ ok: boolean }>,
     disableAction: (factId: string) => Promise<{ ok: boolean }>,
-    analyticsEventName: "fact_liked" | "fact_saved",
+    analyticsEventName: "fact_like" | "fact_save",
   ) => {
     if (isCommercialCollaborationFact(fact)) {
       return;
@@ -611,6 +611,13 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
         }));
 
         if (result.completedToday && !goalAnimationShownRef.current) {
+          void trackAnalyticsEvent({
+            eventName: "daily_goal_completed",
+            metadata: {
+              daily_goal: result.dailyGoal,
+              facts_read_count: result.viewedTodayCount,
+            },
+          });
           goalAnimationShownRef.current = true;
           setGoalCelebrationMessage(
             getGoalCelebrationMessage(result.completedDailyGoals),
@@ -627,9 +634,10 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
     const previousToken = factReadTokenRef.current;
 
     factReadTokenRef.current = null;
-    void finishFactRead(previousToken);
+    void finishFactRead(previousToken, { reason: "swipe" });
 
     if (
+      isLoadingAuth ||
       !activeFact?.id ||
       isLoadingFacts ||
       isCommercialCollaborationFact(activeFact)
@@ -653,7 +661,7 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
     return () => {
       cancelled = true;
     };
-  }, [activeFact, isLoadingFacts]);
+  }, [activeFact, isLoadingAuth, isLoadingFacts]);
 
   useEffect(() => {
     if (swipeHintTimerRef.current !== null) {
@@ -682,7 +690,7 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
   useEffect(() => {
     const handleHidden = () => {
       if (document.visibilityState === "hidden") {
-        void finishFactRead(factReadTokenRef.current);
+        void finishFactRead(factReadTokenRef.current, { reason: "exit" });
         factReadTokenRef.current = null;
       }
     };
@@ -691,7 +699,7 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
 
     return () => {
       document.removeEventListener("visibilitychange", handleHidden);
-      void finishFactRead(factReadTokenRef.current);
+      void finishFactRead(factReadTokenRef.current, { reason: "exit" });
       factReadTokenRef.current = null;
     };
   }, []);
@@ -920,7 +928,7 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
                               setLiked,
                               likeFact,
                               unlikeFact,
-                              "fact_liked",
+                              "fact_like",
                             )
                           }
                           className={`grid h-14 w-14 place-items-center rounded-full border border-white/15 backdrop-blur-xl transition hover:scale-105 ${
@@ -942,7 +950,7 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
                               setSaved,
                               saveFact,
                               unsaveFact,
-                              "fact_saved",
+                              "fact_save",
                             )
                           }
                           className={`grid h-14 w-14 place-items-center rounded-full border border-white/15 backdrop-blur-xl transition hover:scale-105 ${
@@ -1047,7 +1055,7 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
                           setLiked,
                           likeFact,
                           unlikeFact,
-                          "fact_liked",
+                          "fact_like",
                         )
                       }
                       className={`grid h-14 w-14 place-items-center rounded-full border border-white/15 backdrop-blur-xl transition hover:scale-105 ${
@@ -1069,7 +1077,7 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
                           setSaved,
                           saveFact,
                           unsaveFact,
-                          "fact_saved",
+                          "fact_save",
                         )
                       }
                       className={`grid h-14 w-14 place-items-center rounded-full border border-white/15 backdrop-blur-xl transition hover:scale-105 ${

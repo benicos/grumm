@@ -88,6 +88,54 @@ export function AdminCard({
   );
 }
 
+export function AdminAttributeList({
+  children,
+  className = "",
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <dl
+      className={`overflow-hidden rounded-2xl border border-gray-200 divide-y divide-gray-100 ${className}`}
+    >
+      {children}
+    </dl>
+  );
+}
+
+export function AdminAttributeRow({
+  label,
+  technicalName,
+  value,
+}: {
+  label: string;
+  technicalName?: string;
+  value: React.ReactNode;
+}) {
+  return (
+    <div className="grid gap-2 bg-white px-4 py-4 text-sm md:grid-cols-[minmax(180px,260px)_auto_minmax(0,1fr)] md:gap-5 md:px-5">
+      <dt className="font-medium text-gray-500">
+        {label}
+        {technicalName ? (
+          <span className="ml-1 font-normal text-gray-400">
+            ({technicalName})
+          </span>
+        ) : null}
+        <span className="ml-1 text-gray-300 md:hidden" aria-hidden="true">
+          =
+        </span>
+      </dt>
+      <span className="hidden text-gray-300 md:block" aria-hidden="true">
+        =
+      </span>
+      <dd className="min-w-0 break-words font-medium text-gray-800">
+        {value ?? "-"}
+      </dd>
+    </div>
+  );
+}
+
 export function AdminPageHeading({
   action,
   current,
@@ -439,8 +487,12 @@ export function AdminLineChart({
         padding.top + plotHeight
       ).toFixed(1)} Z`
     : "";
-  const yTicks = Array.from({ length: 4 }, (_, index) =>
-    Math.round((maxValue * index) / 3),
+  const yTicks = Array.from(
+    new Set(
+      Array.from({ length: 4 }, (_, index) =>
+        Math.round((maxValue * index) / 3),
+      ),
+    ),
   );
   const labelStep = Math.max(1, Math.ceil(points.length / 6));
 
@@ -463,11 +515,11 @@ export function AdminLineChart({
         </div>
       </div>
 
-      <div className="mt-5 overflow-x-auto rounded-2xl border border-gray-100 bg-gray-50/60">
+      <div className="mt-5 min-w-0 overflow-hidden rounded-2xl border border-gray-100 bg-gray-50/60">
         {points.length > 0 ? (
           <svg
             aria-label={title}
-            className="h-auto min-w-[620px] w-full"
+            className="block h-auto w-full max-w-full"
             role="img"
             viewBox={`0 0 ${width} ${height}`}
           >

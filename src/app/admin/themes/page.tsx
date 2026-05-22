@@ -41,8 +41,8 @@ export default function AdminThemesPage() {
             void deleteAdminCategory(theme.id).then(() => router.refresh());
           }
         },
-        onEdit: (theme) => router.push(`/admin/themes/${theme.id}`),
-        onView: (theme) => router.push(`/discover/theme/${theme.slug}`),
+        onEdit: (theme) => router.push(`/admin/themes/${theme.id}/edit`),
+        onView: (theme) => router.push(`/admin/themes/${theme.id}`),
       }}
       columns={[
         {

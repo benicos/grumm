@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import HeroBackground from "../components/HeroBackground";
 import Navbar from "../components/Navbar";
 import AuthForm from "../auth/AuthForm";
+import { premiumTitleGradientClassName } from "../components/buttonStyles";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -25,7 +26,7 @@ export default function LoginPage() {
           <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-[#ffd166]">
             Connexion
           </p>
-          <h1 className="mt-4 bg-[linear-gradient(120deg,#ffffff,#ffe4a1_45%,#6ae3c0)] bg-clip-text text-[clamp(2.5rem,6vw,4.8rem)] font-extrabold leading-none text-transparent">
+          <h1 className={`${premiumTitleGradientClassName} mt-4 text-[clamp(2.5rem,6vw,4.8rem)] font-extrabold leading-none`}>
             Continue là où ta curiosité s’est arrêtée.
           </h1>
         </div>

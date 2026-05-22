@@ -2,18 +2,30 @@
 
 import { useRouter } from "next/navigation";
 import { deleteAdminRole, getAdminRoles, type AdminRole } from "@/lib/admin";
-import AdminListingPage from "../AdminListingPage";
+import AdminListingPage, {
+  type AdminListingFilterValues,
+} from "../AdminListingPage";
 
 function loadRoles({
   page,
   pageSize,
   query,
+  filters,
 }: {
+  filters: AdminListingFilterValues;
   page: number;
   pageSize: number;
   query: string;
 }) {
-  return getAdminRoles({ page, pageSize, query });
+  return getAdminRoles({
+    page,
+    pageSize,
+    query,
+    system:
+      filters.system === "custom" || filters.system === "system"
+        ? filters.system
+        : "all",
+  });
 }
 
 export default function AdminRolesPage() {
@@ -28,6 +40,17 @@ export default function AdminRolesPage() {
       actionLabel="Ajouter un rôle"
       actionHref="/admin/roles/create"
       searchPlaceholder="Rechercher des rôles..."
+      filters={[
+        {
+          id: "system",
+          label: "Type",
+          options: [
+            { label: "Tous les rôles", value: "all" },
+            { label: "Système", value: "system" },
+            { label: "Non système", value: "custom" },
+          ],
+        },
+      ]}
       empty="Aucun rôle trouvé."
       loadRows={loadRoles}
       rowKey={(role) => role.slug}
@@ -37,7 +60,7 @@ export default function AdminRolesPage() {
             void deleteAdminRole(role.slug).then(() => router.refresh());
           }
         },
-        onEdit: (role) => router.push(`/admin/roles/${role.slug}`),
+        onEdit: (role) => router.push(`/admin/roles/${role.slug}/edit`),
         onView: (role) => router.push(`/admin/roles/${role.slug}`),
       }}
       columns={[

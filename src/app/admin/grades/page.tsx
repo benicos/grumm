@@ -2,18 +2,30 @@
 
 import { useRouter } from "next/navigation";
 import { deleteAdminGrade, getAdminGrades, type AdminGrade } from "@/lib/admin";
-import AdminListingPage from "../AdminListingPage";
+import AdminListingPage, {
+  type AdminListingFilterValues,
+} from "../AdminListingPage";
 
 function loadGrades({
   page,
   pageSize,
   query,
+  filters,
 }: {
+  filters: AdminListingFilterValues;
   page: number;
   pageSize: number;
   query: string;
 }) {
-  return getAdminGrades({ page, pageSize, query });
+  return getAdminGrades({
+    page,
+    pageSize,
+    query,
+    system:
+      filters.system === "custom" || filters.system === "system"
+        ? filters.system
+        : "all",
+  });
 }
 
 export default function AdminGradesPage() {
@@ -28,6 +40,17 @@ export default function AdminGradesPage() {
       actionLabel="Ajouter un grade"
       actionHref="/admin/grades/create"
       searchPlaceholder="Rechercher des grades..."
+      filters={[
+        {
+          id: "system",
+          label: "Type",
+          options: [
+            { label: "Tous les grades", value: "all" },
+            { label: "Système", value: "system" },
+            { label: "Non système", value: "custom" },
+          ],
+        },
+      ]}
       empty="Aucun grade trouvé."
       loadRows={loadGrades}
       rowKey={(grade) => grade.id}
@@ -37,7 +60,7 @@ export default function AdminGradesPage() {
             void deleteAdminGrade(grade.id).then(() => router.refresh());
           }
         },
-        onEdit: (grade) => router.push(`/admin/grades/${grade.id}`),
+        onEdit: (grade) => router.push(`/admin/grades/${grade.id}/edit`),
         onView: (grade) => router.push(`/admin/grades/${grade.id}`),
       }}
       columns={[

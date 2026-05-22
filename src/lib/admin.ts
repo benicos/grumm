@@ -87,52 +87,35 @@ export type AdminDashboardSeriesPoint = {
   previous: number;
 };
 
+export type AdminAnalyticsMetric = {
+  current: number;
+  previous: number;
+};
+
 export type AdminAnalyticsData = {
   overview: {
-    anonymousVisitors: number;
-    averageSessionSeconds: number;
-    factsPerSession: number;
-    factsRead: number;
-    signedInUsers: number;
-    totalSessions: number;
-    uniqueVisitors: number;
-  };
-  platforms: {
-    count: number;
-    label: string;
-    percent: number;
-  }[];
-  engagement: {
-    interactionRate: number;
-    likes: number;
-    saves: number;
-    shares: number;
-    sourceClicks: number;
-  };
-  reading: {
-    averageReadSeconds: number;
-    completionRate: number;
-    topLikedFacts: AdminAnalyticsFactStat[];
-    topReadFacts: AdminAnalyticsFactStat[];
-    topSavedFacts: AdminAnalyticsFactStat[];
-  };
-  retention: {
-    averageReturnFrequency: number;
-    returnedAtLeast2Times: number;
-    returnedAfter7Days: number;
-  };
-  categories: {
-    bestEngagementThemes: AdminAnalyticsThemeStat[];
-    topOpenedThemes: AdminAnalyticsThemeStat[];
+    activeUsersToday: AdminAnalyticsMetric;
+    averageReadSecondsToday: AdminAnalyticsMetric;
+    factsReadToday: AdminAnalyticsMetric;
+    goalsCompletedToday: AdminAnalyticsMetric;
   };
   series: {
+    activeUsers: AdminDashboardSeriesPoint[];
+    averageSwipeSeconds: AdminDashboardSeriesPoint[];
     factReads: AdminDashboardSeriesPoint[];
     registrations: AdminDashboardSeriesPoint[];
-    visitors: AdminDashboardSeriesPoint[];
   };
-  topInteractions: {
-    facts: AdminAnalyticsFactStat[];
-    themes: AdminAnalyticsThemeStat[];
+  topContent: {
+    explorerSearches: AdminAnalyticsSearchStat[];
+    readFacts: AdminAnalyticsFactStat[];
+    readThemes: AdminAnalyticsThemeStat[];
+    savedFacts: AdminAnalyticsFactStat[];
+  };
+  health: {
+    averageFactsPerUserDay: number | null;
+    averageSessionsPerDay: number | null;
+    d1ReturnRate: number | null;
+    d7ReturnRate: number | null;
   };
 };
 
@@ -147,6 +130,13 @@ export type AdminAnalyticsThemeStat = {
   accent: string;
   name: string;
   slug: string;
+  value: number;
+};
+
+export type AdminAnalyticsSearchStat = {
+  id: string;
+  noResultCount: number;
+  term: string;
   value: number;
 };
 
@@ -755,6 +745,115 @@ function countVisitorsByDay(
   );
 }
 
+function averageRowsByDay<T>(
+  rows: T[],
+  getTimestamp: (row: T) => string,
+  getValue: (row: T) => number | null,
+  currentStart: Date,
+  days: number,
+) {
+  const previousStart = new Date(currentStart);
+  previousStart.setUTCDate(previousStart.getUTCDate() - days);
+  const current = new Map<string, number[]>();
+  const previous = new Map<string, number[]>();
+
+  rows.forEach((row) => {
+    const value = getValue(row);
+
+    if (value === null || !Number.isFinite(value)) {
+      return;
+    }
+
+    const timestamp = getTimestamp(row);
+    const time = new Date(timestamp).getTime();
+    const key = getLocalDayKey(timestamp);
+    const target =
+      time >= currentStart.getTime()
+        ? current
+        : time >= previousStart.getTime()
+          ? previous
+          : null;
+
+    if (!target) {
+      return;
+    }
+
+    target.set(key, [...(target.get(key) ?? []), value]);
+  });
+
+  return buildDailySeries(
+    new Map([...current.entries()].map(([key, values]) => [key, average(values)])),
+    new Map([...previous.entries()].map(([key, values]) => [key, average(values)])),
+    currentStart,
+    days,
+  );
+}
+
+function getMetricComparison(current: number, previous: number) {
+  return { current, previous } satisfies AdminAnalyticsMetric;
+}
+
+function getRowsOnDay<T>(
+  rows: T[],
+  getTimestamp: (row: T) => string,
+  dayKey: string,
+) {
+  return rows.filter((row) => getLocalDayKey(getTimestamp(row)) === dayKey);
+}
+
+function countVisitorsOnDay(sessions: AnalyticsSessionRow[], dayKey: string) {
+  return new Set(
+    getRowsOnDay(sessions, (session) => session.started_at, dayKey)
+      .map(getAnalyticsIdentity)
+      .filter((identity): identity is string => Boolean(identity)),
+  ).size;
+}
+
+function getDayOffset(startDay: string, nextDay: string) {
+  const start = new Date(`${startDay}T00:00:00.000Z`).getTime();
+  const next = new Date(`${nextDay}T00:00:00.000Z`).getTime();
+
+  return Math.round((next - start) / (24 * 60 * 60 * 1000));
+}
+
+function getReturnRate(sessions: AnalyticsSessionRow[], daysAfterFirstSession: number) {
+  const today = getDayKey(new Date());
+  const sessionsByIdentity = new Map<string, Set<string>>();
+
+  sessions.forEach((session) => {
+    const identity = getAnalyticsIdentity(session);
+
+    if (!identity) {
+      return;
+    }
+
+    sessionsByIdentity.set(identity, new Set([
+      ...(sessionsByIdentity.get(identity) ?? []),
+      getLocalDayKey(session.started_at),
+    ]));
+  });
+
+  let eligible = 0;
+  let returned = 0;
+
+  sessionsByIdentity.forEach((days) => {
+    const sortedDays = [...days].sort();
+    const firstDay = sortedDays[0];
+
+    if (!firstDay || getDayOffset(firstDay, today) < daysAfterFirstSession) {
+      return;
+    }
+
+    eligible += 1;
+
+    if (sortedDays.some((day) => getDayOffset(firstDay, day) === daysAfterFirstSession)) {
+      returned += 1;
+    }
+  });
+
+  return eligible > 0 ? percent(returned, eligible) : null;
+}
+
 function getFactCategory(fact?: FactStatRow | null) {
   const category = Array.isArray(fact?.categories)
     ? fact.categories[0]
@@ -798,6 +897,56 @@ function toThemeStats(
   return [...counts.values()].sort((a, b) => b.value - a.value).slice(0, limit);
 }
 
+function getSearchMetadata(event: AnalyticsEventRow) {
+  if (
+    typeof event.metadata !== "object" ||
+    event.metadata === null ||
+    Array.isArray(event.metadata)
+  ) {
+    return null;
+  }
+
+  const term =
+    typeof event.metadata.term === "string"
+      ? event.metadata.term
+      : typeof event.metadata.query === "string"
+        ? event.metadata.query
+        : null;
+
+  if (!term?.trim()) {
+    return null;
+  }
+
+  return {
+    noResult: event.metadata.no_result === true,
+    term: term.trim(),
+  };
+}
+
+function toSearchStats(events: AnalyticsEventRow[], limit = 5) {
+  const counts = new Map<string, AdminAnalyticsSearchStat>();
+
+  events.forEach((event) => {
+    const metadata = getSearchMetadata(event);
+
+    if (!metadata) {
+      return;
+    }
+
+    const id = metadata.term.toLocaleLowerCase("fr-FR");
+    const current = counts.get(id);
+
+    counts.set(id, {
+      id,
+      noResultCount: (current?.noResultCount ?? 0) + (metadata.noResult ? 1 : 0),
+      term: current?.term ?? metadata.term,
+      value: (current?.value ?? 0) + 1,
+    });
+  });
+
+  return [...counts.values()].sort((a, b) => b.value - a.value).slice(0, limit);
+}
+
 export async function getAdminAnalyticsData(): Promise<AdminAnalyticsData> {
   const auth = await getAuthenticatedAdminClient();
 
@@ -811,8 +960,9 @@ export async function getAdminAnalyticsData(): Promise<AdminAnalyticsData> {
 
   const dashboardWindow = getDashboardWindow();
   const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  const progressSince = getDayKey(dashboardWindow.previousStart);
   const adminUserIds = await getAdminUserIds(auth.supabase);
-  const [sessionsResult, eventsResult, readsResult, likesResult, savesResult, profilesResult] =
+  const [sessionsResult, eventsResult, readsResult, savesResult, profilesResult, progressResult] =
     await Promise.all([
       auth.supabase
         .from("analytics_sessions")
@@ -833,11 +983,6 @@ export async function getAdminAnalyticsData(): Promise<AdminAnalyticsData> {
         .order("created_at", { ascending: false })
         .limit(6000),
       auth.supabase
-        .from("likes")
-        .select("fact_id,created_at,user_id")
-        .gte("created_at", since)
-        .limit(6000),
-      auth.supabase
         .from("saves")
         .select("fact_id,created_at,user_id")
         .gte("created_at", since)
@@ -848,15 +993,20 @@ export async function getAdminAnalyticsData(): Promise<AdminAnalyticsData> {
         .gte("created_at", dashboardWindow.previousStart.toISOString())
         .neq("role", "administrateur")
         .limit(6000),
+      auth.supabase
+        .from("user_daily_progress")
+        .select("user_id,progress_date,facts_read_count,goal_completed")
+        .gte("progress_date", progressSince)
+        .limit(6000),
     ]);
 
   const error =
     sessionsResult.error ??
     eventsResult.error ??
     readsResult.error ??
-    likesResult.error ??
     savesResult.error ??
-    profilesResult.error;
+    profilesResult.error ??
+    progressResult.error;
 
   if (error) {
     throwAdminError(error, "load admin analytics", "analytics");
@@ -874,16 +1024,19 @@ export async function getAdminAnalyticsData(): Promise<AdminAnalyticsData> {
     (readsResult.data ?? []) as FactReadEventRow[],
     adminUserIds,
   );
-  const likes = excludeAdminUsers(
-    (likesResult.data ?? []) as { fact_id: string; user_id: string | null }[],
-    adminUserIds,
-  );
   const saves = excludeAdminUsers(
     (savesResult.data ?? []) as {
       created_at: string;
       fact_id: string;
       user_id: string | null;
     }[],
+    adminUserIds,
+  );
+  const progressRows = excludeAdminUsers(
+    (progressResult.data ?? []) as Pick<
+      Database["public"]["Tables"]["user_daily_progress"]["Row"],
+      "facts_read_count" | "goal_completed" | "progress_date" | "user_id"
+    >[],
     adminUserIds,
   );
   const registrations = (profilesResult.data ?? []) as {
@@ -893,11 +1046,7 @@ export async function getAdminAnalyticsData(): Promise<AdminAnalyticsData> {
   const factIds = [
     ...new Set([
       ...reads.map((row) => row.fact_id),
-      ...likes.map((row) => row.fact_id),
       ...saves.map((row) => row.fact_id),
-      ...events
-        .filter((row) => row.entity_type === "fact" && row.entity_id)
-        .map((row) => row.entity_id as string),
     ]),
   ];
   const factsResult =
@@ -921,60 +1070,15 @@ export async function getAdminAnalyticsData(): Promise<AdminAnalyticsData> {
         getFactCategory(factsById.get(read.fact_id))?.slug,
       ),
   );
-  const visitors = new Set(
-    sessions.map(getAnalyticsIdentity).filter((value): value is string => Boolean(value)),
-  );
-  const signedInUsers = new Set(
-    sessions.map((session) => session.user_id).filter((value): value is string => Boolean(value)),
-  );
-  const anonymousVisitors = new Set(
-    sessions
-      .filter((session) => !session.user_id)
-      .map((session) => session.anonymous_id)
-      .filter((value): value is string => Boolean(value)),
-  );
-  const platformCounts = countBy(
-    sessions.map((session) => session.platform.toUpperCase()),
+  const publicSaves = saves.filter(
+    (save) =>
+      !isCommercialCollaborationSlug(
+        getFactCategory(factsById.get(save.fact_id))?.slug,
+      ),
   );
   const readCounts = countBy(publicReads.map((row) => row.fact_id));
-  const likeCounts = countBy(likes.map((row) => row.fact_id));
-  const saveCounts = countBy(saves.map((row) => row.fact_id));
-  const interactionCounts = countBy([
-    ...likes.map((row) => row.fact_id),
-    ...saves.map((row) => row.fact_id),
-  ]);
-  const likesEvents = events.filter((event) => event.event_name === "fact_liked").length;
-  const savesEvents = events.filter((event) => event.event_name === "fact_saved").length;
-  const shares = events.filter((event) => event.event_name === "fact_shared").length;
-  const sourceClicks = events.filter((event) => event.event_name === "source_clicked").length;
-  const categoryOpenedEvents = events.filter(
-    (event) => event.event_name === "category_opened",
-  );
-  const sessionsByIdentity = new Map<string, AnalyticsSessionRow[]>();
-
-  sessions.forEach((session) => {
-    const identity = getAnalyticsIdentity(session);
-
-    if (!identity) {
-      return;
-    }
-
-    sessionsByIdentity.set(identity, [
-      ...(sessionsByIdentity.get(identity) ?? []),
-      session,
-    ]);
-  });
-
-  const returnedAtLeast2Times = [...sessionsByIdentity.values()].filter(
-    (rows) => rows.length >= 2,
-  ).length;
-  const returnedAfter7Days = [...sessionsByIdentity.values()].filter((rows) => {
-    const times = rows.map((row) => new Date(row.started_at).getTime());
-
-    return Math.max(...times) - Math.min(...times) >= 7 * 24 * 60 * 60 * 1000;
-  }).length;
-  const topOpenedThemes = new Map<string, AdminAnalyticsThemeStat>();
-  const bestEngagementThemes = new Map<string, AdminAnalyticsThemeStat>();
+  const saveCounts = countBy(publicSaves.map((row) => row.fact_id));
+  const readThemes = new Map<string, AdminAnalyticsThemeStat>();
 
   publicReads.forEach((read) => {
     const category = getFactCategory(factsById.get(read.fact_id));
@@ -983,135 +1087,76 @@ export async function getAdminAnalyticsData(): Promise<AdminAnalyticsData> {
       return;
     }
 
-    const current = topOpenedThemes.get(category.slug);
-    topOpenedThemes.set(category.slug, {
+    const current = readThemes.get(category.slug);
+    readThemes.set(category.slug, {
       ...category,
       value: (current?.value ?? 0) + 1,
     });
   });
-
-  categoryOpenedEvents.forEach((event) => {
-    const slug =
-      typeof event.metadata === "object" &&
-      event.metadata &&
-      !Array.isArray(event.metadata) &&
-      typeof event.metadata.slug === "string"
-        ? event.metadata.slug
-        : null;
-    const name =
-      typeof event.metadata === "object" &&
-      event.metadata &&
-      !Array.isArray(event.metadata) &&
-      typeof event.metadata.name === "string"
-        ? event.metadata.name
-        : slug;
-
-    if (!slug || !name) {
-      return;
-    }
-
-    const current = topOpenedThemes.get(slug);
-    topOpenedThemes.set(slug, {
-      accent: "#fbbf24",
-      name,
-      slug,
-      value: (current?.value ?? 0) + 1,
-    });
-  });
-
-  events
-    .filter((event) =>
-      ["fact_liked", "fact_saved", "fact_shared", "source_clicked"].includes(
-        event.event_name,
-      ),
-    )
-    .forEach((event) => {
-      if (!event.entity_id) {
-        return;
-      }
-
-      const category = getFactCategory(factsById.get(event.entity_id));
-
-      if (!category) {
-        return;
-      }
-
-      const current = bestEngagementThemes.get(category.slug);
-      bestEngagementThemes.set(category.slug, {
-        ...category,
-        value: (current?.value ?? 0) + 1,
-      });
-    });
-
-  events
-    .filter(
-      (event) =>
-        event.entity_type === "fact" &&
-        event.entity_id &&
-        ["fact_shared", "source_clicked"].includes(event.event_name),
-    )
-    .forEach((event) => {
-      const factId = event.entity_id as string;
-      interactionCounts.set(factId, (interactionCounts.get(factId) ?? 0) + 1);
-    });
+  const searchEvents = events.filter((event) =>
+    ["explorer_search", "search_used"].includes(event.event_name),
+  );
+  const today = getDayKey(new Date());
+  const yesterdayDate = new Date();
+  yesterdayDate.setUTCDate(yesterdayDate.getUTCDate() - 1);
+  const yesterday = getDayKey(yesterdayDate);
+  const todayReads = getRowsOnDay(publicReads, (read) => read.created_at, today);
+  const yesterdayReads = getRowsOnDay(
+    publicReads,
+    (read) => read.created_at,
+    yesterday,
+  );
+  const todayGoals = progressRows.filter(
+    (row) => row.progress_date === today && row.goal_completed,
+  );
+  const yesterdayGoals = progressRows.filter(
+    (row) => row.progress_date === yesterday && row.goal_completed,
+  );
+  const rowsWithReadProgress = progressRows.filter(
+    (row) => row.facts_read_count > 0,
+  );
+  const currentSessions = sessions.filter(
+    (session) =>
+      new Date(session.started_at).getTime() >= dashboardWindow.currentStart.getTime(),
+  );
 
   return {
     overview: {
-      anonymousVisitors: anonymousVisitors.size,
-      averageSessionSeconds: average(
-        sessions
-          .map((session) => session.duration_seconds ?? 0)
-          .filter((duration) => duration > 0),
+      activeUsersToday: getMetricComparison(
+        countVisitorsOnDay(sessions, today),
+        countVisitorsOnDay(sessions, yesterday),
       ),
-      factsPerSession:
-        sessions.length > 0
-          ? Number((publicReads.length / sessions.length).toFixed(1))
-          : 0,
-      factsRead: publicReads.length,
-      signedInUsers: signedInUsers.size,
-      totalSessions: sessions.length,
-      uniqueVisitors: visitors.size,
-    },
-    platforms: [...platformCounts.entries()].map(([label, count]) => ({
-      count,
-      label,
-      percent: percent(count, sessions.length),
-    })),
-    engagement: {
-      interactionRate: percent(
-        likesEvents + savesEvents + shares,
-        Math.max(publicReads.length, 1),
+      averageReadSecondsToday: getMetricComparison(
+        average(
+          todayReads
+            .map((read) => read.duration_seconds ?? 0)
+            .filter((duration) => duration > 0),
+        ),
+        average(
+          yesterdayReads
+            .map((read) => read.duration_seconds ?? 0)
+            .filter((duration) => duration > 0),
+        ),
       ),
-      likes: likesEvents || likes.length,
-      saves: savesEvents || saves.length,
-      shares,
-      sourceClicks,
-    },
-    reading: {
-      averageReadSeconds: average(
-        publicReads
-          .map((read) => read.duration_seconds ?? 0)
-          .filter((duration) => duration > 0),
+      factsReadToday: getMetricComparison(todayReads.length, yesterdayReads.length),
+      goalsCompletedToday: getMetricComparison(
+        todayGoals.length,
+        yesterdayGoals.length,
       ),
-      completionRate: percent(
-        publicReads.filter((read) => read.completed).length,
-        publicReads.length,
-      ),
-      topLikedFacts: toFactStats(likeCounts, factsById),
-      topReadFacts: toFactStats(readCounts, factsById),
-      topSavedFacts: toFactStats(saveCounts, factsById),
-    },
-    retention: {
-      averageReturnFrequency:
-        visitors.size > 0 ? Number((sessions.length / visitors.size).toFixed(1)) : 0,
-      returnedAtLeast2Times,
-      returnedAfter7Days,
-    },
-    categories: {
-      bestEngagementThemes: toThemeStats(bestEngagementThemes),
-      topOpenedThemes: toThemeStats(topOpenedThemes),
     },
     series: {
+      activeUsers: countVisitorsByDay(
+        sessions,
+        dashboardWindow.currentStart,
+        dashboardWindow.days,
+      ),
+      averageSwipeSeconds: averageRowsByDay(
+        publicReads,
+        (read) => read.created_at,
+        (read) => read.duration_seconds,
+        dashboardWindow.currentStart,
+        dashboardWindow.days,
+      ),
       factReads: countRowsByDay(
         publicReads,
         (read) => read.created_at,
@@ -1124,15 +1169,31 @@ export async function getAdminAnalyticsData(): Promise<AdminAnalyticsData> {
         dashboardWindow.currentStart,
         dashboardWindow.days,
       ),
-      visitors: countVisitorsByDay(
-        sessions,
-        dashboardWindow.currentStart,
-        dashboardWindow.days,
-      ),
     },
-    topInteractions: {
-      facts: toFactStats(interactionCounts, factsById, 5),
-      themes: toThemeStats(bestEngagementThemes, 5),
+    topContent: {
+      explorerSearches: toSearchStats(searchEvents),
+      readFacts: toFactStats(readCounts, factsById, 5),
+      readThemes: toThemeStats(readThemes, 5),
+      savedFacts: toFactStats(saveCounts, factsById, 5),
+    },
+    health: {
+      averageFactsPerUserDay:
+        rowsWithReadProgress.length > 0
+          ? Number(
+              (
+                rowsWithReadProgress.reduce(
+                  (total, row) => total + row.facts_read_count,
+                  0,
+                ) / rowsWithReadProgress.length
+              ).toFixed(1),
+            )
+          : null,
+      averageSessionsPerDay:
+        currentSessions.length > 0
+          ? Number((currentSessions.length / dashboardWindow.days).toFixed(1))
+          : null,
+      d1ReturnRate: getReturnRate(sessions, 1),
+      d7ReturnRate: getReturnRate(sessions, 7),
     },
   };
 }
@@ -1575,10 +1636,12 @@ export async function getAdminRoles({
   page = 1,
   pageSize = DEFAULT_PAGE_SIZE,
   query,
+  system,
 }: {
   page?: number;
   pageSize?: number;
   query?: string;
+  system?: "all" | "custom" | "system";
 } = {}): Promise<AdminListResult<AdminRole>> {
   const auth = await getAuthenticatedAdminClient();
 
@@ -1602,6 +1665,14 @@ export async function getAdminRoles({
 
   if (searchTerm) {
     request = request.or(`name.ilike.%${searchTerm}%,slug.ilike.%${searchTerm}%`);
+  }
+
+  if (system === "custom") {
+    request = request.eq("is_system", false);
+  }
+
+  if (system === "system") {
+    request = request.eq("is_system", true);
   }
 
   const { data, count, error } = await request;
@@ -1666,10 +1737,12 @@ export async function getAdminGrades({
   page = 1,
   pageSize = DEFAULT_PAGE_SIZE,
   query,
+  system,
 }: {
   page?: number;
   pageSize?: number;
   query?: string;
+  system?: "all" | "custom" | "system";
 } = {}): Promise<AdminListResult<AdminGrade>> {
   const auth = await getAuthenticatedAdminClient();
 
@@ -1693,6 +1766,14 @@ export async function getAdminGrades({
 
   if (searchTerm) {
     request = request.or(`name.ilike.%${searchTerm}%,slug.ilike.%${searchTerm}%`);
+  }
+
+  if (system === "custom") {
+    request = request.eq("is_system", false);
+  }
+
+  if (system === "system") {
+    request = request.eq("is_system", true);
   }
 
   const { data, count, error } = await request;

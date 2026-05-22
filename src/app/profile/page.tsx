@@ -383,6 +383,16 @@ function ProfileContent() {
           <ProfileSkeleton />
         ) : (
           <>
+
+            <div className="-mt-3 mb-4 flex justify-end">
+              <Link
+                href="/profile/edit"
+                className={`${premiumPrimaryCtaClassName} shadow-[0_18px_65px_rgba(255,209,102,0.20)]`}
+              >
+                <Pencil className="mr-2 h-4 w-4" aria-hidden="true" />
+                Modifier le profil
+              </Link>
+            </div>
             <section className="mb-8 overflow-hidden rounded-[30px] border border-white/10 bg-[linear-gradient(135deg,rgba(255,255,255,0.09),rgba(255,255,255,0.035))] p-5 shadow-[0_30px_110px_rgba(0,0,0,0.26)] backdrop-blur-2xl sm:p-7">
               <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
                 <div className="min-w-0">
@@ -452,16 +462,6 @@ function ProfileContent() {
               </div>
 
             </section>
-
-            <div className="-mt-3 mb-8 flex justify-end">
-              <Link
-                href="/profile/edit"
-                className={`${premiumPrimaryCtaClassName} shadow-[0_18px_65px_rgba(255,209,102,0.20)]`}
-              >
-                <Pencil className="mr-2 h-4 w-4" aria-hidden="true" />
-                Modifier le profil
-              </Link>
-            </div>
 
             <section className="grid gap-4 lg:grid-cols-4">
               <ProfileStatCard label="Faits aimés" type="liked" value={profile.likedCount} />

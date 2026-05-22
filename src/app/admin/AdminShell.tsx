@@ -5,6 +5,7 @@ import {
   BookOpen,
   ChevronDown,
   GraduationCap,
+  House,
   LayoutDashboard,
   Menu,
   Search,
@@ -186,10 +187,18 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
           {displayName ?? "Compte administrateur"}
         </p>
         <p className="mt-1 text-xs text-gray-500">{roleLabel}</p>
+        <Link
+          href="/"
+          onClick={() => setOpen(false)}
+          className="mt-4 flex h-10 w-full items-center justify-center gap-2 rounded-lg border border-gray-200 bg-white px-3 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
+        >
+          <House className="h-4 w-4" aria-hidden="true" />
+          Retour au site
+        </Link>
         <button
           type="button"
           onClick={handleSignOut}
-          className="mt-4 h-10 w-full rounded-lg border border-gray-200 bg-white px-3 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
+          className="mt-2 h-10 w-full rounded-lg border border-gray-200 bg-white px-3 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
         >
           Déconnexion
         </button>

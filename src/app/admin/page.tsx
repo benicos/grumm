@@ -1,23 +1,20 @@
 "use client";
 
 import Link from "next/link";
-import { BarChart3, BookOpen, Clock3, Tags, Users } from "lucide-react";
+import { BookOpen, Clock3, Target, Users } from "lucide-react";
 import { useEffect, useState } from "react";
 import {
-  FACT_STATUS_LABELS,
   getAdminAnalyticsData,
   getAdminDashboardData,
   type AdminAnalyticsData,
+  type AdminAnalyticsMetric,
   type AdminDashboardData,
 } from "@/lib/admin";
 import {
   AdminCard,
   AdminLineChart,
-  AdminMetricCard,
   AdminNotice,
   AdminPageHeading,
-  AdminTable,
-  AdminTableSkeleton,
   AdminWarningAlert,
 } from "./ui";
 
@@ -28,16 +25,6 @@ type RankedRow = {
   meta?: string;
   value: number;
 };
-
-function formatDate(value: string) {
-  return new Intl.DateTimeFormat("fr-FR", { dateStyle: "medium" }).format(
-    new Date(value),
-  );
-}
-
-function getStatValue(data: AdminDashboardData | null, label: string) {
-  return data?.stats.find((stat) => stat.label === label)?.value ?? 0;
-}
 
 function AdminTopTable({
   description,
@@ -55,7 +42,7 @@ function AdminTopTable({
   return (
     <AdminCard className="p-5">
       <div className="mb-5">
-        <h2 className="text-lg font-semibold text-gray-800">{title}</h2>
+        <h3 className="text-lg font-semibold text-gray-800">{title}</h3>
         <p className="mt-1 text-sm text-gray-500">{description}</p>
       </div>
       <div className="overflow-hidden rounded-2xl border border-gray-200">
@@ -113,6 +100,102 @@ function AdminTopTable({
   );
 }
 
+function formatSeconds(value: number) {
+  if (value < 60) {
+    return `${value}s`;
+  }
+
+  const minutes = Math.floor(value / 60);
+  const seconds = value % 60;
+
+  return seconds > 0 ? `${minutes}m ${seconds}s` : `${minutes}m`;
+}
+
+function getTrend(metric: AdminAnalyticsMetric) {
+  if (metric.previous === 0) {
+    return metric.current > 0 ? "Nouveau vs hier" : "Stable vs hier";
+  }
+
+  const delta = Math.round(
+    ((metric.current - metric.previous) / metric.previous) * 100,
+  );
+
+  return `${delta > 0 ? "+" : ""}${delta}% vs hier`;
+}
+
+function OverviewCard({
+  icon: Icon,
+  label,
+  metric,
+  value,
+}: {
+  icon: typeof Users;
+  label: string;
+  metric: AdminAnalyticsMetric;
+  value: string;
+}) {
+  const positive = metric.current >= metric.previous;
+
+  return (
+    <AdminCard className="p-5 md:p-6">
+      <div className="flex items-start justify-between gap-4">
+        <span className="grid h-12 w-12 place-items-center rounded-xl bg-gray-100 text-gray-800">
+          <Icon className="h-6 w-6" aria-hidden="true" />
+        </span>
+        <span
+          className={`rounded-full px-2.5 py-1 text-xs font-medium ${
+            positive
+              ? "bg-green-50 text-green-600"
+              : "bg-amber-50 text-amber-700"
+          }`}
+        >
+          {getTrend(metric)}
+        </span>
+      </div>
+      <p className="mt-5 text-sm text-gray-500">{label}</p>
+      <p className="mt-2 text-2xl font-bold text-gray-800">{value}</p>
+    </AdminCard>
+  );
+}
+
+function HealthMetric({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="rounded-2xl border border-gray-200 p-4">
+      <dt className="text-sm text-gray-500">{label}</dt>
+      <dd className="mt-2 text-2xl font-semibold text-gray-800">{value}</dd>
+    </div>
+  );
+}
+
+function SectionHeading({
+  description,
+  title,
+}: {
+  description: string;
+  title: string;
+}) {
+  return (
+    <div className="mb-4">
+      <h2 className="text-xl font-semibold text-gray-800">{title}</h2>
+      <p className="mt-1 text-sm text-gray-500">{description}</p>
+    </div>
+  );
+}
+
+function formatHealthPercent(value: number | null) {
+  return value === null ? "-" : `${value}%`;
+}
+
+function formatHealthAverage(value: number | null) {
+  return value === null ? "-" : value.toLocaleString("fr-FR");
+}
+
 export default function AdminDashboardPage() {
   const [data, setData] = useState<AdminDashboardData | null>(null);
   const [analytics, setAnalytics] = useState<AdminAnalyticsData | null>(null);
@@ -168,33 +251,35 @@ export default function AdminDashboardPage() {
     };
   }, []);
 
-  const topReadFacts =
-    analytics?.reading.topReadFacts.slice(0, 5).map((fact) => ({
-      href: `/fact/${fact.slug}`,
+  const readFactRows =
+    analytics?.topContent.readFacts.map((fact) => ({
+      href: `/admin/facts/${fact.id}`,
       id: fact.id,
       label: fact.title,
       value: fact.value,
     })) ?? [];
-  const topReadThemes =
-    analytics?.categories.topOpenedThemes.slice(0, 5).map((theme) => ({
-      href: `/discover/theme/${theme.slug}`,
-      id: theme.slug,
-      label: theme.name,
-      value: theme.value,
-    })) ?? [];
-  const topInteractedFacts =
-    analytics?.topInteractions.facts.map((fact) => ({
-      href: `/fact/${fact.slug}`,
+  const savedFactRows =
+    analytics?.topContent.savedFacts.map((fact) => ({
+      href: `/admin/facts/${fact.id}`,
       id: fact.id,
       label: fact.title,
       value: fact.value,
     })) ?? [];
-  const topInteractedThemes =
-    analytics?.topInteractions.themes.map((theme) => ({
-      href: `/discover/theme/${theme.slug}`,
+  const readThemeRows =
+    analytics?.topContent.readThemes.map((theme) => ({
       id: theme.slug,
       label: theme.name,
       value: theme.value,
+    })) ?? [];
+  const searchRows =
+    analytics?.topContent.explorerSearches.map((search) => ({
+      id: search.id,
+      label: search.term,
+      meta:
+        search.noResultCount > 0
+          ? `${search.noResultCount} sans résultat`
+          : undefined,
+      value: search.value,
     })) ?? [];
 
   return (
@@ -202,7 +287,7 @@ export default function AdminDashboardPage() {
       <AdminPageHeading
         current="Tableau de bord"
         title="Tableau de bord"
-        description="Synthèse des contenus, de la modération et de l’usage."
+        description="Croissance, engagement contenu et signaux éditoriaux utiles."
       />
       <AdminNotice message={error} tone="error" />
       <AdminNotice message={analyticsError} tone="error" />
@@ -224,174 +309,162 @@ export default function AdminDashboardPage() {
         />
       ) : null}
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <AdminMetricCard
-          icon={BookOpen}
-          label="Faits"
-          value={getStatValue(data, "Faits")}
-          meta="Contenu"
-        />
-        <AdminMetricCard
-          icon={Tags}
-          label="Thèmes"
-          value={getStatValue(data, "Thèmes")}
-          meta="Taxonomie"
-        />
-        <AdminMetricCard
-          icon={BarChart3}
-          label="Vues uniques"
-          value={getStatValue(data, "Vues uniques")}
-          meta="Lecture"
-        />
-        <AdminMetricCard
-          icon={Users}
-          label="Utilisateurs"
-          value={getStatValue(data, "Utilisateurs")}
-          meta="Profils"
-        />
-      </div>
-
-      <div className="mt-6 grid gap-6 xl:grid-cols-2">
-        <AdminLineChart
-          title="Inscriptions par jour"
-          description="Profils créés sur 14 jours, comparés aux 14 jours précédents."
-          points={analytics?.series.registrations ?? []}
-        />
-        <AdminLineChart
-          title="Visiteurs par jour"
-          description="Visiteurs distincts par session, hors espace admin."
-          points={analytics?.series.visitors ?? []}
-        />
-      </div>
-
-      <div className="mt-6">
-        <AdminLineChart
-          title="Faits lus par jour"
-          description="Lectures enregistrées chaque jour, hors comptes administrateurs."
-          points={analytics?.series.factReads ?? []}
-        />
-      </div>
-
-      <div className="mt-6 grid gap-6 xl:grid-cols-2">
-        <AdminTopTable
-          title="Top 5 des faits les plus lus"
-          description="Lectures issues des événements de lecture."
-          valueLabel="Lectures"
-          empty="Aucune lecture enregistrée."
-          rows={topReadFacts}
-        />
-        <AdminTopTable
-          title="Top 5 des thèmes les plus lus"
-          description="Thèmes associés aux faits ouverts."
-          valueLabel="Lectures"
-          empty="Aucun thème lu pour le moment."
-          rows={topReadThemes}
-        />
-        <AdminTopTable
-          title="Top 5 des faits les plus interagis"
-          description="Likes, sauvegardes, partages et clics suivis."
-          valueLabel="Interactions"
-          empty="Aucune interaction enregistrée."
-          rows={topInteractedFacts}
-        />
-        <AdminTopTable
-          title="Top 5 des thèmes les plus interagis"
-          description="Interactions agrégées par thème."
-          valueLabel="Interactions"
-          empty="Aucune interaction par thème enregistrée."
-          rows={topInteractedThemes}
-        />
-      </div>
-
-      <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
-        <AdminCard className="p-5">
-          <div className="mb-5">
-            <h2 className="text-lg font-semibold text-gray-800">
-              Faits récents
-            </h2>
-            <p className="mt-1 text-sm text-gray-500">
-              Derniers contenus enregistrés dans la base.
-            </p>
-          </div>
-          {loading ? (
-            <AdminTableSkeleton />
-          ) : (
-            <AdminTable
-              rows={data?.recentFacts ?? []}
-              empty="Aucun fait disponible."
-              rowKey={(fact) => fact.id}
-              columns={[
-                {
-                  key: "title",
-                  label: "Fait",
-                  render: (fact) => (
-                    <div>
-                      <p className="font-medium text-gray-800">{fact.title}</p>
-                      <p className="mt-1 text-xs text-gray-500">{fact.slug}</p>
-                    </div>
-                  ),
-                },
-                {
-                  key: "theme",
-                  label: "Thème",
-                  render: (fact) => fact.categories?.name ?? "-",
-                },
-                {
-                  key: "status",
-                  label: "Statut",
-                  render: (fact) => (
-                    <span className="rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-600">
-                      {FACT_STATUS_LABELS[fact.status]}
-                    </span>
-                  ),
-                },
-                {
-                  key: "created",
-                  label: "Création",
-                  render: (fact) => formatDate(fact.created_at),
-                },
-              ]}
+      {!analytics ? (
+        <AdminCard className="p-6 text-sm text-gray-500">
+          {loading
+            ? "Chargement des analytics produit..."
+            : "Les analytics produit sont réservées aux administrateurs."}
+        </AdminCard>
+      ) : (
+        <>
+          <section>
+            <SectionHeading
+              title="Vue d'ensemble"
+              description="Activité et objectifs du jour, comparés à hier."
             />
-          )}
-        </AdminCard>
-
-        <AdminCard className="p-5">
-          <div className="flex items-center gap-3">
-            <span className="grid h-10 w-10 place-items-center rounded-xl bg-amber-50 text-amber-700">
-              <Clock3 className="h-5 w-5" aria-hidden="true" />
-            </span>
-            <div>
-              <h2 className="text-lg font-semibold text-gray-800">
-                File de validation
-              </h2>
-              <p className="text-sm text-gray-500">
-                Faits en attente d’une décision.
-              </p>
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+              <OverviewCard
+                icon={Users}
+                label="Utilisateurs actifs aujourd'hui"
+                metric={analytics.overview.activeUsersToday}
+                value={analytics.overview.activeUsersToday.current.toLocaleString(
+                  "fr-FR",
+                )}
+              />
+              <OverviewCard
+                icon={BookOpen}
+                label="Faits lus aujourd'hui"
+                metric={analytics.overview.factsReadToday}
+                value={analytics.overview.factsReadToday.current.toLocaleString(
+                  "fr-FR",
+                )}
+              />
+              <OverviewCard
+                icon={Clock3}
+                label="Temps moyen de lecture"
+                metric={analytics.overview.averageReadSecondsToday}
+                value={formatSeconds(
+                  analytics.overview.averageReadSecondsToday.current,
+                )}
+              />
+              <OverviewCard
+                icon={Target}
+                label="Objectifs atteints aujourd'hui"
+                metric={analytics.overview.goalsCompletedToday}
+                value={analytics.overview.goalsCompletedToday.current.toLocaleString(
+                  "fr-FR",
+                )}
+              />
             </div>
-          </div>
-          <div className="mt-5 space-y-3">
-            {(data?.pendingFacts ?? []).slice(0, 5).map((fact) => (
-              <div
-                key={fact.id}
-                className="rounded-xl border border-gray-200 p-4"
-              >
-                <p className="line-clamp-2 text-sm font-medium text-gray-800">
-                  {fact.title}
-                </p>
-                <p className="mt-2 text-xs text-gray-500">
-                  {fact.categories?.name ?? "Sans thème"} -{" "}
-                  {formatDate(fact.created_at)}
-                </p>
-              </div>
-            ))}
-            {!loading && (data?.pendingFacts.length ?? 0) === 0 ? (
-              <p className="rounded-xl border border-dashed border-gray-200 p-4 text-sm text-gray-500">
-                Aucun fait n’attend de validation.
-              </p>
-            ) : null}
-          </div>
-        </AdminCard>
-      </div>
+          </section>
+
+          <section className="mt-7">
+            <SectionHeading
+              title="Croissance"
+              description="Acquisition et utilisateurs qui reviennent sur 14 jours."
+            />
+            <div className="grid gap-6 xl:grid-cols-2">
+              <AdminLineChart
+                title="Inscriptions par jour"
+                description="Profils créés, comparés à la période précédente."
+                points={analytics.series.registrations}
+              />
+              <AdminLineChart
+                title="Utilisateurs actifs par jour"
+                description="Identités actives par session hors espace admin."
+                points={analytics.series.activeUsers}
+              />
+            </div>
+          </section>
+
+          <section className="mt-7">
+            <SectionHeading
+              title="Engagement contenu"
+              description="Volume de lecture et attention avant changement de fait."
+            />
+            <div className="grid gap-6 xl:grid-cols-2">
+              <AdminLineChart
+                title="Faits lus par jour"
+                description="Lectures éditoriales enregistrées chaque jour."
+                points={analytics.series.factReads}
+              />
+              <AdminLineChart
+                title="Temps moyen avant swipe"
+                description="Durée moyenne mesurée à la sortie ou au changement de fait."
+                points={analytics.series.averageSwipeSeconds}
+              />
+            </div>
+          </section>
+
+          <section className="mt-7">
+            <SectionHeading
+              title="Top contenu"
+              description="Les signaux éditoriaux les plus actionnables."
+            />
+            <div className="grid gap-6 xl:grid-cols-2">
+              <AdminTopTable
+                title="Top faits lus"
+                description="Faits éditoriaux les plus ouverts."
+                valueLabel="Lectures"
+                empty="Aucune lecture enregistrée."
+                rows={readFactRows}
+              />
+              <AdminTopTable
+                title="Top faits enregistrés"
+                description="Faits que les membres gardent pour plus tard."
+                valueLabel="Sauvegardes"
+                empty="Aucune sauvegarde enregistrée."
+                rows={savedFactRows}
+              />
+              <AdminTopTable
+                title="Top thèmes lus"
+                description="Thèmes des faits effectivement consultés."
+                valueLabel="Lectures"
+                empty="Aucun thème lu pour le moment."
+                rows={readThemeRows}
+              />
+              <AdminTopTable
+                title="Recherches Explorer populaires"
+                description="Termes recherchés et besoins sans résultat."
+                valueLabel="Recherches"
+                empty="Aucune recherche Explorer disponible."
+                rows={searchRows}
+              />
+            </div>
+          </section>
+
+          <section className="mt-7">
+            <SectionHeading
+              title="Santé produit"
+              description="Rétention et intensité d'usage disponibles sans tracking intrusif."
+            />
+            <AdminCard className="p-5">
+              <dl className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                <HealthMetric
+                  label="Taux de retour D1"
+                  value={formatHealthPercent(analytics.health.d1ReturnRate)}
+                />
+                <HealthMetric
+                  label="Taux de retour D7"
+                  value={formatHealthPercent(analytics.health.d7ReturnRate)}
+                />
+                <HealthMetric
+                  label="Faits / jour / utilisateur"
+                  value={formatHealthAverage(
+                    analytics.health.averageFactsPerUserDay,
+                  )}
+                />
+                <HealthMetric
+                  label="Sessions moyennes / jour"
+                  value={formatHealthAverage(
+                    analytics.health.averageSessionsPerDay,
+                  )}
+                />
+              </dl>
+            </AdminCard>
+          </section>
+        </>
+      )}
     </>
   );
 }

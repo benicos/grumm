@@ -8,12 +8,19 @@ export type AnalyticsEventName =
   | "page_viewed"
   | "category_opened"
   | "search_used"
+  | "explorer_search"
+  | "explorer_search_no_result"
+  | "fact_view"
   | "fact_viewed"
+  | "fact_swipe"
   | "fact_read_completed"
   | "fact_shared"
   | "source_clicked"
+  | "fact_like"
   | "fact_liked"
+  | "fact_save"
   | "fact_saved"
+  | "daily_goal_completed"
   | "profile_opened"
   | "signup_completed"
   | "login_completed"
@@ -63,7 +70,7 @@ let currentSession: SessionState | null = null;
 let sessionPromise: Promise<SessionState> | null = null;
 let sessionUpdateTimer: number | null = null;
 let eventFlushTimer: number | null = null;
-let analyticsEnabled = true;
+let analyticsEnabled = false;
 const eventQueue: AnalyticsEventInput[] = [];
 
 function now() {
@@ -117,6 +124,14 @@ function sanitizeMetadata(metadata?: AnalyticsMetadata): Json {
   return Object.fromEntries(
     Object.entries(metadata).filter(([, value]) => value !== undefined),
   ) as Json;
+}
+
+function canTrackProductAnalytics() {
+  if (!analyticsEnabled) {
+    return false;
+  }
+
+  return typeof window === "undefined" || !window.location.pathname.startsWith("/admin");
 }
 
 function readStoredSession() {
@@ -376,7 +391,7 @@ export function setAnalyticsEnabled(enabled: boolean) {
 }
 
 export async function trackAnalyticsEvent(event: AnalyticsEventInput) {
-  if (!analyticsEnabled) {
+  if (!canTrackProductAnalytics()) {
     return;
   }
 
@@ -386,7 +401,7 @@ export async function trackAnalyticsEvent(event: AnalyticsEventInput) {
 }
 
 export async function trackPageView(pathname: string) {
-  if (!analyticsEnabled || pathname.startsWith("/admin")) {
+  if (!canTrackProductAnalytics() || pathname.startsWith("/admin")) {
     return;
   }
 
@@ -432,7 +447,7 @@ export function installAnalyticsLifecycle() {
 }
 
 export async function startFactRead(factId: string): Promise<FactReadToken> {
-  if (!analyticsEnabled) {
+  if (!canTrackProductAnalytics()) {
     return {
       factId,
       id: null,
@@ -453,7 +468,7 @@ export async function startFactRead(factId: string): Promise<FactReadToken> {
   await trackAnalyticsEvent({
     entityId: factId,
     entityType: "fact",
-    eventName: "fact_viewed",
+    eventName: "fact_view",
   });
 
   if (!supabase) {
@@ -485,9 +500,9 @@ export function markFactReadInteraction(token: FactReadToken | null) {
 
 export async function finishFactRead(
   token: FactReadToken | null,
-  options?: { completed?: boolean },
+  options?: { completed?: boolean; reason?: "exit" | "swipe" },
 ) {
-  if (!token || !analyticsEnabled) {
+  if (!token || !canTrackProductAnalytics()) {
     return;
   }
 
@@ -512,6 +527,17 @@ export async function finishFactRead(
       })
       .eq("id", token.id);
   }
+
+  await trackAnalyticsEvent({
+    entityId: token.factId,
+    entityType: "fact",
+    eventName: "fact_swipe",
+    metadata: {
+      completed,
+      duration_seconds: durationSeconds,
+      reason: options?.reason ?? "exit",
+    },
+  });
 
   if (completed) {
     await trackAnalyticsEvent({

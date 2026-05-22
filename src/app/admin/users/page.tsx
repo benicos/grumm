@@ -1,23 +1,51 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { deleteAdminUser, getAdminProfiles, type AdminProfile } from "@/lib/admin";
-import AdminListingPage from "../AdminListingPage";
+import { useEffect, useState } from "react";
+import {
+  deleteAdminUser,
+  getAdminProfiles,
+  getAllAdminRoles,
+  type AdminProfile,
+  type AdminRole,
+} from "@/lib/admin";
+import AdminListingPage, {
+  type AdminListingFilterValues,
+} from "../AdminListingPage";
 
 function loadUsers({
   page,
   pageSize,
   query,
+  filters,
 }: {
+  filters: AdminListingFilterValues;
   page: number;
   pageSize: number;
   query: string;
 }) {
-  return getAdminProfiles({ page, pageSize, query });
+  return getAdminProfiles({ page, pageSize, query, role: filters.role });
 }
 
 export default function AdminUsersPage() {
   const router = useRouter();
+  const [roles, setRoles] = useState<AdminRole[]>([]);
+
+  useEffect(() => {
+    let mounted = true;
+
+    void getAllAdminRoles()
+      .then((nextRoles) => {
+        if (mounted) {
+          setRoles(nextRoles);
+        }
+      })
+      .catch(() => undefined);
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   return (
     <AdminListingPage<AdminProfile>
@@ -27,6 +55,19 @@ export default function AdminUsersPage() {
       description="Comptes, rôles et objectifs quotidiens."
       actionLabel="Ajouter un utilisateur"
       searchPlaceholder="Rechercher des utilisateurs..."
+      filters={[
+        {
+          id: "role",
+          label: "Rôle",
+          options: [
+            { label: "Tous les rôles", value: "all" },
+            ...roles.map((role) => ({
+              label: role.name,
+              value: role.slug,
+            })),
+          ],
+        },
+      ]}
       empty="Aucun utilisateur trouvé."
       loadRows={loadUsers}
       rowKey={(user) => user.id}
@@ -36,7 +77,7 @@ export default function AdminUsersPage() {
             void deleteAdminUser(user.id).then(() => router.refresh());
           }
         },
-        onEdit: (user) => router.push(`/admin/users/${user.id}`),
+        onEdit: (user) => router.push(`/admin/users/${user.id}/edit`),
         onView: (user) => router.push(`/admin/users/${user.id}`),
       }}
       columns={[

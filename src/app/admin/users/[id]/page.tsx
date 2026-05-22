@@ -1,19 +1,15 @@
 "use client";
 
+import Link from "next/link";
+import { Activity, BookOpen, Heart, Pencil, Target } from "lucide-react";
 import { useParams } from "next/navigation";
-import { Activity, BookOpen, Heart, Target } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
-import {
-  getAdminUserDetail,
-  getAllAdminRoles,
-  updateProfileRole,
-  type AdminRole,
-  type AdminUserDetail,
-} from "@/lib/admin";
+import { getAdminUserDetail, type AdminUserDetail } from "@/lib/admin";
 import { getRoleLabel } from "@/lib/roles";
-import { AdminBackLink, adminFieldClassName } from "../../forms";
+import { AdminBackLink } from "../../forms";
 import {
-  AdminButton,
+  AdminAttributeList,
+  AdminAttributeRow,
   AdminCard,
   AdminMetricCard,
   AdminNotice,
@@ -31,26 +27,15 @@ function formatDate(value: string) {
 export default function AdminUserDetailPage() {
   const params = useParams<{ id: string }>();
   const [detail, setDetail] = useState<AdminUserDetail | null>(null);
-  const [roles, setRoles] = useState<AdminRole[]>([]);
-  const [role, setRole] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [busy, setBusy] = useState(false);
 
   const loadUser = useCallback(async () => {
     setLoading(true);
     setError(null);
 
     try {
-      const [nextDetail, nextRoles] = await Promise.all([
-        getAdminUserDetail(params.id),
-        getAllAdminRoles(),
-      ]);
-
-      setDetail(nextDetail);
-      setRoles(nextRoles);
-      setRole(nextDetail?.profile.role ?? "");
+      setDetail(await getAdminUserDetail(params.id));
     } catch (loadError) {
       setError(
         loadError instanceof Error
@@ -70,28 +55,6 @@ export default function AdminUserDetailPage() {
     return () => cancelAnimationFrame(frame);
   }, [loadUser]);
 
-  async function saveRole() {
-    if (!detail || !role) {
-      return;
-    }
-
-    setBusy(true);
-    setError(null);
-    setMessage(null);
-
-    const result = await updateProfileRole(detail.profile.id, role);
-
-    setBusy(false);
-
-    if (!result.ok) {
-      setError(result.message);
-      return;
-    }
-
-    setMessage(result.message);
-    await loadUser();
-  }
-
   const profile = detail?.profile;
 
   return (
@@ -99,10 +62,24 @@ export default function AdminUserDetailPage() {
       <AdminPageHeading
         current="Utilisateur"
         title={profile?.username ?? "Utilisateur"}
-        description="Profil, progression et rôle du compte."
-        action={<AdminBackLink href="/admin/users">Retour aux utilisateurs</AdminBackLink>}
+        description="Consultation du compte, du rôle et de la progression."
+        action={
+          <div className="flex flex-wrap gap-3">
+            <AdminBackLink href="/admin/users">
+              Retour aux utilisateurs
+            </AdminBackLink>
+            {profile ? (
+              <Link
+                href={`/admin/users/${profile.id}/edit`}
+                className="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-[#465fff] px-4 text-sm font-medium text-white shadow-sm transition hover:bg-[#3641f5]"
+              >
+                <Pencil className="h-4 w-4" aria-hidden="true" />
+                Modifier
+              </Link>
+            ) : null}
+          </div>
+        }
       />
-      <AdminNotice message={message} />
       <AdminNotice message={error} tone="error" />
 
       {loading ? (
@@ -114,62 +91,53 @@ export default function AdminUserDetailPage() {
       ) : (
         <>
           <AdminCard className="p-6">
-            <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
-              <div>
-                <div className="flex items-center gap-4">
-                  <span className="grid h-14 w-14 place-items-center rounded-2xl bg-[#ecf3ff] text-xl font-semibold text-[#465fff]">
-                    {profile.username.slice(0, 1).toUpperCase()}
-                  </span>
-                  <div>
-                    <h2 className="text-xl font-semibold text-gray-800">
-                      {profile.username}
-                    </h2>
-                    <p className="mt-1 text-sm text-gray-500">
-                      {profile.email ?? "Adresse email non disponible"}
-                    </p>
-                  </div>
-                </div>
-                <dl className="mt-6 grid gap-4 text-sm sm:grid-cols-3">
-                  <div>
-                    <dt className="text-gray-500">Inscription</dt>
-                    <dd className="mt-1 font-medium text-gray-800">
-                      {formatDate(profile.created_at)}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="text-gray-500">Rôle</dt>
-                    <dd className="mt-1 font-medium text-gray-800">
-                      {getRoleLabel(profile.role, detail.roleName)}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="text-gray-500">Objectif quotidien</dt>
-                    <dd className="mt-1 font-medium text-gray-800">
-                      {profile.daily_goal} faits
-                    </dd>
-                  </div>
-                </dl>
-              </div>
-              <div className="rounded-2xl border border-gray-200 p-4">
-                <label className="block text-sm font-medium text-gray-700">
-                  Rôle attribué
-                  <select
-                    value={role}
-                    onChange={(event) => setRole(event.target.value)}
-                    className={adminFieldClassName}
-                  >
-                    {roles.map((availableRole) => (
-                      <option key={availableRole.slug} value={availableRole.slug}>
-                        {availableRole.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <AdminButton onClick={saveRole} disabled={busy}>
-                  Enregistrer le rôle
-                </AdminButton>
+            <div className="flex items-center gap-4">
+              <span className="grid h-14 w-14 place-items-center rounded-2xl bg-[#ecf3ff] text-xl font-semibold text-[#465fff]">
+                {profile.username.slice(0, 1).toUpperCase()}
+              </span>
+              <div className="min-w-0">
+                <h2 className="break-words text-xl font-semibold text-gray-800">
+                  {profile.username}
+                </h2>
+                <p className="mt-1 break-words text-sm text-gray-500">
+                  {profile.email ?? "Adresse email non disponible"}
+                </p>
               </div>
             </div>
+
+            <AdminAttributeList className="mt-6">
+              <AdminAttributeRow label="ID" value={profile.id} />
+              <AdminAttributeRow
+                label="Nom utilisateur"
+                technicalName="username"
+                value={profile.username}
+              />
+              <AdminAttributeRow label="Email" value={profile.email ?? "-"} />
+              <AdminAttributeRow
+                label="Rôle"
+                value={getRoleLabel(profile.role, detail.roleName)}
+              />
+              <AdminAttributeRow
+                label="Objectif quotidien"
+                technicalName="daily_goal"
+                value={`${profile.daily_goal} faits`}
+              />
+              <AdminAttributeRow
+                label="URL avatar"
+                technicalName="avatar_url"
+                value={profile.avatar_url ?? "-"}
+              />
+              <AdminAttributeRow
+                label="Créé le"
+                technicalName="created_at"
+                value={formatDate(profile.created_at)}
+              />
+              <AdminAttributeRow
+                label="Édité le"
+                technicalName="updated_at"
+                value={formatDate(profile.updated_at)}
+              />
+            </AdminAttributeList>
           </AdminCard>
 
           <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">

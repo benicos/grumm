@@ -7,6 +7,7 @@ import { trackAnalyticsEvent } from "@/lib/analytics/web";
 import { getExplorerData, type CategorySummary } from "@/lib/facts";
 import { getToneBackground } from "@/lib/gradients";
 import { AppState } from "../../components/AppState";
+import { premiumTitleGradientClassName } from "../../components/buttonStyles";
 import Footer from "../../components/Footer";
 import HeroBackground from "../../components/HeroBackground";
 import Navbar from "../../components/Navbar";
@@ -132,7 +133,7 @@ export default function FactsThemePage() {
           <p className="w-fit rounded-full border border-white/10 bg-white/[0.055] px-3 py-1 text-sm/6 font-semibold text-white/62 backdrop-blur-xl">
             Thèmes Grumm.
           </p>
-          <h1 className="mt-5 bg-[linear-gradient(120deg,#ffffff,#ffe4a1_44%,#6ae3c0)] bg-clip-text text-[clamp(2.6rem,6vw,5.2rem)] font-extrabold leading-none text-transparent">
+          <h1 className={`${premiumTitleGradientClassName} mt-5 text-[clamp(2.6rem,6vw,5.2rem)] font-extrabold leading-none`}>
             Choisis une direction, laisse le fait te surprendre.
           </h1>
           <p className="mt-5 max-w-2xl text-base font-semibold leading-8 text-white/62 sm:text-lg">

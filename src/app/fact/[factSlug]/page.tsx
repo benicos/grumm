@@ -142,18 +142,28 @@ export default function FactDetailPage() {
       return;
     }
 
-    recordFactView(fact.id, profile?.daily_goal ?? DEFAULT_DAILY_GOAL).catch(
-      () => undefined,
-    );
+    recordFactView(fact.id, profile?.daily_goal ?? DEFAULT_DAILY_GOAL)
+      .then((result) => {
+        if (result.ok && result.completedToday) {
+          void trackAnalyticsEvent({
+            eventName: "daily_goal_completed",
+            metadata: {
+              daily_goal: result.dailyGoal,
+              facts_read_count: result.viewedTodayCount,
+            },
+          });
+        }
+      })
+      .catch(() => undefined);
   }, [fact, isAuthenticated, isLoading, profile?.daily_goal]);
 
   useEffect(() => {
     let cancelled = false;
 
-    void finishFactRead(factReadTokenRef.current);
+    void finishFactRead(factReadTokenRef.current, { reason: "exit" });
     factReadTokenRef.current = null;
 
-    if (!fact?.id || isCommercialCollaborationFact(fact)) {
+    if (isLoading || !fact?.id || isCommercialCollaborationFact(fact)) {
       return () => {
         cancelled = true;
       };
@@ -162,7 +172,7 @@ export default function FactDetailPage() {
     startFactRead(fact.id)
       .then((token) => {
         if (cancelled) {
-          void finishFactRead(token);
+          void finishFactRead(token, { reason: "exit" });
           return;
         }
 
@@ -172,10 +182,10 @@ export default function FactDetailPage() {
 
     return () => {
       cancelled = true;
-      void finishFactRead(factReadTokenRef.current);
+      void finishFactRead(factReadTokenRef.current, { reason: "exit" });
       factReadTokenRef.current = null;
     };
-  }, [fact]);
+  }, [fact, isLoading]);
 
   const toggleProtectedAction = async (
     isActive: boolean,
@@ -212,7 +222,7 @@ export default function FactDetailPage() {
         void trackAnalyticsEvent({
           entityId: fact.id,
           entityType: "fact",
-          eventName: enableAction === likeFact ? "fact_liked" : "fact_saved",
+          eventName: enableAction === likeFact ? "fact_like" : "fact_save",
         });
       }
     } catch {

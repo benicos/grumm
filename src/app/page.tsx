@@ -2,7 +2,10 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import Link from "next/link";
 import { siteConfig } from "@/config/app";
-import { premiumPrimaryCtaClassName } from "./components/buttonStyles";
+import {
+  premiumPrimaryCtaClassName,
+  premiumTitleGradientClassName,
+} from "./components/buttonStyles";
 import FactOfDay from "./components/FactOfDay";
 import Footer from "./components/Footer";
 import HeroBackground from "./components/HeroBackground";
@@ -33,7 +36,7 @@ export default function GrummLanding() {
             <div className="inline-flex w-fit items-center rounded-full border border-[#ffd166]/20 bg-[#ffd166]/10 px-4 py-2 text-sm/6 font-extrabold text-[#ffe4a1] shadow-[0_12px_42px_rgba(255,209,102,0.16)] backdrop-blur-xl">
               Scroll. Learn. Grow.
             </div>
-            <h1 className="mt-8 max-w-[12ch] bg-[linear-gradient(120deg,#ffffff_0%,#ffe6a8_34%,#6ae3c0_72%,#ffffff_100%)] bg-clip-text text-[clamp(3.1rem,8vw,6.7rem)] font-extrabold leading-[0.94] text-transparent [text-wrap:balance]">
+            <h1 className={`${premiumTitleGradientClassName} mt-8 max-w-[12ch] text-[clamp(3.1rem,8vw,6.7rem)] font-extrabold leading-[0.94] [text-wrap:balance]`}>
               La culture qui se scrolle.
             </h1>
 
