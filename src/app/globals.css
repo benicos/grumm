@@ -55,21 +55,24 @@ body {
 .grumm-primary-cta {
   position: relative;
   overflow: hidden;
-  border: 1px solid rgba(255, 252, 244, 0.58);
+  border: 1px solid rgba(201, 210, 223, 0.42);
   background-image: linear-gradient(
     135deg,
-    #fffefa 0%,
-    #f0eee7 25%,
-    #dddfe5 54%,
-    #d6cbb6 78%,
-    #f6f4ee 100%
+    #f4f1ea 0%,
+    #ddd7ca 22%,
+    #bcc5d2 48%,
+    #8d99ab 74%,
+    #ece8df 100%
   );
   background-size: 180% 180%;
   animation: grummCtaGradient 7s ease-in-out infinite;
   box-shadow:
-    0 24px 68px rgba(201, 194, 178, 0.22),
-    0 12px 38px rgba(138, 153, 176, 0.18),
-    inset 0 1px 0 rgba(255, 255, 255, 0.84);
+    0 24px 68px rgba(141, 153, 171, 0.20),
+    0 12px 38px rgba(93, 104, 120, 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.42);
+  text-transform: uppercase;
+  font-weight: 700;
+  font-size: small;
 }
 
 .grumm-primary-cta::after {
@@ -98,20 +101,20 @@ body {
 }
 
 .grumm-title-gradient {
-  color: #f8f6ef;
+  color: #e5e7eb;
   background-image: linear-gradient(
     118deg,
-    #fffefa 0%,
-    #f2efe7 27%,
-    #ddd4c3 49%,
-    #cbd5e1 72%,
-    #faf8f1 100%
+    #f8f6f1 0%,
+    #e6e1d7 24%,
+    #c5ccd6 50%,
+    #8d99ab 74%,
+    #f4f2ed 100%
   );
   background-repeat: no-repeat;
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
-  text-shadow: 0 18px 58px rgba(242, 239, 231, 0.14);
+  text-shadow: 0 18px 58px rgba(141, 153, 171, 0.16);
 }
 
 .grumm-scroll-float {

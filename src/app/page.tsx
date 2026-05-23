@@ -41,9 +41,8 @@ export default function GrummLanding() {
             </h1>
 
             <p className="mt-7 max-w-[720px] text-[1.05rem] font-semibold leading-8 text-white/72 sm:text-xl sm:leading-9">
-              <span className="text-white">Grumm. transforme la curiosité en réflexe.</span>{" "}
-              Une plateforme pensée pour apprendre vite, retenir facilement et
-              découvrir des faits que vous aurez réellement envie de raconter.
+              <span className="text-white">Grumm. transforme la curiosité en réflexe.</span>{" "}<br />
+              Une plateforme pensée pour apprendre sans contraintes.
             </p>
 
             <div className="mt-10 flex flex-wrap items-center justify-center gap-6">
