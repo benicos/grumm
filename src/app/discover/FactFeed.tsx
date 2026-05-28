@@ -225,6 +225,7 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
   const hasFacts = facts.length > 0;
   const activeFactIndex = hasFacts ? Math.min(currentStep, facts.length - 1) : 0;
   const activeFact = facts[activeFactIndex];
+  const currentLearningGoal = profile?.learning_goal ?? null;
   const currentDailyGoal = profile?.daily_goal ?? dailyProgress.goal;
   const progress = useMemo(
     () =>
@@ -375,6 +376,7 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
       try {
         let result = await getFeedFacts({
           excludeIds,
+          learningGoal: currentLearningGoal,
           limit: DISCOVER_FEED_BATCH_SIZE,
           themeSlug,
         });
@@ -383,6 +385,7 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
           clearRememberedFactIds(scope);
           result = await getFeedFacts({
             excludeIds: [],
+            learningGoal: currentLearningGoal,
             limit: DISCOVER_FEED_BATCH_SIZE,
             themeSlug,
           });
@@ -448,7 +451,7 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
         }
       }
     },
-    [themeSlug],
+    [currentLearningGoal, themeSlug],
   );
 
   useEffect(() => {
@@ -464,7 +467,7 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
       return;
     }
 
-    const resetKey = `${themeSlug ?? "all"}:${user?.id ?? "anonymous"}`;
+    const resetKey = `${themeSlug ?? "all"}:${user?.id ?? "anonymous"}:${currentLearningGoal ?? "default"}`;
 
     if (loadedResetKeyRef.current === resetKey) {
       return;
@@ -477,7 +480,14 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
     queueMicrotask(() => {
       void loadFeedBatch("reset");
     });
-  }, [isAuthenticated, isLoadingAuth, loadFeedBatch, themeSlug, user?.id]);
+  }, [
+    isAuthenticated,
+    isLoadingAuth,
+    loadFeedBatch,
+    currentLearningGoal,
+    themeSlug,
+    user?.id,
+  ]);
 
   useEffect(() => {
     if (
@@ -1007,7 +1017,15 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
                         />
                       </div>
                     </>
-                  ) : null}
+                  ) : (
+                    <Link
+                      href="/login"
+                      onClick={() => rememberAuthRedirect(window.location.pathname)}
+                      className="mb-5 inline-flex rounded-full border border-white/10 bg-white/[0.07] px-4 py-2 text-xs font-semibold text-white/68 backdrop-blur-xl transition hover:border-white/18 hover:text-white"
+                    >
+                      Connectez-vous pour sauvegarder votre progression
+                    </Link>
+                  )}
 
                   <div data-fact-source>
                   <FactSource

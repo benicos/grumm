@@ -8,6 +8,11 @@ import { trackAnalyticsEvent } from "@/lib/analytics/web";
 import { signInWithEmail, signUpWithEmail } from "@/lib/auth";
 import { consumeAuthRedirect, getLegacyNextParam } from "@/lib/authRedirect";
 import {
+  DEFAULT_LEARNING_GOAL,
+  type LearningGoal,
+  learningGoalOptions,
+} from "@/lib/learning";
+import {
   getUsernameValidationMessage,
   normalizeUsername,
 } from "@/lib/slug";
@@ -36,6 +41,8 @@ export default function AuthForm({ mode }: AuthFormProps) {
   const router = useRouter();
   const { isAuthenticated, isLoading, refreshUser } = useAuth();
   const [email, setEmail] = useState("");
+  const [learningGoal, setLearningGoal] =
+    useState<LearningGoal>(DEFAULT_LEARNING_GOAL);
   const [password, setPassword] = useState("");
   const [username, setUsername] = useState("");
   const [message, setMessage] = useState<string | null>(null);
@@ -86,7 +93,12 @@ export default function AuthForm({ mode }: AuthFormProps) {
 
     const result = isLogin
       ? await signInWithEmail(email, password)
-      : await signUpWithEmail(email, password, normalizedUsername);
+      : await signUpWithEmail(
+          email,
+          password,
+          normalizedUsername,
+          learningGoal,
+        );
 
     setIsSubmitting(false);
 
@@ -160,6 +172,49 @@ export default function AuthForm({ mode }: AuthFormProps) {
             </span>
             <FieldError message={fieldErrors.username} />
           </label>
+        )}
+
+        {!isLogin && (
+          <fieldset className="block">
+            <legend className="text-sm font-semibold text-white/72">
+              Objectif culturel
+            </legend>
+            <div className="mt-2 grid gap-2">
+              {learningGoalOptions.map((option) => {
+                const selected = learningGoal === option.value;
+
+                return (
+                  <label
+                    key={option.value}
+                    className={`cursor-pointer rounded-[16px] border px-4 py-3 transition ${
+                      selected
+                        ? "border-[#f4ead5]/55 bg-white/[0.105] shadow-[0_16px_45px_rgba(244,234,213,0.08)]"
+                        : "border-white/10 bg-white/[0.045] hover:border-white/18 hover:bg-white/[0.07]"
+                    }`}
+                  >
+                    <span className="flex gap-3">
+                      <input
+                        checked={selected}
+                        className="mt-1 h-4 w-4 accent-[#f4ead5]"
+                        name="learning_goal"
+                        onChange={() => setLearningGoal(option.value)}
+                        type="radio"
+                        value={option.value}
+                      />
+                      <span>
+                        <span className="block text-sm font-bold text-white">
+                          {option.label}
+                        </span>
+                        <span className="mt-1 block text-xs leading-5 text-white/50">
+                          {option.description}
+                        </span>
+                      </span>
+                    </span>
+                  </label>
+                );
+              })}
+            </div>
+          </fieldset>
         )}
 
         <label className="block">

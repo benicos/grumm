@@ -3,6 +3,10 @@ import { gradeIconOptions, paginationConfig } from "@/config/app";
 import { getBadgeInfo } from "@/lib/badges";
 import { isCommercialCollaborationSlug } from "@/lib/commercial";
 import { formatAppError, getConfiguredErrorMessage } from "@/lib/errors";
+import {
+  type DifficultyLevel,
+  normalizeDifficultyLevel,
+} from "@/lib/learning";
 import type { PermissionKey, UserRole } from "@/lib/roles";
 import {
   getDefaultRolePermissions,
@@ -149,7 +153,7 @@ type AdminClient = Extract<AdminAuth, { ok: true }>["supabase"];
 
 const DEFAULT_PAGE_SIZE: number = paginationConfig.adminDefaultPageSize;
 const ADMIN_FACT_SELECT =
-  "id,category_id,slug,title,hook,content,long_content,source,source_url,status,published_at,display_order,tone,accent_color,created_at,updated_at,categories(name,slug)";
+  "id,category_id,slug,title,hook,content,difficulty_level,long_content,source,source_url,status,published_at,display_order,tone,accent_color,created_at,updated_at,categories(name,slug)";
 
 function normalizeSearchTerm(query?: string) {
   return query?.trim().replace(/[%,_]/g, " ").replace(/\s+/g, " ") ?? "";
@@ -1245,6 +1249,7 @@ export async function getAdminCategories({
 export async function getAdminFacts({
   authorId,
   categoryId,
+  difficultyLevel,
   page = 1,
   pageSize = DEFAULT_PAGE_SIZE,
   query,
@@ -1252,6 +1257,7 @@ export async function getAdminFacts({
 }: {
   authorId?: string;
   categoryId?: string;
+  difficultyLevel?: DifficultyLevel | "all";
   page?: number;
   pageSize?: number;
   query?: string;
@@ -1288,6 +1294,13 @@ export async function getAdminFacts({
 
   if (categoryId && categoryId !== "all") {
     factsRequest = factsRequest.eq("category_id", categoryId);
+  }
+
+  if (difficultyLevel && difficultyLevel !== "all") {
+    factsRequest = factsRequest.eq(
+      "difficulty_level",
+      normalizeDifficultyLevel(difficultyLevel),
+    );
   }
 
   if (authorId && authorId !== "all" && hasPermission(auth, "facts.manage")) {
@@ -1371,6 +1384,7 @@ export async function getAdminProfiles({
       daily_goal: row.daily_goal,
       email: row.email,
       id: row.id,
+      learning_goal: row.learning_goal,
       role: row.role,
       updated_at: row.updated_at,
       username: row.username,
@@ -1884,14 +1898,14 @@ export async function deleteAdminCategory(
 }
 
 export async function saveAdminFact(input: {
-  advancedSlug?: string;
   category_id: string;
   content: string;
+  difficulty_level?: DifficultyLevel;
   hook?: string | null;
   id?: string;
   long_content?: string | null;
-  source: string;
-  source_url: string | null;
+  source?: string | null;
+  source_url?: string | null;
   status?: FactStatus;
   title: string;
 }): Promise<AdminMutationResult> {
@@ -1912,18 +1926,17 @@ export async function saveAdminFact(input: {
   }
 
   try {
-    const slug = slugify(input.advancedSlug || title || hook);
     const canPublish = hasPermission(auth, "facts.publish");
     const status = canPublish ? input.status ?? "published" : "pending_review";
     const basePayload = {
       category_id: input.category_id,
       content: input.content.trim(),
+      difficulty_level: normalizeDifficultyLevel(input.difficulty_level),
       hook: hook || null,
       long_content: input.long_content?.trim() || null,
       published_at:
         status === "published" ? new Date().toISOString() : null,
-      slug,
-      source: input.source.trim() || "Source non renseignee",
+      source: input.source?.trim() || null,
       source_url: input.source_url?.trim() || null,
       status,
       title,

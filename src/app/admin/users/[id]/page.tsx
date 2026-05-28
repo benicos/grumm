@@ -5,6 +5,7 @@ import { Activity, BookOpen, Heart, Pencil, Target } from "lucide-react";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { getAdminUserDetail, type AdminUserDetail } from "@/lib/admin";
+import { getLearningGoalLabel } from "@/lib/learning";
 import { getRoleLabel } from "@/lib/roles";
 import { AdminBackLink } from "../../forms";
 import {
@@ -121,6 +122,11 @@ export default function AdminUserDetailPage() {
                 label="Objectif quotidien"
                 technicalName="daily_goal"
                 value={`${profile.daily_goal} faits`}
+              />
+              <AdminAttributeRow
+                label="Objectif culturel"
+                technicalName="learning_goal"
+                value={getLearningGoalLabel(profile.learning_goal)}
               />
               <AdminAttributeRow
                 label="URL avatar"

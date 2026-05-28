@@ -1,6 +1,11 @@
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { formatAppError, getConfiguredErrorMessage } from "@/lib/errors";
 import {
+  DEFAULT_LEARNING_GOAL,
+  type LearningGoal,
+  normalizeLearningGoal,
+} from "@/lib/learning";
+import {
   getUsernameValidationMessage,
   normalizeUsername,
 } from "@/lib/slug";
@@ -162,6 +167,7 @@ export async function signUpWithEmail(
   email: string,
   password: string,
   usernameInput: string,
+  learningGoalInput: LearningGoal = DEFAULT_LEARNING_GOAL,
 ): Promise<AuthResult> {
   const supabase = createSupabaseBrowserClient();
 
@@ -170,6 +176,7 @@ export async function signUpWithEmail(
   }
 
   const username = normalizeUsername(usernameInput);
+  const learningGoal = normalizeLearningGoal(learningGoalInput);
   const usernameError = getUsernameValidationMessage(username);
 
   if (usernameError) {
@@ -199,6 +206,7 @@ export async function signUpWithEmail(
     password,
     options: {
       data: {
+        learning_goal: learningGoal,
         username,
       },
     },
@@ -215,7 +223,10 @@ export async function signUpWithEmail(
   if (data.user && data.session) {
     const { error: profileError } = await supabase
       .from("profiles")
-      .upsert({ id: data.user.id, username }, { onConflict: "id" });
+      .upsert(
+        { id: data.user.id, learning_goal: learningGoal, username },
+        { onConflict: "id" },
+      );
 
     if (profileError) {
       return {

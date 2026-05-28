@@ -47,8 +47,9 @@ export type Database = {
           title: string;
           hook: string | null;
           content: string;
+          difficulty_level: "basic" | "intermediate" | "advanced";
           long_content: string | null;
-          source: string;
+          source: string | null;
           source_url: string | null;
           author_id: string | null;
           status: "draft" | "pending_review" | "published" | "rejected" | "archived";
@@ -66,8 +67,9 @@ export type Database = {
           title: string;
           hook?: string | null;
           content: string;
+          difficulty_level?: "basic" | "intermediate" | "advanced";
           long_content?: string | null;
-          source: string;
+          source?: string | null;
           source_url?: string | null;
           author_id?: string | null;
           status?: "draft" | "pending_review" | "published" | "rejected" | "archived";
@@ -85,8 +87,9 @@ export type Database = {
           title?: string;
           hook?: string | null;
           content?: string;
+          difficulty_level?: "basic" | "intermediate" | "advanced";
           long_content?: string | null;
-          source?: string;
+          source?: string | null;
           source_url?: string | null;
           author_id?: string | null;
           status?: "draft" | "pending_review" | "published" | "rejected" | "archived";
@@ -113,6 +116,7 @@ export type Database = {
           username: string;
           avatar_url: string | null;
           daily_goal: number;
+          learning_goal: "basics" | "strengthen" | "advanced";
           role: string;
           created_at: string;
           updated_at: string;
@@ -122,6 +126,7 @@ export type Database = {
           username: string;
           avatar_url?: string | null;
           daily_goal?: number;
+          learning_goal?: "basics" | "strengthen" | "advanced";
           role?: string;
           created_at?: string;
           updated_at?: string;
@@ -131,6 +136,7 @@ export type Database = {
           username?: string;
           avatar_url?: string | null;
           daily_goal?: number;
+          learning_goal?: "basics" | "strengthen" | "advanced";
           role?: string;
           created_at?: string;
           updated_at?: string;
@@ -510,6 +516,7 @@ export type Database = {
           p_limit?: number;
           p_theme_slug?: string | null;
           p_exclude_ids?: string[];
+          p_learning_goal?: "basics" | "strengthen" | "advanced" | null;
         };
         Returns: {
           id: string;
@@ -517,8 +524,9 @@ export type Database = {
           title: string;
           hook: string | null;
           content: string;
-          source: string;
+          source: string | null;
           source_url: string | null;
+          difficulty_level: "basic" | "intermediate" | "advanced";
           tone: string | null;
           accent_color: string | null;
           category_id: string;
@@ -565,7 +573,7 @@ export type Database = {
           title: string;
           hook: string | null;
           content: string;
-          source: string;
+          source: string | null;
           source_url: string | null;
           tone: string | null;
           accent_color: string | null;
@@ -585,7 +593,7 @@ export type Database = {
           title: string;
           hook: string | null;
           content: string;
-          source: string;
+          source: string | null;
           source_url: string | null;
           tone: string | null;
           accent_color: string | null;
@@ -610,6 +618,7 @@ export type Database = {
           username: string;
           avatar_url: string | null;
           daily_goal: number;
+          learning_goal: "basics" | "strengthen" | "advanced";
           role: string;
           created_at: string;
           updated_at: string;

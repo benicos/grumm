@@ -11,6 +11,10 @@ import {
   updateProfileSettings,
 } from "@/lib/profile";
 import type { ProfileField, UserProfileSummary } from "@/lib/profile";
+import {
+  type LearningGoal,
+  learningGoalOptions,
+} from "@/lib/learning";
 import RequireAuth from "../../auth/RequireAuth";
 import { useAuth } from "../../auth/AuthProvider";
 import { AppState } from "../../components/AppState";
@@ -60,6 +64,9 @@ function SettingsForms({
   const { refreshUser } = useAuth();
   const [username, setUsername] = useState(profile.username ?? "");
   const [dailyGoal, setDailyGoal] = useState(String(profile.dailyGoal));
+  const [learningGoal, setLearningGoal] = useState<LearningGoal>(
+    profile.learningGoal,
+  );
   const [email, setEmail] = useState(profile.email ?? "");
   const [password, setPassword] = useState("");
   const [errors, setErrors] = useState<FieldErrors>({});
@@ -91,6 +98,7 @@ function SettingsForms({
     await handleResult(
       await updateProfileSettings({
         dailyGoal: Number(dailyGoal),
+        learningGoal,
         username,
       }),
     );
@@ -167,6 +175,48 @@ function SettingsForms({
           />
           <FieldError message={errors.dailyGoal} />
         </label>
+
+        <fieldset className="mt-4">
+          <legend className="text-sm font-semibold text-white/72">
+            Objectif culturel
+          </legend>
+          <div className="mt-2 grid gap-2">
+            {learningGoalOptions.map((option) => {
+              const selected = learningGoal === option.value;
+
+              return (
+                <label
+                  key={option.value}
+                  className={`cursor-pointer rounded-md border px-4 py-3 transition ${
+                    selected
+                      ? "border-white/24 bg-white/[0.09]"
+                      : "border-white/10 bg-black/20 hover:border-white/18"
+                  }`}
+                >
+                  <span className="flex gap-3">
+                    <input
+                      checked={selected}
+                      className="mt-1 h-4 w-4 accent-[#f4ead5]"
+                      name="learning_goal"
+                      onChange={() => setLearningGoal(option.value)}
+                      type="radio"
+                      value={option.value}
+                    />
+                    <span>
+                      <span className="block text-sm font-bold text-white">
+                        {option.label}
+                      </span>
+                      <span className="mt-1 block text-xs leading-5 text-white/45">
+                        {option.description}
+                      </span>
+                    </span>
+                  </span>
+                </label>
+              );
+            })}
+          </div>
+          <FieldError message={errors.learningGoal} />
+        </fieldset>
 
         <button
           type="submit"

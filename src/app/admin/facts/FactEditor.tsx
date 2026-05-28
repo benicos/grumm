@@ -11,6 +11,10 @@ import {
   type AdminFact,
   type FactStatus,
 } from "@/lib/admin";
+import {
+  type DifficultyLevel,
+  difficultyLevelOptions,
+} from "@/lib/learning";
 import { hasPermission } from "@/lib/roles";
 import { useAuth } from "../../auth/AuthProvider";
 import { AdminBackLink, AdminField, adminFieldClassName } from "../forms";
@@ -22,9 +26,9 @@ import {
 } from "../ui";
 
 type FactFormState = {
-  advancedSlug: string;
   category_id: string;
   content: string;
+  difficulty_level: DifficultyLevel;
   hook: string;
   id: string;
   long_content: string;
@@ -44,9 +48,9 @@ const factStatuses: FactStatus[] = [
 
 function getEmptyFact(canPublish: boolean): FactFormState {
   return {
-    advancedSlug: "",
     category_id: "",
     content: "",
+    difficulty_level: "intermediate",
     hook: "",
     id: "",
     long_content: "",
@@ -59,13 +63,13 @@ function getEmptyFact(canPublish: boolean): FactFormState {
 
 function factToForm(fact: AdminFact): FactFormState {
   return {
-    advancedSlug: fact.slug,
     category_id: fact.category_id,
     content: fact.content,
+    difficulty_level: fact.difficulty_level,
     hook: fact.hook ?? "",
     id: fact.id,
     long_content: fact.long_content ?? "",
-    source: fact.source,
+    source: fact.source ?? "",
     source_url: fact.source_url ?? "",
     status: fact.status,
     title: fact.title,
@@ -143,7 +147,6 @@ export default function FactEditor({ factId }: { factId?: string }) {
 
     const result = await saveAdminFact({
       ...form,
-      advancedSlug: form.advancedSlug || undefined,
       id: form.id || undefined,
       long_content: form.long_content || null,
       source_url: form.source_url || null,
@@ -270,13 +273,35 @@ export default function FactEditor({ factId }: { factId?: string }) {
             </div>
 
             <div className="grid gap-5 lg:grid-cols-2">
+              <label className="block text-sm font-medium text-gray-700">
+                Niveau
+                <select
+                  value={form.difficulty_level}
+                  onChange={(event) =>
+                    setForm((current) => ({
+                      ...current,
+                      difficulty_level: event.target.value as DifficultyLevel,
+                    }))
+                  }
+                  className={adminFieldClassName}
+                >
+                  {difficultyLevelOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
               <AdminField
-                label="Source"
+                label="Source (optionnelle)"
                 value={form.source}
                 onChange={(source) =>
                   setForm((current) => ({ ...current, source }))
                 }
               />
+            </div>
+
+            <div className="grid gap-5 lg:grid-cols-2">
               <AdminField
                 label="URL de la source"
                 type="url"
@@ -286,14 +311,6 @@ export default function FactEditor({ factId }: { factId?: string }) {
                 }
               />
             </div>
-
-            <AdminField
-              label="Slug personnalisé"
-              value={form.advancedSlug}
-              onChange={(advancedSlug) =>
-                setForm((current) => ({ ...current, advancedSlug }))
-              }
-            />
 
             <div className="flex flex-wrap gap-3">
               <AdminButton type="submit" disabled={busy}>

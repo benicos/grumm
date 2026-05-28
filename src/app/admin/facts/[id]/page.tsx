@@ -10,6 +10,7 @@ import {
   getAdminFact,
   type AdminFact,
 } from "@/lib/admin";
+import { getDifficultyLevelLabel } from "@/lib/learning";
 import { AdminBackLink } from "../../forms";
 import {
   AdminAttributeList,
@@ -170,6 +171,11 @@ export default function AdminFactDetailPage() {
                 value={FACT_STATUS_LABELS[fact.status]}
               />
               <DetailItem
+                label="Niveau"
+                technicalName="difficulty_level"
+                value={getDifficultyLevelLabel(fact.difficulty_level)}
+              />
+              <DetailItem
                 label="Thème"
                 technicalName="category_id"
                 value={`${fact.categories?.name ?? "Sans thème"} (${fact.category_id})`}
@@ -230,7 +236,7 @@ export default function AdminFactDetailPage() {
                 Publication
               </h2>
               <AdminAttributeList className="mt-5">
-                <DetailItem label="Source" value={fact.source} />
+                <DetailItem label="Source" value={fact.source?.trim() || "-"} />
                 <DetailItem
                   label="URL source"
                   technicalName="source_url"

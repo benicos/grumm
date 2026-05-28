@@ -5,7 +5,7 @@ type FactSourceProps = {
   className?: string;
   label?: string;
   onSourceClick?: () => void;
-  source: string;
+  source?: string | null;
   sourceUrl?: string | null;
 };
 
@@ -17,8 +17,14 @@ export default function FactSource({
   source,
   sourceUrl,
 }: FactSourceProps) {
+  const cleanSource = source?.trim();
   const cleanUrl = sourceUrl?.trim();
-  const text = label ? `${label} ${source}` : source;
+
+  if (!cleanSource) {
+    return null;
+  }
+
+  const text = label ? `${label} ${cleanSource}` : cleanSource;
 
   return (
     <span className={`inline-flex min-w-0 items-center gap-2 ${className}`}>

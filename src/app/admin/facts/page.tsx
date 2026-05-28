@@ -11,6 +11,11 @@ import {
   type AdminFact,
   type FactStatus,
 } from "@/lib/admin";
+import {
+  type DifficultyLevel,
+  difficultyLevelOptions,
+  getDifficultyLevelLabel,
+} from "@/lib/learning";
 import AdminListingPage, {
   type AdminListingFilterValues,
 } from "../AdminListingPage";
@@ -57,14 +62,21 @@ export default function AdminFactsPage() {
       page: number;
       pageSize: number;
       query: string;
-    }) =>
-      getAdminFacts({
+    }) => {
+      const difficultyLevel: DifficultyLevel | "all" =
+        difficultyLevelOptions.find(
+          (option) => option.value === filters.difficulty,
+        )?.value ?? "all";
+
+      return getAdminFacts({
         categoryId: filters.category,
+        difficultyLevel,
         page,
         pageSize,
         query,
         status: statusValues.find((value) => value === filters.status),
-      }),
+      });
+    },
     [],
   );
 
@@ -101,6 +113,14 @@ export default function AdminFactsPage() {
             })),
           ],
         },
+        {
+          id: "difficulty",
+          label: "Niveau",
+          options: [
+            { label: "Tous les niveaux", value: "all" },
+            ...difficultyLevelOptions,
+          ],
+        },
       ]}
       empty="Aucun fait trouvé."
       loadRows={loadFacts}
@@ -131,6 +151,11 @@ export default function AdminFactsPage() {
           render: (fact) => fact.categories?.name ?? "-",
         },
         {
+          key: "difficulty",
+          label: "Niveau",
+          render: (fact) => getDifficultyLevelLabel(fact.difficulty_level),
+        },
+        {
           key: "status",
           label: "Statut",
           render: (fact) => (
@@ -142,7 +167,7 @@ export default function AdminFactsPage() {
         {
           key: "source",
           label: "Source",
-          render: (fact) => fact.source,
+          render: (fact) => fact.source?.trim() || "-",
         },
       ]}
     />

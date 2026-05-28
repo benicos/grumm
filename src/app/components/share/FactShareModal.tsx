@@ -13,8 +13,8 @@ type FactShareModalProps = {
   onClose: () => void;
 };
 
-function truncateText(value: string, maxLength: number) {
-  const normalized = value.replace(/\s+/g, " ").trim();
+function truncateText(value: string | null | undefined, maxLength: number) {
+  const normalized = value?.replace(/\s+/g, " ").trim() ?? "";
 
   if (normalized.length <= maxLength) {
     return normalized;
@@ -227,17 +227,19 @@ export default function FactShareModal({ fact, onClose }: FactShareModalProps) {
               </div>
 
               <div className="shrink-0 space-y-4">
-                <div className="rounded-[18px] border border-white/10 bg-white/[0.08] p-4 backdrop-blur-md">
-                  <p className="text-[10px] font-black uppercase tracking-[0.18em] text-white/42">
-                    Source
-                  </p>
-                  <p
-                    className="mt-1 max-h-[34px] overflow-hidden text-[13px] font-bold leading-snug text-white/72"
-                    style={clampStyle(2)}
-                  >
-                    {source}
-                  </p>
-                </div>
+                {source ? (
+                  <div className="rounded-[18px] border border-white/10 bg-white/[0.08] p-4 backdrop-blur-md">
+                    <p className="text-[10px] font-black uppercase tracking-[0.18em] text-white/42">
+                      Source
+                    </p>
+                    <p
+                      className="mt-1 max-h-[34px] overflow-hidden text-[13px] font-bold leading-snug text-white/72"
+                      style={clampStyle(2)}
+                    >
+                      {source}
+                    </p>
+                  </div>
+                ) : null}
 
                 <div className="flex items-end justify-between gap-5">
                   <div className="flex items-center gap-2 text-white/62">
@@ -267,13 +269,15 @@ export default function FactShareModal({ fact, onClose }: FactShareModalProps) {
           <p className="mt-4 max-w-xl text-sm leading-6 text-white/58">
             Tu as appris quelque chose ? Fais le savoir à tes amis en partageant ce fait de manière simple et rapide.
           </p>
-          <div className="mt-5 max-w-xl rounded-md border border-white/10 bg-white/[0.045] px-4 py-3">
-            <FactSource
-              className="text-sm text-white/58"
-              source={activeFact.source}
-              sourceUrl={activeFact.sourceUrl}
-            />
-          </div>
+          {activeFact.source?.trim() ? (
+            <div className="mt-5 max-w-xl rounded-md border border-white/10 bg-white/[0.045] px-4 py-3">
+              <FactSource
+                className="text-sm text-white/58"
+                source={activeFact.source}
+                sourceUrl={activeFact.sourceUrl}
+              />
+            </div>
+          ) : null}
 
           <div className="mt-7 grid gap-3 sm:grid-cols-2">
             <button

@@ -20,6 +20,7 @@ import {
   type UserRole,
 } from "@/lib/roles";
 import { getBadgeInfo, type GradeDefinition } from "@/lib/badges";
+import { type LearningGoal, normalizeLearningGoal } from "@/lib/learning";
 
 type AuthContextValue = {
   user: User | null;
@@ -34,6 +35,7 @@ type AuthContextValue = {
 type UserProfile = {
   username: string | null;
   daily_goal: number;
+  learning_goal: LearningGoal;
   avatar_url: string | null;
   gradeBadge?: string | null;
   gradeName?: string | null;
@@ -85,7 +87,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const { data } = await withTimeout(
         supabase
           .from("profiles")
-          .select("username,daily_goal,avatar_url,role")
+          .select("username,daily_goal,avatar_url,learning_goal,role")
           .eq("id", nextSession.user.id)
           .maybeSingle(),
         { data: null, error: null },
@@ -161,6 +163,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         ...data,
         gradeBadge,
         gradeName,
+        learning_goal: normalizeLearningGoal(data.learning_goal),
         permissions,
         roleName,
       };

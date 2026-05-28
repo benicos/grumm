@@ -5,6 +5,12 @@ import {
   filterCommercialCollaborationFacts,
 } from "@/lib/commercial";
 import { formatAppError, logAppError } from "@/lib/errors";
+import {
+  DEFAULT_DIFFICULTY_LEVEL,
+  type DifficultyLevel,
+  type LearningGoal,
+  normalizeDifficultyLevel,
+} from "@/lib/learning";
 import { slugify } from "@/lib/slug";
 
 export const DEFAULT_DAILY_GOAL: number = dailyGoalConfig.defaultGoal;
@@ -18,8 +24,9 @@ export type FeedFact = {
   title: string;
   hook: string | null;
   detail: string;
+  difficultyLevel: DifficultyLevel;
   longContent: string | null;
-  source: string;
+  source: string | null;
   sourceUrl: string | null;
   tone: string;
   accent: string;
@@ -75,8 +82,9 @@ type FactRow = {
   title: string;
   hook: string | null;
   content: string;
+  difficulty_level?: DifficultyLevel | null;
   long_content?: string | null;
-  source: string;
+  source: string | null;
   source_url?: string | null;
   tone: string | null;
   accent_color: string | null;
@@ -89,8 +97,9 @@ type FeedRpcRow = {
   title: string;
   hook: string | null;
   content: string;
+  difficulty_level?: DifficultyLevel | null;
   long_content?: string | null;
-  source: string;
+  source: string | null;
   source_url: string | null;
   tone: string | null;
   accent_color: string | null;
@@ -126,7 +135,13 @@ type RawDailyProgressRow = {
 };
 
 const FACT_SELECT =
-  "id,slug,title,hook,content,long_content,source,source_url,tone,accent_color,categories(id,name,slug,tone,accent_color)";
+  "id,slug,title,hook,content,difficulty_level,long_content,source,source_url,tone,accent_color,categories(id,name,slug,tone,accent_color)";
+
+function cleanOptionalText(value?: string | null) {
+  const text = value?.trim();
+
+  return text ? text : null;
+}
 
 function categoryFromRelation(fact: FactRow) {
   return Array.isArray(fact.categories)
@@ -145,9 +160,10 @@ function mapFact(fact: FactRow): FeedFact {
     title: fact.title,
     hook: fact.hook?.trim() || null,
     detail: fact.content,
+    difficultyLevel: normalizeDifficultyLevel(fact.difficulty_level),
     longContent: fact.long_content?.trim() || null,
-    source: fact.source || "Source non renseignee",
-    sourceUrl: fact.source_url ?? null,
+    source: cleanOptionalText(fact.source),
+    sourceUrl: cleanOptionalText(fact.source_url),
     tone:
       fact.tone ??
       category?.tone ??
@@ -165,9 +181,12 @@ function mapFeedRpcFact(fact: FeedRpcRow): FeedFact {
     title: fact.title,
     hook: fact.hook?.trim() || null,
     detail: fact.content,
+    difficultyLevel: normalizeDifficultyLevel(
+      fact.difficulty_level ?? DEFAULT_DIFFICULTY_LEVEL,
+    ),
     longContent: fact.long_content?.trim() || null,
-    source: fact.source || "Source non renseignee",
-    sourceUrl: fact.source_url ?? null,
+    source: cleanOptionalText(fact.source),
+    sourceUrl: cleanOptionalText(fact.source_url),
     tone:
       fact.tone ??
       fact.category_tone ??
@@ -303,6 +322,7 @@ export async function getCurrentUserId() {
 
 export async function getFeedFacts(options?: {
   excludeIds?: string[];
+  learningGoal?: LearningGoal | null;
   limit?: number;
   themeSlug?: string;
 }) {
@@ -343,6 +363,7 @@ export async function getFeedFacts(options?: {
 
   const { data, error } = await supabase.rpc("get_discover_feed", {
     p_exclude_ids: options?.excludeIds ?? [],
+    p_learning_goal: options?.learningGoal ?? null,
     p_limit: options?.limit ?? DISCOVER_FEED_BATCH_SIZE,
     p_theme_slug: options?.themeSlug ?? null,
   });

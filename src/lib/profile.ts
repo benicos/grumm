@@ -7,6 +7,11 @@ import {
 } from "@/lib/commercial";
 import { formatAppError, getConfiguredErrorMessage } from "@/lib/errors";
 import { FeedError, type FeedFact } from "@/lib/facts";
+import {
+  type LearningGoal,
+  normalizeDifficultyLevel,
+  normalizeLearningGoal,
+} from "@/lib/learning";
 import type { UserRole } from "@/lib/roles";
 import {
   getUsernameValidationMessage,
@@ -23,8 +28,9 @@ type RelatedFactRow = {
         title: string;
         hook: string | null;
         content: string;
+        difficulty_level?: string | null;
         long_content?: string | null;
-        source: string;
+        source: string | null;
         source_url?: string | null;
         tone: string | null;
         accent_color: string | null;
@@ -81,6 +87,7 @@ export type UserProfileSummary = {
   email: string | null;
   createdAt: string | null;
   dailyGoal: number;
+  learningGoal: LearningGoal;
   role: UserRole;
   likedCount: number;
   savedCount: number;
@@ -93,7 +100,13 @@ export type UserProfileSummary = {
   topThemes: ThemeViewStat[];
 };
 
-export type ProfileField = "username" | "email" | "password" | "dailyGoal" | "global";
+export type ProfileField =
+  | "username"
+  | "email"
+  | "password"
+  | "dailyGoal"
+  | "learningGoal"
+  | "global";
 
 export type ProfileMutationResult =
   | { ok: true; message: string }
@@ -122,9 +135,10 @@ function mapRelatedFact(row: RelatedFactRow): FeedFact | null {
     title: fact.title,
     hook: fact.hook?.trim() || null,
     detail: fact.content,
+    difficultyLevel: normalizeDifficultyLevel(fact.difficulty_level),
     longContent: fact.long_content?.trim() || null,
-    source: fact.source || "Source non renseignee",
-    sourceUrl: fact.source_url ?? null,
+    source: fact.source?.trim() || null,
+    sourceUrl: fact.source_url?.trim() || null,
     tone:
       fact.tone ??
       category?.tone ??
@@ -157,7 +171,7 @@ function getProfileErrorMessage(error: unknown) {
 }
 
 const RELATED_FACT_SELECT =
-  "fact_id,facts(id,slug,title,hook,content,long_content,source,source_url,tone,accent_color,categories(name,slug,tone,accent_color))";
+  "fact_id,facts(id,slug,title,hook,content,difficulty_level,long_content,source,source_url,tone,accent_color,categories(name,slug,tone,accent_color))";
 const VIEWED_FACT_SELECT =
   "fact_id,facts(categories(name,slug,tone,accent_color))";
 
@@ -226,7 +240,7 @@ export async function getUserProfileSummary(): Promise<UserProfileSummary> {
   ] = await Promise.all([
     supabase
       .from("profiles")
-      .select("username,daily_goal,role,created_at")
+      .select("username,daily_goal,learning_goal,role,created_at")
       .eq("id", user.id)
       .maybeSingle(),
     supabase
@@ -309,6 +323,7 @@ export async function getUserProfileSummary(): Promise<UserProfileSummary> {
     email: user.email ?? null,
     createdAt: profileResult.data?.created_at ?? user.created_at ?? null,
     dailyGoal: profileResult.data?.daily_goal ?? dailyGoalConfig.defaultGoal,
+    learningGoal: normalizeLearningGoal(profileResult.data?.learning_goal),
     role: (profileResult.data?.role ?? "membre") as UserRole,
     likedCount: likedFacts.length,
     savedCount: savedFacts.length,
@@ -368,9 +383,11 @@ function getProfileMutationError(
 
 export async function updateProfileSettings({
   dailyGoal,
+  learningGoal,
   username,
 }: {
   dailyGoal: number;
+  learningGoal: LearningGoal;
   username: string;
 }): Promise<ProfileMutationResult> {
   const auth = await getAuthenticatedProfileClient();
@@ -380,6 +397,7 @@ export async function updateProfileSettings({
   }
 
   const normalizedUsername = normalizeUsername(username);
+  const normalizedLearningGoal = normalizeLearningGoal(learningGoal);
   const usernameMessage = getUsernameValidationMessage(normalizedUsername);
 
   if (usernameMessage) {
@@ -441,6 +459,7 @@ export async function updateProfileSettings({
     .from("profiles")
     .update({
       daily_goal: dailyGoal,
+      learning_goal: normalizedLearningGoal,
       username: normalizedUsername,
     })
     .eq("id", auth.user.id);
@@ -455,6 +474,7 @@ export async function updateProfileSettings({
 
   await auth.supabase.auth.updateUser({
     data: {
+      learning_goal: normalizedLearningGoal,
       username: normalizedUsername,
     },
   });
@@ -549,13 +569,12 @@ export async function resetUserFactViews(): Promise<ProfileMutationResult> {
   }
 
   const today = todayKey();
-  const [uniqueViewsResult, legacyViewsResult, todayProgressResult] =
+  const [uniqueViewsResult, todayProgressResult] =
     await Promise.all([
       auth.supabase
         .from("user_fact_views")
         .delete()
         .eq("user_id", auth.user.id),
-      auth.supabase.from("views").delete().eq("user_id", auth.user.id),
       auth.supabase
         .from("user_daily_progress")
         .delete()
@@ -565,7 +584,6 @@ export async function resetUserFactViews(): Promise<ProfileMutationResult> {
 
   const error =
     uniqueViewsResult.error ??
-    legacyViewsResult.error ??
     todayProgressResult.error;
 
   if (error) {

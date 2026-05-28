@@ -6,6 +6,7 @@ import { Bookmark, CalendarDays, Eye, Flag, Heart, Layers3, Mail, Pencil, Shield
 import { useEffect, useState } from "react";
 import { trackAnalyticsEvent } from "@/lib/analytics/web";
 import { getBadgeInfo } from "@/lib/badges";
+import { getLearningGoalLabel } from "@/lib/learning";
 import { getUserProfileSummary } from "@/lib/profile";
 import type { UserProfileSummary } from "@/lib/profile";
 import { getRoleLabel } from "@/lib/roles";
@@ -425,7 +426,7 @@ function ProfileContent() {
                 </div>
               </div>
 
-              <div className="mt-6 grid gap-3 text-sm md:grid-cols-3">
+              <div className="mt-6 grid gap-3 text-sm md:grid-cols-2 xl:grid-cols-4">
                 <div className="flex items-center gap-3 rounded-[18px] border border-white/10 bg-black/14 p-4">
                   <CalendarDays className="h-5 w-5 text-[#ffd166]" aria-hidden="true" />
                   <div>
@@ -456,6 +457,17 @@ function ProfileContent() {
                     </p>
                     <p className="mt-1 font-extrabold text-white">
                       {profile.dailyGoal} faits
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 rounded-[18px] border border-white/10 bg-black/14 p-4">
+                  <Layers3 className="h-5 w-5 text-[#f4ead5]" aria-hidden="true" />
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-[0.16em] text-white/38">
+                      Objectif culturel
+                    </p>
+                    <p className="mt-1 font-extrabold text-white">
+                      {getLearningGoalLabel(profile.learningGoal)}
                     </p>
                   </div>
                 </div>
