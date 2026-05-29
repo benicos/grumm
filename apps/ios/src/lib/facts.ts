@@ -33,7 +33,7 @@ type FeedRpcRow = {
   hook: string | null;
   id: string;
   slug: string;
-  source: string;
+  source: string | null;
   source_url: string | null;
   title: string;
   tone: string | null;
@@ -138,6 +138,12 @@ function setCached<T>(cache: Map<string, CacheEntry<T>>, key: string, value: T) 
   });
 }
 
+function cleanOptionalText(value?: string | null) {
+  const text = value?.trim();
+
+  return text ? text : null;
+}
+
 function getCategory(fact: NonNullable<RelatedFactRow["facts"]>): RelatedCategory | null {
   const category = Array.isArray(fact.categories)
     ? fact.categories[0]
@@ -156,8 +162,8 @@ function mapFeedFact(row: FeedRpcRow): FeedFact {
     hook: row.hook?.trim() || null,
     id: row.id,
     slug: row.slug || slugify(row.title),
-    source: row.source || "Source non renseignée",
-    sourceUrl: row.source_url ?? null,
+    source: cleanOptionalText(row.source),
+    sourceUrl: cleanOptionalText(row.source_url),
     title: row.title,
     tone: row.tone ?? row.category_tone ?? "premium",
   };
@@ -181,8 +187,8 @@ function mapRelatedFact(row: RelatedFactRow): FeedFact | null {
     hook: fact.hook?.trim() || null,
     id: fact.id,
     slug: fact.slug || slugify(fact.title),
-    source: fact.source || "Source non renseignée",
-    sourceUrl: fact.source_url ?? null,
+    source: cleanOptionalText(fact.source),
+    sourceUrl: cleanOptionalText(fact.source_url),
     title: fact.title,
     tone: fact.tone ?? category?.tone ?? "premium",
   };

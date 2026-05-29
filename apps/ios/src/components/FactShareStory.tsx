@@ -20,43 +20,49 @@ function getGradientColors(fact: FeedFact): [string, string, string] {
   return ["#07111f", fact.accent, "#050812"];
 }
 
-export const FactShareStory = forwardRef<View, FactShareStoryProps>(({ fact }, ref) => (
-  <View ref={ref} collapsable={false} style={styles.canvas}>
-    <LinearGradient colors={getGradientColors(fact)} start={{ x: 0.08, y: 0 }} end={{ x: 0.95, y: 1 }} style={styles.card}>
-      <View style={styles.scrim} />
-      <View style={[styles.glowTop, { backgroundColor: fact.accent }]} />
-      <View style={[styles.glowBottom, { backgroundColor: fact.accent }]} />
+export const FactShareStory = forwardRef<View, FactShareStoryProps>(({ fact }, ref) => {
+  const source = fact.source?.trim();
 
-      <View style={styles.header}>
-        <View style={styles.logoMark}>
-          <GrummLogo size={30} />
+  return (
+    <View ref={ref} collapsable={false} style={styles.canvas}>
+      <LinearGradient colors={getGradientColors(fact)} start={{ x: 0.08, y: 0 }} end={{ x: 0.95, y: 1 }} style={styles.card}>
+        <View style={styles.scrim} />
+        <View style={[styles.glowTop, { backgroundColor: fact.accent }]} />
+        <View style={[styles.glowBottom, { backgroundColor: fact.accent }]} />
+
+        <View style={styles.header}>
+          <View style={styles.logoMark}>
+            <GrummLogo size={30} />
+          </View>
+          <Text style={styles.brand}>Grumm.</Text>
         </View>
-        <Text style={styles.brand}>Grumm.</Text>
-      </View>
 
-      <View style={styles.body}>
-        <View style={[styles.category, { borderColor: `${fact.accent}80` }]}>
-          <Text style={[styles.categoryText, { color: fact.accent }]} numberOfLines={1}>
-            {fact.category}
+        <View style={styles.body}>
+          <View style={[styles.category, { borderColor: `${fact.accent}80` }]}>
+            <Text style={[styles.categoryText, { color: fact.accent }]} numberOfLines={1}>
+              {fact.category}
+            </Text>
+          </View>
+          <Text style={styles.title} numberOfLines={7}>
+            {fact.title}
+          </Text>
+          <Text style={styles.detail} numberOfLines={9}>
+            {fact.detail}
           </Text>
         </View>
-        <Text style={styles.title} numberOfLines={7}>
-          {fact.title}
-        </Text>
-        <Text style={styles.detail} numberOfLines={9}>
-          {fact.detail}
-        </Text>
-      </View>
 
-      <View style={styles.footer}>
-        <Text style={styles.source} numberOfLines={2}>
-          Source : {fact.source}
-        </Text>
-        <Text style={styles.url}>grumm.app</Text>
-      </View>
-    </LinearGradient>
-  </View>
-));
+        <View style={styles.footer}>
+          {source ? (
+            <Text style={styles.source} numberOfLines={2}>
+              Source : {source}
+            </Text>
+          ) : null}
+          <Text style={styles.url}>grumm.app</Text>
+        </View>
+      </LinearGradient>
+    </View>
+  );
+});
 
 FactShareStory.displayName = "FactShareStory";
 

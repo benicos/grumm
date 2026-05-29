@@ -1027,26 +1027,28 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
                     </Link>
                   )}
 
-                  <div data-fact-source>
-                  <FactSource
-                    accent={fact.accent}
-                    onSourceClick={() => {
-                      if (isSponsored) {
-                        return;
-                      }
+                  {fact.source?.trim() ? (
+                    <div data-fact-source>
+                      <FactSource
+                        accent={fact.accent}
+                        onSourceClick={() => {
+                          if (isSponsored) {
+                            return;
+                          }
 
-                      markFactReadInteraction(factReadTokenRef.current);
-                      void trackAnalyticsEvent({
-                        entityId: fact.id,
-                        entityType: "fact",
-                        eventName: "source_clicked",
-                      });
-                    }}
-                    label={isSponsored ? "Partenaire:" : undefined}
-                    source={fact.source}
-                    sourceUrl={fact.sourceUrl}
-                  />
-                  </div>
+                          markFactReadInteraction(factReadTokenRef.current);
+                          void trackAnalyticsEvent({
+                            entityId: fact.id,
+                            entityType: "fact",
+                            eventName: "source_clicked",
+                          });
+                        }}
+                        label={isSponsored ? "Partenaire:" : undefined}
+                        source={fact.source}
+                        sourceUrl={fact.sourceUrl}
+                      />
+                    </div>
+                  ) : null}
                 </div>
 
                 {isSponsored ? (

@@ -392,26 +392,28 @@ export default function FactDetailPage() {
             </Link>
           </div>
 
-          <div className="mt-10">
-            <FactSource
-              accent={fact.accent}
-              onSourceClick={() => {
-                if (isSponsored) {
-                  return;
-                }
+          {fact.source?.trim() ? (
+            <div className="mt-10">
+              <FactSource
+                accent={fact.accent}
+                onSourceClick={() => {
+                  if (isSponsored) {
+                    return;
+                  }
 
-                markFactReadInteraction(factReadTokenRef.current);
-                void trackAnalyticsEvent({
-                  entityId: fact.id,
-                  entityType: "fact",
-                  eventName: "source_clicked",
-                });
-              }}
-              label={isSponsored ? "Partenaire:" : undefined}
-              source={fact.source}
-              sourceUrl={fact.sourceUrl}
-            />
-          </div>
+                  markFactReadInteraction(factReadTokenRef.current);
+                  void trackAnalyticsEvent({
+                    entityId: fact.id,
+                    entityType: "fact",
+                    eventName: "source_clicked",
+                  });
+                }}
+                label={isSponsored ? "Partenaire:" : undefined}
+                source={fact.source}
+                sourceUrl={fact.sourceUrl}
+              />
+            </div>
+          ) : null}
         </article>
 
         <aside className="rounded-[24px] border border-white/10 bg-black/22 p-5 shadow-[0_24px_90px_rgba(0,0,0,0.32)] backdrop-blur-xl">

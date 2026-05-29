@@ -358,9 +358,17 @@ export default function ExplorerPage() {
             ) : (
               <div className="space-y-10">
                 <div>
-                  <p className="mb-4 text-xs font-bold uppercase tracking-[0.22em] text-[#ffd166]">
-                    Quelques pistes
-                  </p>
+                  <div className="mb-4 flex items-center justify-between gap-4">
+                    <p className="text-xs font-bold uppercase tracking-[0.22em] text-[#ffd166]">
+                      Quelques pistes
+                    </p>
+                    <Link
+                      href="/discover/theme"
+                      className="text-sm font-bold text-[#f4ead5] transition hover:text-white"
+                    >
+                      Tous les thèmes
+                    </Link>
+                  </div>
                   {visibleThemes.length > 0 ? (
                     <div className="mx-auto grid w-full max-w-md grid-cols-1 gap-3 sm:max-w-4xl sm:grid-cols-4">
                       {visibleThemes.map((theme, index) => (

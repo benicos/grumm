@@ -4,7 +4,7 @@ import { Inter } from "next/font/google";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { trackAnalyticsEvent } from "@/lib/analytics/web";
-import { getExplorerData, type CategorySummary } from "@/lib/facts";
+import { getAllExplorerThemes, type CategorySummary } from "@/lib/facts";
 import { getToneBackground } from "@/lib/gradients";
 import { AppState } from "../../components/AppState";
 import { premiumTitleGradientClassName } from "../../components/buttonStyles";
@@ -81,7 +81,7 @@ export default function FactsThemePage() {
 
     async function loadThemes() {
       try {
-        const data = await getExplorerData();
+        const data = await getAllExplorerThemes();
 
         if (isMounted) {
           setThemes(data.categories);

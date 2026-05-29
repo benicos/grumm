@@ -391,9 +391,10 @@ function normalizeSearchTerm(query?: string) {
 async function getExplorerThemesWithCounts(
   supabase: NonNullable<ReturnType<typeof createSupabaseBrowserClient>>,
   searchTerm: string,
+  limit = 18,
 ) {
   const rpcResult = await supabase.rpc("get_explorer_themes", {
-    p_limit: searchTerm ? 60 : 18,
+    p_limit: searchTerm ? Math.max(limit, 60) : limit,
     p_query: searchTerm || null,
   });
 
@@ -412,7 +413,7 @@ async function getExplorerThemesWithCounts(
     ? await categoriesQuery.or(
         `name.ilike.%${searchTerm}%,slug.ilike.%${searchTerm}%`,
       )
-    : await categoriesQuery.limit(18);
+    : await categoriesQuery.limit(limit);
 
   if (categoriesResult.error) {
     throw new FeedError(
@@ -577,6 +578,24 @@ export async function getExplorerData(options?: { query?: string }): Promise<Exp
     categories: filterCommercialCollaborationCategories(categories),
     facts: filterCommercialCollaborationFacts(facts),
     recentFacts: filterCommercialCollaborationFacts(recentFacts),
+    source: "supabase" as const,
+  };
+}
+
+export async function getAllExplorerThemes(limit = 200) {
+  const supabase = createSupabaseBrowserClient();
+
+  if (!supabase) {
+    return {
+      categories: [] as CategorySummary[],
+      source: "unavailable" as const,
+    };
+  }
+
+  const categories = await getExplorerThemesWithCounts(supabase, "", limit);
+
+  return {
+    categories: filterCommercialCollaborationCategories(categories),
     source: "supabase" as const,
   };
 }

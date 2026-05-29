@@ -202,15 +202,19 @@ function NoResultBanner({ onOpenDiscover }: { onOpenDiscover: () => void }) {
 }
 
 function FactRow({ compact = false, fact, onPress }: { compact?: boolean; fact: FeedFact; onPress: () => void }) {
+  const source = fact.source?.trim();
+
   return (
     <Pressable onPress={onPress} style={({ pressed }) => [styles.factRow, pressed && styles.pressed]}>
       <View style={styles.factMeta}>
         <Text style={[styles.category, { color: fact.accent }]} numberOfLines={1}>
           {fact.category}
         </Text>
-        <Text style={styles.source} numberOfLines={1}>
-          {fact.source}
-        </Text>
+        {source ? (
+          <Text style={styles.source} numberOfLines={1}>
+            {source}
+          </Text>
+        ) : null}
       </View>
       <Text numberOfLines={compact ? 2 : 3} style={styles.factTitle}>
         {fact.title}

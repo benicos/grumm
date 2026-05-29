@@ -28,6 +28,7 @@ function getGradientColors(fact: FeedFact): [string, string, string] {
 
 export function FactDetailView({ actions, fact, onBack, onShare, onToggleLike, onToggleSave }: FactDetailViewProps) {
   const insets = useSafeAreaInsets();
+  const source = fact.source?.trim();
   const sourceUrl = fact.sourceUrl?.trim();
 
   return (
@@ -63,17 +64,19 @@ export function FactDetailView({ actions, fact, onBack, onShare, onToggleLike, o
           </View>
         ) : null}
 
-        <View style={styles.sourceBlock}>
-          <Text style={styles.sourceLabel}>Source</Text>
-          {sourceUrl ? (
-            <Pressable onPress={() => Linking.openURL(sourceUrl)} style={styles.sourceLink}>
-              <Text style={styles.sourceText}>{fact.source}</Text>
-              <ExternalLink color="rgba(248,250,252,0.72)" size={15} strokeWidth={2.2} />
-            </Pressable>
-          ) : (
-            <Text style={styles.sourceText}>{fact.source}</Text>
-          )}
-        </View>
+        {source ? (
+          <View style={styles.sourceBlock}>
+            <Text style={styles.sourceLabel}>Source</Text>
+            {sourceUrl ? (
+              <Pressable onPress={() => Linking.openURL(sourceUrl)} style={styles.sourceLink}>
+                <Text style={styles.sourceText}>{source}</Text>
+                <ExternalLink color="rgba(248,250,252,0.72)" size={15} strokeWidth={2.2} />
+              </Pressable>
+            ) : (
+              <Text style={styles.sourceText}>{source}</Text>
+            )}
+          </View>
+        ) : null}
 
         <View style={styles.actions}>
           <ActionButton active={actions.liked} Icon={Heart} label="Aimer" onPress={onToggleLike} />

@@ -7,7 +7,7 @@ export type FeedFact = {
   hook: string | null;
   id: string;
   slug: string;
-  source: string;
+  source: string | null;
   sourceUrl: string | null;
   title: string;
   tone: string;
@@ -62,7 +62,7 @@ export type RelatedFactRow = {
         hook: string | null;
         id: string;
         slug?: string | null;
-        source: string;
+        source: string | null;
         source_url?: string | null;
         title: string;
         tone: string | null;

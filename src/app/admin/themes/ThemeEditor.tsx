@@ -19,6 +19,11 @@ type ThemeFormState = {
   tone: string;
 };
 
+type GradientPreset = {
+  colors: [string, string, string];
+  label: string;
+};
+
 const emptyTheme: ThemeFormState = {
   accent_color: "#465fff",
   id: "",
@@ -26,6 +31,31 @@ const emptyTheme: ThemeFormState = {
   slug: "",
   tone: "from-[#465fff] to-[#7592ff]",
 };
+
+const defaultGradientStops: [string, string, string] = [
+  "#07111f",
+  "#465fff",
+  "#7592ff",
+];
+
+const gradientPresets: GradientPreset[] = [
+  {
+    colors: ["#07111f", "#1f2937", "#465fff"],
+    label: "TailAdmin bleu",
+  },
+  {
+    colors: ["#0f172a", "#334155", "#f4ead5"],
+    label: "Ardoise premium",
+  },
+  {
+    colors: ["#111827", "#5b5f68", "#d8c7a1"],
+    label: "Champagne discret",
+  },
+  {
+    colors: ["#0b1424", "#27445f", "#88a2b6"],
+    label: "Bleu-gris",
+  },
+];
 
 function getTonePreviewBackground(tone: string) {
   const colors = [...tone.matchAll(/\[(#[^\]]+)\]/g)]
@@ -39,6 +69,22 @@ function getTonePreviewBackground(tone: string) {
   const trimmedTone = tone.trim();
 
   return trimmedTone || "linear-gradient(135deg, #465fff, #7592ff)";
+}
+
+function getToneStops(tone: string): [string, string, string] {
+  const colors = [...tone.matchAll(/\[(#[0-9a-fA-F]{3,8})\]/g)]
+    .map((match) => match[1])
+    .filter(Boolean);
+
+  return [
+    colors[0] ?? defaultGradientStops[0],
+    colors[1] ?? colors[0] ?? defaultGradientStops[1],
+    colors[2] ?? colors[1] ?? colors[0] ?? defaultGradientStops[2],
+  ];
+}
+
+function toneFromStops(stops: [string, string, string]) {
+  return `from-[${stops[0]}] via-[${stops[1]}] to-[${stops[2]}]`;
 }
 
 function isCssColor(value: string) {
@@ -65,6 +111,24 @@ export default function ThemeEditor({ themeId }: { themeId?: string }) {
   const accentColorIsValid = isCssColor(form.accent_color);
   const previewAccentColor = accentColorIsValid ? form.accent_color : "#465fff";
   const previewBackground = getTonePreviewBackground(form.tone);
+  const gradientStops = getToneStops(form.tone);
+
+  function updateGradientStop(index: number, color: string) {
+    const nextStops = [...gradientStops] as [string, string, string];
+    nextStops[index] = color;
+    setForm((current) => ({
+      ...current,
+      tone: toneFromStops(nextStops),
+    }));
+  }
+
+  function applyGradientPreset(preset: GradientPreset) {
+    setForm((current) => ({
+      ...current,
+      accent_color: preset.colors[2],
+      tone: toneFromStops(preset.colors),
+    }));
+  }
 
   useEffect(() => {
     if (!themeId) {
@@ -181,7 +245,7 @@ export default function ThemeEditor({ themeId }: { themeId?: string }) {
               <AdminField
                 label="Couleur d’accent"
                 type="color"
-                value={form.accent_color}
+                value={previewAccentColor}
                 onChange={(accent_color) =>
                   setForm((current) => ({ ...current, accent_color }))
                 }
@@ -193,6 +257,77 @@ export default function ThemeEditor({ themeId }: { themeId?: string }) {
                   setForm((current) => ({ ...current, tone }))
                 }
               />
+            </div>
+
+            <div className="rounded-2xl border border-gray-200 bg-white p-4">
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-800">
+                    Fond / gradient
+                  </p>
+                  <p className="mt-1 text-xs leading-5 text-gray-500">
+                    Choisis trois couleurs ou applique un preset. Le champ
+                    manuel reste disponible pour les cas avancés.
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {gradientPresets.map((preset) => (
+                    <button
+                      key={preset.label}
+                      type="button"
+                      onClick={() => applyGradientPreset(preset)}
+                      className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-gray-700 transition hover:border-[#465fff]/40 hover:bg-[#f5f7ff]"
+                    >
+                      <span
+                        className="h-4 w-8 rounded-full border border-white shadow-sm"
+                        style={{
+                          background: `linear-gradient(135deg, ${preset.colors.join(", ")})`,
+                        }}
+                      />
+                      {preset.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="mt-4 grid gap-4 md:grid-cols-3">
+                {gradientStops.map((color, index) => (
+                  <label
+                    key={`${index}:${color}`}
+                    className="block text-xs font-medium text-gray-600"
+                  >
+                    {index === 0
+                      ? "Départ"
+                      : index === 1
+                        ? "Milieu"
+                        : "Arrivée"}
+                    <div className="mt-2 flex gap-3">
+                      <input
+                        type="color"
+                        value={isCssColor(color) ? color : defaultGradientStops[index]}
+                        onChange={(event) =>
+                          updateGradientStop(index, event.target.value)
+                        }
+                        className="h-10 w-12 shrink-0 cursor-pointer rounded-lg border border-gray-200 bg-white p-1"
+                        aria-label={`Choisir la couleur ${
+                          index === 0
+                            ? "de départ"
+                            : index === 1
+                              ? "du milieu"
+                              : "d'arrivée"
+                        } du gradient`}
+                      />
+                      <input
+                        value={color}
+                        onChange={(event) =>
+                          updateGradientStop(index, event.target.value)
+                        }
+                        className="min-w-0 flex-1 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-800 outline-none transition focus:border-[#465fff]"
+                      />
+                    </div>
+                  </label>
+                ))}
+              </div>
             </div>
 
             <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">

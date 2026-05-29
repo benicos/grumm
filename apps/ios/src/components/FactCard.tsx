@@ -29,6 +29,7 @@ function getGradientColors(fact: FeedFact): [string, string, string] {
 
 export function FactCard({ actions, fact, height, onShare, onSourcePress, onToggleLike, onToggleSave }: FactCardProps) {
   const insets = useSafeAreaInsets();
+  const source = fact.source?.trim();
   const sourceUrl = fact.sourceUrl?.trim();
   const isSponsored = isCommercialCollaborationFact(fact);
 
@@ -77,26 +78,28 @@ export function FactCard({ actions, fact, height, onShare, onSourcePress, onTogg
               </View>
             )}
 
-            {sourceUrl ? (
-              <Pressable
-                onPress={() => {
-                  if (!isSponsored) {
-                    onSourcePress?.();
-                  }
-                  Linking.openURL(sourceUrl);
-                }}
-                style={styles.sourceLink}
-              >
+            {source ? (
+              sourceUrl ? (
+                <Pressable
+                  onPress={() => {
+                    if (!isSponsored) {
+                      onSourcePress?.();
+                    }
+                    Linking.openURL(sourceUrl);
+                  }}
+                  style={styles.sourceLink}
+                >
+                  <Text style={styles.source} numberOfLines={1}>
+                    {isSponsored ? "Partenaire" : "Source"} : {source}
+                  </Text>
+                  <ExternalLink color="rgba(248,250,252,0.58)" size={13} strokeWidth={2.2} />
+                </Pressable>
+              ) : (
                 <Text style={styles.source} numberOfLines={1}>
-                  {isSponsored ? "Partenaire" : "Source"} : {fact.source}
+                  {isSponsored ? "Partenaire" : "Source"} : {source}
                 </Text>
-                <ExternalLink color="rgba(248,250,252,0.58)" size={13} strokeWidth={2.2} />
-              </Pressable>
-            ) : (
-              <Text style={styles.source} numberOfLines={1}>
-                {isSponsored ? "Partenaire" : "Source"} : {fact.source}
-              </Text>
-            )}
+              )
+            ) : null}
           </View>
         </View>
       </LinearGradient>
