@@ -75,7 +75,9 @@ export default function AuthForm({ mode }: AuthFormProps) {
   const [email, setEmail] = useState("");
   const [learningGoal, setLearningGoal] =
     useState<LearningGoal>(DEFAULT_LEARNING_GOAL);
-  const [dailyGoal, setDailyGoal] = useState(dailyGoalConfig.defaultGoal);
+  const [dailyGoal, setDailyGoal] = useState<number>(
+    dailyGoalConfig.defaultGoal,
+  );
   const [password, setPassword] = useState("");
   const [signupStep, setSignupStep] = useState<SignupStep>("username");
   const [username, setUsername] = useState("");
