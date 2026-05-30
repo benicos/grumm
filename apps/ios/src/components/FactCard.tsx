@@ -4,6 +4,7 @@ import { Linking, Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { isCommercialCollaborationFact } from "../lib/commercial";
+import { cleanFactSource } from "../lib/source";
 import { colors } from "../theme/colors";
 import type { FactActions, FeedFact } from "../types/domain";
 
@@ -29,7 +30,7 @@ function getGradientColors(fact: FeedFact): [string, string, string] {
 
 export function FactCard({ actions, fact, height, onShare, onSourcePress, onToggleLike, onToggleSave }: FactCardProps) {
   const insets = useSafeAreaInsets();
-  const source = fact.source?.trim();
+  const source = cleanFactSource(fact.source);
   const sourceUrl = fact.sourceUrl?.trim();
   const isSponsored = isCommercialCollaborationFact(fact);
 

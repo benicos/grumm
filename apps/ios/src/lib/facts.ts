@@ -19,6 +19,8 @@ import {
   isCommercialCollaborationSlug,
 } from "./commercial";
 import { slugify } from "./slug";
+import { normalizeLearningGoal, type LearningGoal } from "./learning";
+import { cleanFactSource } from "./source";
 import { getSupabaseClient, withSupabaseTimeout } from "./supabase";
 
 type FeedRpcRow = {
@@ -162,7 +164,7 @@ function mapFeedFact(row: FeedRpcRow): FeedFact {
     hook: row.hook?.trim() || null,
     id: row.id,
     slug: row.slug || slugify(row.title),
-    source: cleanOptionalText(row.source),
+    source: cleanFactSource(row.source),
     sourceUrl: cleanOptionalText(row.source_url),
     title: row.title,
     tone: row.tone ?? row.category_tone ?? "premium",
@@ -187,7 +189,7 @@ function mapRelatedFact(row: RelatedFactRow): FeedFact | null {
     hook: fact.hook?.trim() || null,
     id: fact.id,
     slug: fact.slug || slugify(fact.title),
-    source: cleanOptionalText(fact.source),
+    source: cleanFactSource(fact.source),
     sourceUrl: cleanOptionalText(fact.source_url),
     title: fact.title,
     tone: fact.tone ?? category?.tone ?? "premium",
@@ -231,7 +233,7 @@ function getTopViewedThemes(rows: ViewedFactRow[]): ThemeViewStat[] {
 
   const themes = [...themesBySlug.values()]
     .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, "fr"))
-    .slice(0, 5);
+    .slice(0, 4);
   const maxCount = Math.max(...themes.map((theme) => theme.count), 1);
 
   return themes.map((theme) => ({
@@ -292,10 +294,11 @@ export function getFactUrl(fact: FeedFact) {
 
 export async function getFeedFacts(options?: {
   excludeIds?: string[];
+  learningGoal?: LearningGoal | null;
   limit?: number;
 }) {
   const canUseCache = !options?.excludeIds?.length;
-  const cacheKey = `feed:${options?.limit ?? mobileConfig.feedBatchSize}`;
+  const cacheKey = `feed:${options?.limit ?? mobileConfig.feedBatchSize}:${options?.learningGoal ?? "default"}`;
   const cachedFacts = canUseCache ? getCached(feedCache, cacheKey) : null;
 
   if (cachedFacts) {
@@ -306,6 +309,7 @@ export async function getFeedFacts(options?: {
   const { data, error } = await withSupabaseTimeout(
     supabase.rpc("get_discover_feed", {
       p_exclude_ids: options?.excludeIds ?? [],
+      p_learning_goal: options?.learningGoal ?? null,
       p_limit: options?.limit ?? mobileConfig.feedBatchSize,
       p_theme_slug: null,
     }),
@@ -646,7 +650,7 @@ export async function getProfileSummary(): Promise<ProfileSummary> {
     savedFactsResult,
     viewedThemesResult,
   ] = await Promise.all([
-    withSupabaseTimeout(supabase.from("profiles").select("username,daily_goal,role,created_at").eq("id", user.id).maybeSingle()),
+    withSupabaseTimeout(supabase.from("profiles").select("username,daily_goal,learning_goal,role,created_at").eq("id", user.id).maybeSingle()),
     withSupabaseTimeout(supabase.from("likes").select("id", { count: "exact", head: true }).eq("user_id", user.id)),
     withSupabaseTimeout(supabase.from("saves").select("id", { count: "exact", head: true }).eq("user_id", user.id)),
     withSupabaseTimeout(supabase.from("user_fact_views").select("id", { count: "exact", head: true }).eq("user_id", user.id)),
@@ -708,6 +712,7 @@ export async function getProfileSummary(): Promise<ProfileSummary> {
     gradeBadge: badge.badge,
     gradeTitle: badge.title,
     id: user.id,
+    learningGoal: normalizeLearningGoal(profileResult.data?.learning_goal),
     likedCount: likesResult.count ?? 0,
     likedFacts,
     role: profileResult.data?.role ?? "membre",

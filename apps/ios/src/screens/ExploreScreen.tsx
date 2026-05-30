@@ -8,6 +8,7 @@ import { LoadingState, ScreenState } from "../components/ScreenState";
 import { userMessages } from "../config/app";
 import { trackMobileAnalyticsEvent } from "../lib/analytics";
 import { getExplorerData } from "../lib/facts";
+import { cleanFactSource } from "../lib/source";
 import { colors } from "../theme/colors";
 import type { CategorySummary, FeedFact } from "../types/domain";
 
@@ -202,7 +203,7 @@ function NoResultBanner({ onOpenDiscover }: { onOpenDiscover: () => void }) {
 }
 
 function FactRow({ compact = false, fact, onPress }: { compact?: boolean; fact: FeedFact; onPress: () => void }) {
-  const source = fact.source?.trim();
+  const source = cleanFactSource(fact.source);
 
   return (
     <Pressable onPress={onPress} style={({ pressed }) => [styles.factRow, pressed && styles.pressed]}>

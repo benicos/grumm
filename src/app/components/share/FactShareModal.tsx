@@ -4,7 +4,7 @@ import { toPng } from "html-to-image";
 import { Download, Link as LinkIcon, Share2, X } from "lucide-react";
 import { type CSSProperties, useMemo, useRef, useState } from "react";
 import { siteConfig, socialShareConfig } from "@/config/app";
-import type { FeedFact } from "@/lib/facts";
+import { cleanFactSource, type FeedFact } from "@/lib/facts";
 import FactSource from "../FactSource";
 import { premiumPrimaryCtaClassName } from "../buttonStyles";
 
@@ -269,7 +269,7 @@ export default function FactShareModal({ fact, onClose }: FactShareModalProps) {
           <p className="mt-4 max-w-xl text-sm leading-6 text-white/58">
             Tu as appris quelque chose ? Fais le savoir à tes amis en partageant ce fait de manière simple et rapide.
           </p>
-          {activeFact.source?.trim() ? (
+          {cleanFactSource(activeFact.source) ? (
             <div className="mt-5 max-w-xl rounded-md border border-white/10 bg-white/[0.045] px-4 py-3">
               <FactSource
                 className="text-sm text-white/58"

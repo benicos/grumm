@@ -1,11 +1,12 @@
 import { LinearGradient } from "expo-linear-gradient";
 import { AtSign, Lock, UserRound } from "lucide-react-native";
 import { type ReactNode, useMemo, useState } from "react";
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { GrummButton } from "../components/GrummButton";
 import { useAuth } from "../context/AuthContext";
+import { DEFAULT_LEARNING_GOAL, learningGoalOptions, type LearningGoal } from "../lib/learning";
 import { getUsernameValidationMessage, normalizeUsername } from "../lib/slug";
 import { colors } from "../theme/colors";
 
@@ -16,6 +17,7 @@ export function AuthScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [username, setUsername] = useState("");
+  const [learningGoal, setLearningGoal] = useState<LearningGoal>(DEFAULT_LEARNING_GOAL);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const isLogin = mode === "login";
@@ -43,7 +45,7 @@ export function AuthScreen() {
       if (isLogin) {
         await signIn(email, password);
       } else {
-        await signUp(email, password, normalizedUsername);
+        await signUp(email, password, normalizedUsername, learningGoal);
       }
     } catch (nextError) {
       setError(nextError instanceof Error ? nextError.message : "Action impossible pour le moment.");
@@ -70,6 +72,30 @@ export function AuthScreen() {
                 ? "Connecte-toi pour retrouver tes lectures, tes sauvegardes et ta progression."
                 : "Choisis un pseudo et garde ta progression synchronisée dès le premier fait."}
             </Text>
+            {!isLogin ? (
+              <View style={styles.goalGroup}>
+                <Text style={styles.goalTitle}>Objectif culturel</Text>
+                {learningGoalOptions.map((option) => {
+                  const selected = learningGoal === option.value;
+
+                  return (
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityState={{ selected }}
+                      key={option.value}
+                      onPress={() => setLearningGoal(option.value)}
+                      style={[styles.goalOption, selected && styles.goalOptionSelected]}
+                    >
+                      <View style={[styles.goalDot, selected && styles.goalDotSelected]} />
+                      <View style={styles.goalTextBlock}>
+                        <Text style={styles.goalLabel}>{option.label}</Text>
+                        <Text style={styles.goalDescription}>{option.description}</Text>
+                      </View>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            ) : null}
           </View>
 
           <View style={styles.fields}>
@@ -221,6 +247,57 @@ const styles = StyleSheet.create({
     right: -110,
     top: -80,
     width: 280,
+  },
+  goalDescription: {
+    color: "rgba(248,250,252,0.52)",
+    fontSize: 12,
+    fontWeight: "700",
+    lineHeight: 17,
+    marginTop: 3,
+  },
+  goalDot: {
+    borderColor: "rgba(248,250,252,0.30)",
+    borderRadius: 999,
+    borderWidth: 2,
+    height: 16,
+    marginTop: 3,
+    width: 16,
+  },
+  goalDotSelected: {
+    backgroundColor: "#f4ead5",
+    borderColor: "#f4ead5",
+  },
+  goalGroup: {
+    gap: 9,
+    marginTop: 20,
+  },
+  goalLabel: {
+    color: colors.text,
+    fontSize: 14,
+    fontWeight: "900",
+  },
+  goalOption: {
+    alignItems: "flex-start",
+    backgroundColor: "rgba(255,255,255,0.055)",
+    borderColor: "rgba(255,255,255,0.11)",
+    borderRadius: 17,
+    borderWidth: 1,
+    flexDirection: "row",
+    gap: 11,
+    paddingHorizontal: 13,
+    paddingVertical: 12,
+  },
+  goalOptionSelected: {
+    backgroundColor: "rgba(244,234,213,0.12)",
+    borderColor: "rgba(244,234,213,0.34)",
+  },
+  goalTextBlock: {
+    flex: 1,
+  },
+  goalTitle: {
+    color: "rgba(248,250,252,0.70)",
+    fontSize: 13,
+    fontWeight: "900",
   },
   header: {
     marginTop: "auto",

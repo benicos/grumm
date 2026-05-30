@@ -9,6 +9,21 @@ type FactSourceProps = {
   sourceUrl?: string | null;
 };
 
+function isMissingSourceLabel(value: string) {
+  const normalized = value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+
+  return (
+    normalized === "source non renseignee" ||
+    normalized === "source: source non renseignee" ||
+    normalized === "source : source non renseignee"
+  );
+}
+
 export default function FactSource({
   accent,
   className = "text-sm text-white/70",
@@ -20,7 +35,7 @@ export default function FactSource({
   const cleanSource = source?.trim();
   const cleanUrl = sourceUrl?.trim();
 
-  if (!cleanSource) {
+  if (!cleanSource || isMissingSourceLabel(cleanSource)) {
     return null;
   }
 

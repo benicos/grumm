@@ -23,27 +23,22 @@ type BottomNavProps = {
 export function BottomNav({ activeTab, onChange }: BottomNavProps) {
   return (
     <SafeAreaView edges={["bottom"]} style={styles.safeArea}>
-      <LinearGradient
-        colors={["rgba(9,18,32,0.82)", "rgba(7,17,31,0.66)"]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.wrap}
-      >
+      <View style={styles.wrap}>
         {tabs.slice(0, 2).map((tab) => (
           <NavItem active={activeTab === tab.key} key={tab.key} tab={tab} onPress={() => onChange(tab.key)} />
         ))}
 
         <View pointerEvents="none" style={styles.logoSlot}>
           <View style={styles.logoHalo} />
-          <LinearGradient colors={["rgba(255,209,102,0.28)", "rgba(106,227,192,0.12)"]} style={styles.logoPedestal}>
-            <GrummLogo size={48} />
+          <LinearGradient colors={["rgba(244,234,213,0.16)", "rgba(255,255,255,0.04)"]} style={styles.logoPedestal}>
+            <GrummLogo size={40} />
           </LinearGradient>
         </View>
 
         {tabs.slice(2).map((tab) => (
           <NavItem active={activeTab === tab.key} key={tab.key} tab={tab} onPress={() => onChange(tab.key)} />
         ))}
-      </LinearGradient>
+      </View>
     </SafeAreaView>
   );
 }
@@ -67,7 +62,7 @@ function NavItem({
       style={({ pressed }) => [styles.item, active && styles.itemActive, pressed && styles.pressed]}
     >
       {active ? <View style={styles.activeGlow} /> : null}
-      <Icon color={active ? colors.text : "rgba(241,245,249,0.58)"} size={21} strokeWidth={2.25} />
+      <Icon color={active ? colors.text : "rgba(241,245,249,0.44)"} size={21} strokeWidth={active ? 2.55 : 2.1} />
       <Text numberOfLines={1} style={[styles.label, active && styles.labelActive]}>
         {tab.label}
       </Text>
@@ -78,30 +73,28 @@ function NavItem({
 const styles = StyleSheet.create({
   item: {
     alignItems: "center",
-    borderRadius: 22,
     flex: 1,
-    gap: 5,
+    gap: 4,
     justifyContent: "center",
-    minHeight: 60,
+    minHeight: 54,
     paddingHorizontal: 2,
   },
   itemActive: {
-    backgroundColor: "rgba(255,255,255,0.10)",
     shadowColor: colors.accent,
-    shadowOffset: { height: 8, width: 0 },
-    shadowOpacity: 0.16,
-    shadowRadius: 16,
+    shadowOffset: { height: 6, width: 0 },
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
   },
   activeGlow: {
-    backgroundColor: colors.accent,
+    backgroundColor: colors.text,
     borderRadius: 999,
-    height: 3,
+    height: 2,
     position: "absolute",
-    top: 6,
-    width: 20,
+    top: 3,
+    width: 18,
   },
   label: {
-    color: "rgba(241,245,249,0.58)",
+    color: "rgba(241,245,249,0.46)",
     fontSize: 11,
     fontWeight: "800",
     letterSpacing: 0,
@@ -112,47 +105,41 @@ const styles = StyleSheet.create({
   logoSlot: {
     alignItems: "center",
     justifyContent: "center",
-    width: 64,
+    width: 58,
   },
   logoHalo: {
-    backgroundColor: "rgba(255,209,102,0.16)",
+    backgroundColor: "rgba(244,234,213,0.08)",
     borderRadius: 999,
-    height: 66,
+    height: 54,
     position: "absolute",
-    shadowColor: colors.accent,
-    shadowOffset: { height: 10, width: 0 },
-    shadowOpacity: 0.22,
-    shadowRadius: 22,
-    width: 66,
+    shadowColor: "#f4ead5",
+    shadowOffset: { height: 6, width: 0 },
+    shadowOpacity: 0.14,
+    shadowRadius: 16,
+    width: 54,
   },
   logoPedestal: {
     alignItems: "center",
-    borderRadius: 22,
-    height: 56,
+    borderRadius: 17,
+    height: 46,
     justifyContent: "center",
     overflow: "hidden",
-    width: 56,
+    width: 46,
   },
   pressed: {
     opacity: 0.72,
     transform: [{ scale: 0.96 }],
   },
   safeArea: {
-    backgroundColor: "transparent",
+    backgroundColor: colors.background,
   },
   wrap: {
     alignItems: "center",
-    borderRadius: 30,
+    backgroundColor: "rgba(5,8,18,0.94)",
     flexDirection: "row",
-    gap: 5,
-    marginBottom: 8,
-    marginHorizontal: 12,
-    marginTop: 6,
+    gap: 2,
     overflow: "visible",
-    padding: 7,
-    shadowColor: "#000",
-    shadowOffset: { height: 18, width: 0 },
-    shadowOpacity: 0.36,
-    shadowRadius: 30,
+    paddingHorizontal: 10,
+    paddingTop: 5,
   },
 });

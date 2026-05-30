@@ -4,6 +4,7 @@ import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-na
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { colors } from "../theme/colors";
+import { cleanFactSource } from "../lib/source";
 import type { FactActions, FeedFact } from "../types/domain";
 import { SwipeBackView } from "./SwipeBackView";
 
@@ -28,7 +29,7 @@ function getGradientColors(fact: FeedFact): [string, string, string] {
 
 export function FactDetailView({ actions, fact, onBack, onShare, onToggleLike, onToggleSave }: FactDetailViewProps) {
   const insets = useSafeAreaInsets();
-  const source = fact.source?.trim();
+  const source = cleanFactSource(fact.source);
   const sourceUrl = fact.sourceUrl?.trim();
 
   return (

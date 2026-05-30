@@ -3,6 +3,7 @@ import { forwardRef } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
 import { colors } from "../theme/colors";
+import { cleanFactSource } from "../lib/source";
 import type { FeedFact } from "../types/domain";
 import { GrummLogo } from "./GrummLogo";
 
@@ -21,7 +22,7 @@ function getGradientColors(fact: FeedFact): [string, string, string] {
 }
 
 export const FactShareStory = forwardRef<View, FactShareStoryProps>(({ fact }, ref) => {
-  const source = fact.source?.trim();
+  const source = cleanFactSource(fact.source);
 
   return (
     <View ref={ref} collapsable={false} style={styles.canvas}>

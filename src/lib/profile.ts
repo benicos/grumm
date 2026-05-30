@@ -6,7 +6,7 @@ import {
   isCommercialCollaborationSlug,
 } from "@/lib/commercial";
 import { formatAppError, getConfiguredErrorMessage } from "@/lib/errors";
-import { FeedError, type FeedFact } from "@/lib/facts";
+import { cleanFactSource, FeedError, type FeedFact } from "@/lib/facts";
 import {
   type LearningGoal,
   normalizeDifficultyLevel,
@@ -137,7 +137,7 @@ function mapRelatedFact(row: RelatedFactRow): FeedFact | null {
     detail: fact.content,
     difficultyLevel: normalizeDifficultyLevel(fact.difficulty_level),
     longContent: fact.long_content?.trim() || null,
-    source: fact.source?.trim() || null,
+      source: cleanFactSource(fact.source),
     sourceUrl: fact.source_url?.trim() || null,
     tone:
       fact.tone ??
@@ -205,7 +205,7 @@ function getTopViewedThemes(rows: ViewedFactRow[]): ThemeViewStat[] {
 
   const themes = [...themesBySlug.values()]
     .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, "fr"))
-    .slice(0, 5);
+    .slice(0, 4);
   const maxCount = Math.max(...themes.map((theme) => theme.count), 1);
 
   return themes.map((theme) => ({

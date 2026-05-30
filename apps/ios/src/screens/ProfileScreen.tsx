@@ -15,6 +15,7 @@ import { useAuth } from "../context/AuthContext";
 import { trackMobileAnalyticsEvent } from "../lib/analytics";
 import { getGoalCelebrationMessage } from "../lib/badges";
 import { getProfileSummary } from "../lib/facts";
+import { getLearningGoalLabel, learningGoalOptions, normalizeLearningGoal, type LearningGoal } from "../lib/learning";
 import { updateProfileEmail, updateProfilePassword, updateProfileSettings, type ProfileField } from "../lib/profile";
 import { colors } from "../theme/colors";
 import type { ProfileSummary } from "../types/domain";
@@ -91,6 +92,7 @@ export function ProfileScreen() {
   const completedGoals = summary?.completedDailyGoals ?? 0;
   const createdAt = summary?.createdAt ?? profile?.createdAt ?? null;
   const roleLabel = formatRole(summary?.role ?? profile?.role);
+  const learningGoal = summary?.learningGoal ?? profile?.learningGoal;
   const canReplayCelebration = todayReadCount >= dailyGoal;
 
   async function replayCelebration() {
@@ -145,6 +147,7 @@ export function ProfileScreen() {
             <ProfileMeta Icon={CalendarDays} label="Inscription" value={formatProfileDate(createdAt)} />
             <ProfileMeta Icon={ShieldCheck} label="Rôle" value={roleLabel} />
             <ProfileMeta Icon={Flag} label="Objectif" value={`${dailyGoal} faits`} />
+            <ProfileMeta Icon={Target} label="Niveau" value={getLearningGoalLabel(learningGoal)} />
           </View>
 
           <Pressable onPress={() => setIsEditing(true)} style={styles.editButton}>
@@ -229,6 +232,7 @@ function ProfileEditView({
   const insets = useSafeAreaInsets();
   const [username, setUsername] = useState(profile?.username ?? "");
   const [dailyGoal, setDailyGoal] = useState(String(profile?.dailyGoal ?? mobileConfig.dailyGoal));
+  const [learningGoal, setLearningGoal] = useState<LearningGoal>(normalizeLearningGoal(profile?.learningGoal));
   const [nextEmail, setNextEmail] = useState(email);
   const [password, setPassword] = useState("");
   const [errors, setErrors] = useState<FieldErrors>({});
@@ -253,6 +257,7 @@ function ProfileEditView({
     await handleResult(
       await updateProfileSettings({
         dailyGoal: Number(dailyGoal),
+        learningGoal,
         username,
       }),
     );
@@ -312,6 +317,27 @@ function ProfileEditView({
             value={dailyGoal}
           />
           <FieldError message={errors.dailyGoal} />
+
+          <Text style={styles.formLabel}>Objectif culturel</Text>
+          <View style={styles.learningGoalList}>
+            {learningGoalOptions.map((option) => {
+              const selected = learningGoal === option.value;
+
+              return (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityState={{ selected }}
+                  key={option.value}
+                  onPress={() => setLearningGoal(option.value)}
+                  style={[styles.learningGoalOption, selected && styles.learningGoalOptionSelected]}
+                >
+                  <Text style={styles.learningGoalLabel}>{option.label}</Text>
+                  <Text style={styles.learningGoalDescription}>{option.description}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
+          <FieldError message={errors.learningGoal} />
 
           <GrummButton disabled={isSubmitting === "settings"} isLoading={isSubmitting === "settings"} onPress={submitSettings}>
             Mettre à jour
@@ -641,6 +667,33 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     minHeight: 54,
     paddingHorizontal: 16,
+  },
+  learningGoalDescription: {
+    color: "rgba(248,250,252,0.50)",
+    fontSize: 12,
+    fontWeight: "700",
+    lineHeight: 17,
+    marginTop: 4,
+  },
+  learningGoalLabel: {
+    color: colors.text,
+    fontSize: 14,
+    fontWeight: "900",
+  },
+  learningGoalList: {
+    gap: 9,
+  },
+  learningGoalOption: {
+    backgroundColor: "rgba(255,255,255,0.065)",
+    borderColor: "rgba(255,255,255,0.11)",
+    borderRadius: 16,
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  learningGoalOptionSelected: {
+    backgroundColor: "rgba(244,234,213,0.12)",
+    borderColor: "rgba(244,234,213,0.34)",
   },
   panelHint: {
     color: "rgba(248,250,252,0.45)",

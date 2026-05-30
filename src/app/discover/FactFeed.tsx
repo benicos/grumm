@@ -17,6 +17,7 @@ import { isCommercialCollaborationFact } from "@/lib/commercial";
 import {
   DEFAULT_DAILY_GOAL,
   DISCOVER_FEED_BATCH_SIZE,
+  cleanFactSource,
   getFeedFacts,
   getTodayDailyProgress,
   getUserFactActions,
@@ -380,9 +381,21 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
           limit: DISCOVER_FEED_BATCH_SIZE,
           themeSlug,
         });
+        let recycledCycle = false;
 
         if (isReset && result.facts.length === 0 && rememberedFactIds.length > 0) {
           clearRememberedFactIds(scope);
+          result = await getFeedFacts({
+            excludeIds: [],
+            learningGoal: currentLearningGoal,
+            limit: DISCOVER_FEED_BATCH_SIZE,
+            themeSlug,
+          });
+        }
+
+        if (!isReset && result.facts.length === 0 && loadedFactIdsRef.current.length > 0) {
+          loadedFactIdsRef.current = [];
+          recycledCycle = true;
           result = await getFeedFacts({
             excludeIds: [],
             learningGoal: currentLearningGoal,
@@ -412,13 +425,21 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
           }
 
           const existingIds = new Set(currentFacts.map((fact) => fact.id));
+          const uniqueBatchFacts = batchFacts.filter(
+            (fact) => !existingIds.has(fact.id),
+          );
+
+          if (uniqueBatchFacts.length > 0) {
+            return [...currentFacts, ...uniqueBatchFacts];
+          }
+
           return [
             ...currentFacts,
-            ...batchFacts.filter((fact) => !existingIds.has(fact.id)),
+            ...batchFacts,
           ];
         });
 
-        loadedFactIdsRef.current = isReset
+        loadedFactIdsRef.current = isReset || recycledCycle
           ? batchFactIds
           : [
               ...loadedFactIdsRef.current,
@@ -428,7 +449,7 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
             ];
         rememberFactIds(scope, batchFactIds);
         setTheme(result.theme ?? null);
-        setHasMoreFacts(batchFacts.length >= DISCOVER_FEED_BATCH_SIZE);
+        setHasMoreFacts(batchFacts.length > 0);
       } catch (error) {
         if (isMountedRef.current && requestId === feedRequestIdRef.current) {
           if (isReset) {
@@ -1027,7 +1048,7 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
                     </Link>
                   )}
 
-                  {fact.source?.trim() ? (
+                  {cleanFactSource(fact.source) ? (
                     <div data-fact-source>
                       <FactSource
                         accent={fact.accent}
@@ -1212,9 +1233,7 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
         </div>
       )}
 
-      {(showSwipeHint ||
-        isLoadingMoreFacts ||
-        (!hasMoreFacts && activeFactIndex >= facts.length - 1)) && (
+      {(showSwipeHint || isLoadingMoreFacts) && (
         <div className="pointer-events-none fixed inset-x-0 bottom-6 z-30 flex justify-center px-5">
           <div className="grumm-scroll-float flex items-center gap-3 rounded-full border border-white/10 bg-black/25 px-4 py-3 text-sm text-white/65 backdrop-blur-xl">
             <span className="h-7 w-[1px] overflow-hidden rounded-full bg-white/25">
@@ -1222,9 +1241,7 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
             </span>
             {isLoadingMoreFacts
               ? "Chargement..."
-              : hasMoreFacts || activeFactIndex < facts.length - 1
-                ? "Swiper pour continuer"
-                : "Fin du flux pour cette session"}
+              : "Swiper pour continuer"}
           </div>
         </div>
       )}

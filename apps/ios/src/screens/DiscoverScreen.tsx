@@ -85,6 +85,7 @@ export function DiscoverScreen({ initialFact, onRequireAuth }: DiscoverScreenPro
     try {
       const nextFacts = await getFeedFacts({
         excludeIds: initialFact ? [initialFact.id] : [],
+        learningGoal: profile?.learningGoal,
         limit: mobileConfig.feedBatchSize,
       });
       const mergedFacts = initialFact
@@ -101,7 +102,7 @@ export function DiscoverScreen({ initialFact, onRequireAuth }: DiscoverScreenPro
     } finally {
       setIsLoading(false);
     }
-  }, [initialFact, mergeActions]);
+  }, [initialFact, mergeActions, profile?.learningGoal]);
 
   const loadMore = useCallback(async () => {
     if (isLoadingMore || facts.length === 0) {
@@ -113,18 +114,28 @@ export function DiscoverScreen({ initialFact, onRequireAuth }: DiscoverScreenPro
     try {
       const nextFacts = await getFeedFacts({
         excludeIds: facts.map((fact) => fact.id),
+        learningGoal: profile?.learningGoal,
         limit: mobileConfig.feedBatchSize,
       });
-      const uniqueFacts = nextFacts.filter((fact) => !facts.some((current) => current.id === fact.id));
-      const standardFactIds = uniqueFacts
+      const recycledFacts =
+        nextFacts.length > 0
+          ? nextFacts
+          : await getFeedFacts({
+              excludeIds: [],
+              learningGoal: profile?.learningGoal,
+              limit: mobileConfig.feedBatchSize,
+            });
+      const uniqueFacts = recycledFacts.filter((fact) => !facts.some((current) => current.id === fact.id));
+      const factsToAppend = uniqueFacts.length > 0 ? uniqueFacts : recycledFacts;
+      const standardFactIds = factsToAppend
         .filter((fact) => !isCommercialCollaborationFact(fact))
         .map((fact) => fact.id);
-      setFacts((current) => [...current, ...uniqueFacts]);
+      setFacts((current) => [...current, ...factsToAppend]);
       mergeActions(await getFactActions(standardFactIds));
     } finally {
       setIsLoadingMore(false);
     }
-  }, [facts, isLoadingMore, mergeActions]);
+  }, [facts, isLoadingMore, mergeActions, profile?.learningGoal]);
 
   useEffect(() => {
     const frame = requestAnimationFrame(() => {
@@ -310,7 +321,7 @@ export function DiscoverScreen({ initialFact, onRequireAuth }: DiscoverScreenPro
       <FlatList
         data={facts}
         decelerationRate="fast"
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item, index) => `${item.id}:${index}`}
         onEndReached={loadMore}
         onEndReachedThreshold={0.55}
         onViewableItemsChanged={onViewableItemsChanged}

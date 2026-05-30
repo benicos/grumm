@@ -137,6 +137,27 @@ type RawDailyProgressRow = {
 const FACT_SELECT =
   "id,slug,title,hook,content,difficulty_level,long_content,source,source_url,tone,accent_color,categories(id,name,slug,tone,accent_color)";
 
+function isMissingSourceLabel(value: string) {
+  const normalized = value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+
+  return (
+    normalized === "source non renseignee" ||
+    normalized === "source: source non renseignee" ||
+    normalized === "source : source non renseignee"
+  );
+}
+
+export function cleanFactSource(value?: string | null) {
+  const text = value?.trim();
+
+  return text && !isMissingSourceLabel(text) ? text : null;
+}
+
 function cleanOptionalText(value?: string | null) {
   const text = value?.trim();
 
@@ -162,7 +183,7 @@ function mapFact(fact: FactRow): FeedFact {
     detail: fact.content,
     difficultyLevel: normalizeDifficultyLevel(fact.difficulty_level),
     longContent: fact.long_content?.trim() || null,
-    source: cleanOptionalText(fact.source),
+    source: cleanFactSource(fact.source),
     sourceUrl: cleanOptionalText(fact.source_url),
     tone:
       fact.tone ??
@@ -185,7 +206,7 @@ function mapFeedRpcFact(fact: FeedRpcRow): FeedFact {
       fact.difficulty_level ?? DEFAULT_DIFFICULTY_LEVEL,
     ),
     longContent: fact.long_content?.trim() || null,
-    source: cleanOptionalText(fact.source),
+    source: cleanFactSource(fact.source),
     sourceUrl: cleanOptionalText(fact.source_url),
     tone:
       fact.tone ??

@@ -14,6 +14,7 @@ import {
 } from "@/lib/analytics/web";
 import {
   DEFAULT_DAILY_GOAL,
+  cleanFactSource,
   getFactBySlug,
   getUserFactActions,
   likeFact,
@@ -392,7 +393,7 @@ export default function FactDetailPage() {
             </Link>
           </div>
 
-          {fact.source?.trim() ? (
+          {cleanFactSource(fact.source) ? (
             <div className="mt-10">
               <FactSource
                 accent={fact.accent}

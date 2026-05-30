@@ -75,6 +75,7 @@ export type SessionProfile = {
   dailyGoal: number;
   email: string | null;
   id: string;
+  learningGoal: "basics" | "strengthen" | "advanced";
   role: string;
   username: string | null;
 };

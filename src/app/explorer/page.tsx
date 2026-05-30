@@ -358,15 +358,18 @@ export default function ExplorerPage() {
             ) : (
               <div className="space-y-10">
                 <div>
-                  <div className="mb-4 flex items-center justify-between gap-4">
-                    <p className="text-xs font-bold uppercase tracking-[0.22em] text-[#ffd166]">
-                      Quelques pistes
-                    </p>
-                    <Link
-                      href="/discover/theme"
-                      className="text-sm font-bold text-[#f4ead5] transition hover:text-white"
-                    >
-                      Tous les thèmes
+                  
+                  <div className="mb-6 flex items-end justify-between gap-6">
+                    <div>
+                      <p className="text-xs font-bold uppercase tracking-[0.22em] text-[#ffd166]">
+                        Quelques pistes
+                      </p>
+                      <h2 className="mt-2 text-3xl font-extrabold tracking-[-0.04em]">
+                        Thèmes populaires.
+                      </h2>
+                    </div>
+                    <Link href="/discover" className="text-sm font-bold text-[#ffd166]">
+                      &gt; Tous les thèmes
                     </Link>
                   </div>
                   {visibleThemes.length > 0 ? (
@@ -398,7 +401,7 @@ export default function ExplorerPage() {
                       </h2>
                     </div>
                     <Link href="/discover" className="text-sm font-bold text-[#ffd166]">
-                      Ouvrir le flux
+                      &gt; Ouvrir le flux
                     </Link>
                   </div>
 

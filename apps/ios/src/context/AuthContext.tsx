@@ -5,6 +5,7 @@ import { AppState } from "react-native";
 import { mobileConfig, userMessages } from "../config/app";
 import type { SessionProfile } from "../types/domain";
 import { trackMobileAnalyticsEvent } from "../lib/analytics";
+import { DEFAULT_LEARNING_GOAL, normalizeLearningGoal, type LearningGoal } from "../lib/learning";
 import { getUsernameValidationMessage, normalizeUsername } from "../lib/slug";
 import { clearSupabaseAuthStorage, getSupabaseClient, withSupabaseTimeout } from "../lib/supabase";
 
@@ -16,7 +17,7 @@ type AuthContextValue = {
   session: Session | null;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
-  signUp: (email: string, password: string, username: string) => Promise<void>;
+  signUp: (email: string, password: string, username: string, learningGoal: LearningGoal) => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -69,7 +70,7 @@ async function resolveProfile(session: Session | null): Promise<SessionProfile |
   const { data, error } = await withSupabaseTimeout(
     supabase
       .from("profiles")
-      .select("username,daily_goal,role,created_at")
+      .select("username,daily_goal,learning_goal,role,created_at")
       .eq("id", session.user.id)
       .maybeSingle(),
   );
@@ -83,6 +84,7 @@ async function resolveProfile(session: Session | null): Promise<SessionProfile |
     dailyGoal: data?.daily_goal ?? mobileConfig.dailyGoal,
     email: session.user.email ?? null,
     id: session.user.id,
+    learningGoal: normalizeLearningGoal(data?.learning_goal),
     role: data?.role ?? "membre",
     username: data?.username ?? null,
   };
@@ -237,7 +239,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isLoading,
       profile,
       refreshProfile: async () => {
-        setProfile(await resolveProfile(session));
+        try {
+          setProfile(await resolveProfile(session));
+        } catch (nextError) {
+          if (isInvalidRefreshTokenError(nextError)) {
+            await recoverFromInvalidSession();
+            setSession(null);
+            setProfile(null);
+            setError(null);
+            return;
+          }
+
+          throw nextError;
+        }
       },
       session,
       signIn: async (email, password) => {
@@ -250,6 +264,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         );
 
         if (signInError) {
+          if (isInvalidRefreshTokenError(signInError)) {
+            await recoverFromInvalidSession();
+            setSession(null);
+            setProfile(null);
+          }
+
           throw new Error(getAuthErrorMessage(signInError) ?? "Reconnecte-toi pour continuer.");
         }
 
@@ -264,9 +284,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setSession(null);
         setProfile(null);
       },
-      signUp: async (email, password, usernameInput) => {
+      signUp: async (email, password, usernameInput, learningGoalInput) => {
         const supabase = getSupabaseClient();
         const username = normalizeUsername(usernameInput);
+        const learningGoal = normalizeLearningGoal(learningGoalInput ?? DEFAULT_LEARNING_GOAL);
         const usernameMessage = getUsernameValidationMessage(username);
 
         if (usernameMessage) {
@@ -293,6 +314,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             password,
             options: {
               data: {
+                learning_goal: learningGoal,
                 username,
               },
             },
@@ -307,7 +329,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const { error: profileError } = await withSupabaseTimeout(
             supabase
               .from("profiles")
-              .upsert({ id: data.user.id, username }, { onConflict: "id" }),
+              .upsert({ id: data.user.id, learning_goal: learningGoal, username }, { onConflict: "id" }),
           );
 
           if (profileError) {

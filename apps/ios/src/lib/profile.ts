@@ -1,8 +1,9 @@
 import { mobileConfig } from "../config/app";
+import { normalizeLearningGoal, type LearningGoal } from "./learning";
 import { getUsernameValidationMessage, normalizeUsername } from "./slug";
 import { getSupabaseClient } from "./supabase";
 
-export type ProfileField = "dailyGoal" | "email" | "global" | "password" | "username";
+export type ProfileField = "dailyGoal" | "email" | "global" | "learningGoal" | "password" | "username";
 
 export type ProfileMutationResult =
   | { ok: true; message: string }
@@ -30,9 +31,11 @@ function humanUpdateError(field: ProfileField, message: string): ProfileMutation
 
 export async function updateProfileSettings({
   dailyGoal,
+  learningGoal,
   username,
 }: {
   dailyGoal: number;
+  learningGoal: LearningGoal;
   username: string;
 }): Promise<ProfileMutationResult> {
   const auth = await getAuthenticatedClient();
@@ -42,6 +45,7 @@ export async function updateProfileSettings({
   }
 
   const normalizedUsername = normalizeUsername(username);
+  const normalizedLearningGoal = normalizeLearningGoal(learningGoal);
   const usernameMessage = getUsernameValidationMessage(normalizedUsername);
 
   if (usernameMessage) {
@@ -87,6 +91,7 @@ export async function updateProfileSettings({
     .from("profiles")
     .update({
       daily_goal: dailyGoal,
+      learning_goal: normalizedLearningGoal,
       username: normalizedUsername,
     })
     .eq("id", auth.user.id);
@@ -98,6 +103,7 @@ export async function updateProfileSettings({
   await auth.supabase.auth.updateUser({
     data: {
       username: normalizedUsername,
+      learning_goal: normalizedLearningGoal,
     },
   });
 
