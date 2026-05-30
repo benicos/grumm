@@ -15,6 +15,7 @@ import {
   type LearningGoal,
   learningGoalOptions,
 } from "@/lib/learning";
+import { isPasswordValid, passwordValidationMessage } from "@/lib/password";
 import RequireAuth from "../../auth/RequireAuth";
 import { useAuth } from "../../auth/AuthProvider";
 import { AppState } from "../../components/AppState";
@@ -69,7 +70,9 @@ function SettingsForms({
     profile.learningGoal,
   );
   const [email, setEmail] = useState(profile.email ?? "");
+  const [currentPassword, setCurrentPassword] = useState("");
   const [password, setPassword] = useState("");
+  const [passwordConfirmation, setPasswordConfirmation] = useState("");
   const [errors, setErrors] = useState<FieldErrors>({});
   const [message, setMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState<string | null>(null);
@@ -115,11 +118,36 @@ function SettingsForms({
 
   async function submitPassword(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    setErrors({});
+
+    if (!currentPassword) {
+      setErrors({ currentPassword: "Entre ton mot de passe actuel." });
+      return;
+    }
+
+    if (!isPasswordValid(password)) {
+      setErrors({ password: passwordValidationMessage });
+      return;
+    }
+
+    if (password !== passwordConfirmation) {
+      setErrors({
+        passwordConfirmation:
+          "Les deux nouveaux mots de passe ne correspondent pas.",
+      });
+      return;
+    }
+
     setIsSubmitting("password");
-    const result = await updateProfilePassword(password);
+    const result = await updateProfilePassword({
+      currentPassword,
+      newPassword: password,
+    });
     await handleResult(result);
     if (result.ok) {
+      setCurrentPassword("");
       setPassword("");
+      setPasswordConfirmation("");
     }
     setIsSubmitting(null);
   }
@@ -256,11 +284,27 @@ function SettingsForms({
         <form onSubmit={submitPassword} className="mt-5">
           <label className="block">
             <span className="text-sm font-semibold text-white/72">
+              Mot de passe actuel
+            </span>
+            <input
+              value={currentPassword}
+              onChange={(event) => setCurrentPassword(event.target.value)}
+              autoComplete="current-password"
+              className="mt-2 w-full rounded-md border border-white/10 bg-black/20 px-4 py-3 text-white outline-none transition placeholder:text-white/35 focus:border-[#ffd166]"
+              placeholder="Mot de passe actuel"
+              type="password"
+            />
+            <FieldError message={errors.currentPassword} />
+          </label>
+
+          <label className="mt-4 block">
+            <span className="text-sm font-semibold text-white/72">
               Nouveau mot de passe
             </span>
             <input
               value={password}
               onChange={(event) => setPassword(event.target.value)}
+              autoComplete="new-password"
               className="mt-2 w-full rounded-md border border-white/10 bg-black/20 px-4 py-3 text-white outline-none transition placeholder:text-white/35 focus:border-[#ffd166]"
               minLength={8}
               placeholder="Mot de passe securise"
@@ -269,9 +313,30 @@ function SettingsForms({
             <PasswordRuleChecklist password={password} />
             <FieldError message={errors.password} />
           </label>
+
+          <label className="mt-4 block">
+            <span className="text-sm font-semibold text-white/72">
+              Confirmer le nouveau mot de passe
+            </span>
+            <input
+              value={passwordConfirmation}
+              onChange={(event) => setPasswordConfirmation(event.target.value)}
+              autoComplete="new-password"
+              className="mt-2 w-full rounded-md border border-white/10 bg-black/20 px-4 py-3 text-white outline-none transition placeholder:text-white/35 focus:border-[#ffd166]"
+              minLength={8}
+              placeholder="Confirmation"
+              type="password"
+            />
+            <FieldError message={errors.passwordConfirmation} />
+          </label>
           <button
             type="submit"
-            disabled={isSubmitting === "password" || password.length === 0}
+            disabled={
+              isSubmitting === "password" ||
+              currentPassword.length === 0 ||
+              password.length === 0 ||
+              passwordConfirmation.length === 0
+            }
             className="mt-3 w-full rounded-md border border-white/10 px-4 py-3 text-sm font-bold text-white/72 transition hover:border-white/20 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
           >
             Changer le mot de passe

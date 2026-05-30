@@ -2,11 +2,12 @@
 
 import { Inter } from "next/font/google";
 import Link from "next/link";
-import { Bookmark, CalendarDays, Eye, Flag, Heart, Layers3, Mail, Pencil, ShieldCheck, Target, Trophy } from "lucide-react";
+import { Bookmark, Brain, CalendarDays, Eye, Flag, Heart, Layers3, Mail, Pencil, ShieldCheck, Target, Trophy } from "lucide-react";
 import { useEffect, useState } from "react";
 import { trackAnalyticsEvent } from "@/lib/analytics/web";
 import { getBadgeInfo } from "@/lib/badges";
 import { getLearningGoalLabel } from "@/lib/learning";
+import { MIN_MEMORY_FACTS } from "@/lib/memoryChallenge";
 import { getUserProfileSummary } from "@/lib/profile";
 import type { UserProfileSummary } from "@/lib/profile";
 import { getRoleLabel } from "@/lib/roles";
@@ -179,6 +180,79 @@ function ThemeInsightsPanel({ profile }: { profile: UserProfileSummary }) {
           Consulte quelques faits pour faire apparaître tes thèmes favoris.
         </div>
       )}
+    </section>
+  );
+}
+
+function MemoryChallengePanel({ profile }: { profile: UserProfileSummary }) {
+  const stats = profile.memoryStats;
+  const isUnlocked = stats.revisableFacts >= MIN_MEMORY_FACTS;
+  const lastScore =
+    stats.lastScore !== null && stats.lastTotal !== null
+      ? `${stats.lastScore}/${stats.lastTotal}`
+      : "—";
+  const average =
+    stats.averageScorePercent !== null ? `${stats.averageScorePercent}%` : "—";
+
+  return (
+    <section className="mt-6 overflow-hidden rounded-[30px] border border-white/10 bg-[radial-gradient(circle_at_82%_18%,rgba(106,227,192,0.14),transparent_28%),linear-gradient(145deg,rgba(255,255,255,0.078),rgba(255,255,255,0.028))] p-5 shadow-[0_30px_100px_rgba(0,0,0,0.26)] backdrop-blur-xl sm:p-6">
+      <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+        <div className="max-w-2xl">
+          <p className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-[0.22em] text-[#6ae3c0]">
+            <Brain className="h-4 w-4" aria-hidden="true" />
+            Défi mémoire
+          </p>
+          <h2 className="mt-3 text-3xl font-black tracking-[-0.055em] text-white sm:text-4xl">
+            Révise ce que tu as déjà lu.
+          </h2>
+          <p className="mt-3 text-sm font-semibold leading-7 text-white/62">
+            Une courte session de 3 à 5 questions, uniquement à partir des
+            faits que tu as déjà découverts.
+          </p>
+        </div>
+
+        <div className="grid min-w-[260px] gap-2 text-sm">
+          <div className="flex items-center justify-between rounded-[16px] border border-white/10 bg-black/16 px-4 py-3">
+            <span className="font-semibold text-white/50">Faits révisables</span>
+            <span className="font-black text-white">{stats.revisableFacts}</span>
+          </div>
+          <div className="flex items-center justify-between rounded-[16px] border border-white/10 bg-black/16 px-4 py-3">
+            <span className="font-semibold text-white/50">Dernier score</span>
+            <span className="font-black text-white">{lastScore}</span>
+          </div>
+          <div className="flex items-center justify-between rounded-[16px] border border-white/10 bg-black/16 px-4 py-3">
+            <span className="font-semibold text-white/50">Moyenne</span>
+            <span className="font-black text-white">{average}</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        {isUnlocked ? (
+          <p className="text-sm font-semibold text-white/56">
+            {stats.challengesCompleted > 0
+              ? `${stats.challengesCompleted} défi${
+                  stats.challengesCompleted > 1 ? "s" : ""
+                } terminé${stats.challengesCompleted > 1 ? "s" : ""}.`
+              : "Ton premier défi est prêt."}
+          </p>
+        ) : (
+          <p className="text-sm font-semibold text-white/56">
+            Lis encore quelques faits pour débloquer ton premier défi mémoire.
+          </p>
+        )}
+
+        <Link
+          href={isUnlocked ? "/profile/memory-challenge" : "/discover"}
+          className={
+            isUnlocked
+              ? `${premiumPrimaryCtaClassName} justify-center`
+              : "inline-flex justify-center rounded-full border border-white/12 px-5 py-3 text-sm font-black text-white/70 transition hover:border-white/24 hover:text-white"
+          }
+        >
+          {isUnlocked ? "Lancer le défi" : "Lire quelques faits"}
+        </Link>
+      </div>
     </section>
   );
 }
@@ -483,6 +557,7 @@ function ProfileContent() {
             </section>
 
             <ProgressPanel profile={profile} />
+            <MemoryChallengePanel profile={profile} />
             <ThemeInsightsPanel profile={profile} />
 
             <div className="mt-6 grid gap-6 lg:grid-cols-2">

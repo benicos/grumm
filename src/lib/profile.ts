@@ -7,11 +7,16 @@ import {
 } from "@/lib/commercial";
 import { formatAppError, getConfiguredErrorMessage } from "@/lib/errors";
 import { cleanFactSource, FeedError, type FeedFact } from "@/lib/facts";
+import { logSupabaseError } from "@/lib/logger";
 import {
   type LearningGoal,
   normalizeDifficultyLevel,
   normalizeLearningGoal,
 } from "@/lib/learning";
+import {
+  getMemoryChallengeStats,
+  type MemoryStats,
+} from "@/lib/memoryChallenge";
 import { isPasswordValid, passwordValidationMessage } from "@/lib/password";
 import type { UserRole } from "@/lib/roles";
 import {
@@ -99,12 +104,15 @@ export type UserProfileSummary = {
   likedFacts: FeedFact[];
   savedFacts: FeedFact[];
   topThemes: ThemeViewStat[];
+  memoryStats: MemoryStats;
 };
 
 export type ProfileField =
   | "username"
   | "email"
   | "password"
+  | "currentPassword"
+  | "passwordConfirmation"
   | "dailyGoal"
   | "learningGoal"
   | "global";
@@ -314,6 +322,19 @@ export async function getUserProfileSummary(): Promise<UserProfileSummary> {
       }));
   const today = todayKey();
   const todayRow = dailyRows.find((row) => row.progress_date === today);
+  let memoryStats: MemoryStats = {
+    averageScorePercent: null,
+    challengesCompleted: 0,
+    lastScore: null,
+    lastTotal: null,
+    revisableFacts: uniqueViews.size,
+  };
+
+  try {
+    memoryStats = await getMemoryChallengeStats();
+  } catch {
+    // Memory stats are secondary; the profile should remain available.
+  }
 
   return {
     username:
@@ -335,6 +356,7 @@ export async function getUserProfileSummary(): Promise<UserProfileSummary> {
     likedFacts,
     savedFacts,
     topThemes,
+    memoryStats,
   };
 }
 
@@ -524,16 +546,53 @@ export async function updateProfileEmail(
   };
 }
 
-export async function updateProfilePassword(
-  password: string,
-): Promise<ProfileMutationResult> {
+function getPasswordAuthErrorMessage(message: string) {
+  const normalized = message.toLowerCase();
+
+  if (
+    normalized.includes("invalid login credentials") ||
+    normalized.includes("invalid credentials")
+  ) {
+    return "Le mot de passe actuel est incorrect.";
+  }
+
+  if (normalized.includes("rate limit")) {
+    return "Trop de tentatives. Attends un moment avant de réessayer.";
+  }
+
+  return "Nous n'avons pas pu vérifier le mot de passe actuel.";
+}
+
+export async function updateProfilePassword({
+  currentPassword,
+  newPassword,
+}: {
+  currentPassword: string;
+  newPassword: string;
+}): Promise<ProfileMutationResult> {
   const auth = await getAuthenticatedProfileClient();
 
   if (!auth.ok) {
     return { ok: false, field: "global", message: auth.message };
   }
 
-  if (!isPasswordValid(password)) {
+  if (!currentPassword) {
+    return {
+      ok: false,
+      field: "currentPassword",
+      message: "Entre ton mot de passe actuel.",
+    };
+  }
+
+  if (!auth.user.email) {
+    return {
+      ok: false,
+      field: "global",
+      message: "Nous n'avons pas pu vérifier ton compte pour le moment.",
+    };
+  }
+
+  if (!isPasswordValid(newPassword)) {
     return {
       ok: false,
       field: "password",
@@ -541,21 +600,36 @@ export async function updateProfilePassword(
     };
   }
 
+  const { error: verifyError } = await auth.supabase.auth.signInWithPassword({
+    email: auth.user.email,
+    password: currentPassword,
+  });
+
+  if (verifyError) {
+    logSupabaseError(verifyError, {
+      operation: "verify current password before profile password update",
+      route: typeof window !== "undefined" ? window.location.pathname : undefined,
+    });
+    return {
+      ok: false,
+      field: "currentPassword",
+      message: getPasswordAuthErrorMessage(verifyError.message),
+    };
+  }
+
   const { error } = await auth.supabase.auth.updateUser({
-    password,
+    password: newPassword,
   });
 
   if (error) {
+    logSupabaseError(error, {
+      operation: "update auth password from profile",
+      route: typeof window !== "undefined" ? window.location.pathname : undefined,
+    });
     return {
       ok: false,
       field: "password",
-      message: formatAppError(error, {
-        context: {
-          operation: "update auth password",
-          source: "Supabase Auth",
-        },
-        prodMessage: "Nous n'avons pas pu mettre ton mot de passe à jour.",
-      }),
+      message: "Nous n'avons pas pu mettre ton mot de passe à jour.",
     };
   }
 

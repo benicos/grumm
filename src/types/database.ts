@@ -427,6 +427,84 @@ export type Database = {
         };
         Relationships: [];
       };
+      quiz_sessions: {
+        Row: {
+          id: string;
+          user_id: string;
+          started_at: string;
+          completed_at: string | null;
+          score: number;
+          total_questions: number;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          started_at?: string;
+          completed_at?: string | null;
+          score?: number;
+          total_questions?: number;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          started_at?: string;
+          completed_at?: string | null;
+          score?: number;
+          total_questions?: number;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      quiz_answers: {
+        Row: {
+          id: string;
+          session_id: string;
+          user_id: string;
+          fact_id: string;
+          selected_answer: string;
+          correct_answer: string;
+          is_correct: boolean;
+          answered_at: string;
+        };
+        Insert: {
+          id?: string;
+          session_id: string;
+          user_id: string;
+          fact_id: string;
+          selected_answer: string;
+          correct_answer: string;
+          is_correct?: boolean;
+          answered_at?: string;
+        };
+        Update: {
+          id?: string;
+          session_id?: string;
+          user_id?: string;
+          fact_id?: string;
+          selected_answer?: string;
+          correct_answer?: string;
+          is_correct?: boolean;
+          answered_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "quiz_answers_session_id_fkey";
+            columns: ["session_id"];
+            isOneToOne: false;
+            referencedRelation: "quiz_sessions";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "quiz_answers_fact_id_fkey";
+            columns: ["fact_id"];
+            isOneToOne: false;
+            referencedRelation: "facts";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       roles: {
         Row: {
           slug: string;
