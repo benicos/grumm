@@ -20,6 +20,26 @@ export function isSupabaseConfigured() {
   );
 }
 
+export function isInvalidRefreshTokenError(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error ?? "");
+  const normalized = message.toLowerCase();
+
+  return (
+    normalized.includes("invalid refresh token") ||
+    normalized.includes("refresh token not found")
+  );
+}
+
+export function clearSupabaseAuthStorage() {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  Object.keys(window.localStorage)
+    .filter((key) => key.startsWith("sb-") && key.includes("auth-token"))
+    .forEach((key) => window.localStorage.removeItem(key));
+}
+
 export function createSupabaseBrowserClient() {
   if (typeof window === "undefined") {
     return null;

@@ -17,10 +17,10 @@ export default function ContactPage() {
         <p className="mt-3">
           Pour une question générale ou une demande liée à ton compte, écris à{" "}
           <a
-            href="mailto:contact@grumm.app"
+            href="mailto:contact@grumm.fr"
             className="font-bold text-[#ffd166] underline decoration-white/0 underline-offset-4 transition hover:decoration-[#ffd166]/70"
           >
-            contact@grumm.app
+            contact@grumm.fr
           </a>
           .
         </p>

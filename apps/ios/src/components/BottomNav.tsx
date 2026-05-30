@@ -4,9 +4,18 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { colors } from "../theme/colors";
-import { GrummLogo } from "./GrummLogo";
 
 export type MobileTab = "discover" | "explore" | "saved" | "profile";
+
+export type NavVariant =
+  | "minimal-premium"
+  | "tiktok-like"
+  | "glass-compact"
+  | "text-first"
+  | "gradient-indicator";
+
+// Change this constant to test another navbar variant locally.
+const NAV_VARIANT: NavVariant = "gradient-indicator";
 
 const tabs: { key: MobileTab; label: string; Icon: LucideIcon }[] = [
   { key: "discover", label: "Découvrir", Icon: Sparkles },
@@ -18,27 +27,41 @@ const tabs: { key: MobileTab; label: string; Icon: LucideIcon }[] = [
 type BottomNavProps = {
   activeTab: MobileTab;
   onChange: (tab: MobileTab) => void;
+  variant?: NavVariant;
 };
 
-export function BottomNav({ activeTab, onChange }: BottomNavProps) {
+export function BottomNav({ activeTab, onChange, variant = NAV_VARIANT }: BottomNavProps) {
+  const orderedTabs = variant === "tiktok-like"
+    ? [tabs[1], tabs[0], tabs[2], tabs[3]]
+    : tabs;
+  const wrapContent = (
+    <View style={[styles.wrap, styles[`${variant}Wrap`]]}>
+      {orderedTabs.map((tab) => (
+        <NavItem
+          active={activeTab === tab.key}
+          key={tab.key}
+          onPress={() => onChange(tab.key)}
+          tab={tab}
+          variant={variant}
+        />
+      ))}
+    </View>
+  );
+
   return (
-    <SafeAreaView edges={["bottom"]} style={styles.safeArea}>
-      <View style={styles.wrap}>
-        {tabs.slice(0, 2).map((tab) => (
-          <NavItem active={activeTab === tab.key} key={tab.key} tab={tab} onPress={() => onChange(tab.key)} />
-        ))}
-
-        <View pointerEvents="none" style={styles.logoSlot}>
-          <View style={styles.logoHalo} />
-          <LinearGradient colors={["rgba(244,234,213,0.16)", "rgba(255,255,255,0.04)"]} style={styles.logoPedestal}>
-            <GrummLogo size={40} />
-          </LinearGradient>
-        </View>
-
-        {tabs.slice(2).map((tab) => (
-          <NavItem active={activeTab === tab.key} key={tab.key} tab={tab} onPress={() => onChange(tab.key)} />
-        ))}
-      </View>
+    <SafeAreaView edges={["bottom"]} style={[styles.safeArea, styles[`${variant}SafeArea`]]}>
+      {variant === "glass-compact" ? (
+        <LinearGradient
+          colors={["rgba(255,255,255,0.08)", "rgba(255,255,255,0.035)"]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.glassShell}
+        >
+          {wrapContent}
+        </LinearGradient>
+      ) : (
+        wrapContent
+      )}
     </SafeAreaView>
   );
 }
@@ -47,99 +70,228 @@ function NavItem({
   active,
   onPress,
   tab,
+  variant,
 }: {
   active: boolean;
   onPress: () => void;
   tab: { key: MobileTab; label: string; Icon: LucideIcon };
+  variant: NavVariant;
 }) {
   const Icon = tab.Icon;
+  const isTikTokDiscover = variant === "tiktok-like" && tab.key === "discover";
+  const isTextFirst = variant === "text-first";
+  const isGradientIndicator = variant === "gradient-indicator";
+  const isMinimalPremium = variant === "minimal-premium";
+  const muted = "rgba(241,245,249,0.48)";
 
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityState={{ selected: active }}
       onPress={onPress}
-      style={({ pressed }) => [styles.item, active && styles.itemActive, pressed && styles.pressed]}
+      style={({ pressed }) => [
+        styles.item,
+        styles[`${variant}Item`],
+        active && styles[`${variant}ItemActive`],
+        isTikTokDiscover && styles.tiktokDiscover,
+        pressed && styles.pressed,
+      ]}
     >
-      {active ? <View style={styles.activeGlow} /> : null}
-      <Icon color={active ? colors.text : "rgba(241,245,249,0.44)"} size={21} strokeWidth={active ? 2.55 : 2.1} />
-      <Text numberOfLines={1} style={[styles.label, active && styles.labelActive]}>
+      {active && (isMinimalPremium || variant === "glass-compact") ? <View style={styles.dotIndicator} /> : null}
+      {!isTextFirst ? (
+        <Icon
+          color={active ? colors.text : muted}
+          size={isTikTokDiscover ? 24 : 21}
+          strokeWidth={active ? 2.55 : 2.05}
+        />
+      ) : (
+        <Icon color={active ? colors.text : "rgba(241,245,249,0.34)"} size={15} strokeWidth={1.9} />
+      )}
+      <Text
+        numberOfLines={1}
+        style={[
+          styles.label,
+          styles[`${variant}Label`],
+          active && styles[`${variant}LabelActive`],
+        ]}
+      >
         {tab.label}
       </Text>
+      {active && isGradientIndicator ? (
+        <LinearGradient
+          colors={["#ffd166", "#6ae3c0"]}
+          start={{ x: 0, y: 0.5 }}
+          end={{ x: 1, y: 0.5 }}
+          style={styles.gradientIndicator}
+        />
+      ) : null}
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  item: {
-    alignItems: "center",
-    flex: 1,
-    gap: 4,
-    justifyContent: "center",
-    minHeight: 54,
-    paddingHorizontal: 2,
-  },
-  itemActive: {
-    shadowColor: colors.accent,
-    shadowOffset: { height: 6, width: 0 },
-    shadowOpacity: 0.12,
-    shadowRadius: 12,
-  },
-  activeGlow: {
-    backgroundColor: colors.text,
-    borderRadius: 999,
-    height: 2,
-    position: "absolute",
-    top: 3,
-    width: 18,
-  },
-  label: {
-    color: "rgba(241,245,249,0.46)",
-    fontSize: 11,
-    fontWeight: "800",
-    letterSpacing: 0,
-  },
-  labelActive: {
-    color: colors.text,
-  },
-  logoSlot: {
-    alignItems: "center",
-    justifyContent: "center",
-    width: 58,
-  },
-  logoHalo: {
-    backgroundColor: "rgba(244,234,213,0.08)",
-    borderRadius: 999,
-    height: 54,
-    position: "absolute",
-    shadowColor: "#f4ead5",
-    shadowOffset: { height: 6, width: 0 },
-    shadowOpacity: 0.14,
-    shadowRadius: 16,
-    width: 54,
-  },
-  logoPedestal: {
-    alignItems: "center",
-    borderRadius: 17,
-    height: 46,
-    justifyContent: "center",
-    overflow: "hidden",
-    width: 46,
-  },
-  pressed: {
-    opacity: 0.72,
-    transform: [{ scale: 0.96 }],
-  },
   safeArea: {
     backgroundColor: colors.background,
   },
   wrap: {
     alignItems: "center",
-    backgroundColor: "rgba(5,8,18,0.94)",
     flexDirection: "row",
-    gap: 2,
+    justifyContent: "space-between",
     overflow: "visible",
+  },
+  item: {
+    alignItems: "center",
+    flex: 1,
+    gap: 4,
+    justifyContent: "center",
+    minHeight: 52,
+    paddingHorizontal: 2,
+  },
+  label: {
+    color: "rgba(241,245,249,0.48)",
+    fontSize: 11,
+    fontWeight: "800",
+    letterSpacing: 0,
+  },
+  pressed: {
+    opacity: 0.74,
+    transform: [{ scale: 0.96 }],
+  },
+  dotIndicator: {
+    backgroundColor: colors.text,
+    borderRadius: 999,
+    height: 3,
+    position: "absolute",
+    top: 4,
+    width: 3,
+  },
+  gradientIndicator: {
+    borderRadius: 999,
+    bottom: 3,
+    height: 2,
+    position: "absolute",
+    width: 26,
+  },
+  glassShell: {
+    borderColor: "rgba(255,255,255,0.10)",
+    borderRadius: 22,
+    borderWidth: 1,
+    marginBottom: 5,
+    marginHorizontal: 10,
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { height: 10, width: 0 },
+    shadowOpacity: 0.16,
+    shadowRadius: 20,
+  },
+
+  "minimal-premiumSafeArea": {
+    backgroundColor: "rgba(5,8,18,0.96)",
+  },
+  "minimal-premiumWrap": {
+    backgroundColor: "rgba(5,8,18,0.72)",
     paddingHorizontal: 10,
-    paddingTop: 5,
+    paddingTop: 4,
+  },
+  "minimal-premiumItem": {
+    minHeight: 52,
+  },
+  "minimal-premiumItemActive": {
+    shadowColor: colors.text,
+    shadowOffset: { height: 4, width: 0 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+  },
+  "minimal-premiumLabel": {},
+  "minimal-premiumLabelActive": {
+    color: colors.text,
+  },
+
+  "tiktok-likeSafeArea": {
+    backgroundColor: colors.background,
+  },
+  "tiktok-likeWrap": {
+    backgroundColor: "rgba(5,8,18,0.98)",
+    paddingHorizontal: 12,
+    paddingTop: 3,
+  },
+  "tiktok-likeItem": {
+    minHeight: 50,
+  },
+  "tiktok-likeItemActive": {},
+  "tiktok-likeLabel": {
+    fontSize: 10.5,
+  },
+  "tiktok-likeLabelActive": {
+    color: colors.text,
+  },
+  tiktokDiscover: {
+    minHeight: 58,
+    transform: [{ translateY: -3 }],
+  },
+
+  "glass-compactSafeArea": {
+    backgroundColor: colors.background,
+  },
+  "glass-compactWrap": {
+    backgroundColor: "transparent",
+    paddingHorizontal: 8,
+    paddingTop: 4,
+  },
+  "glass-compactItem": {
+    minHeight: 48,
+  },
+  "glass-compactItemActive": {
+    shadowColor: "#f4ead5",
+    shadowOffset: { height: 4, width: 0 },
+    shadowOpacity: 0.10,
+    shadowRadius: 10,
+  },
+  "glass-compactLabel": {
+    fontSize: 10.5,
+  },
+  "glass-compactLabelActive": {
+    color: colors.text,
+  },
+
+  "text-firstSafeArea": {
+    backgroundColor: "rgba(5,8,18,0.98)",
+  },
+  "text-firstWrap": {
+    backgroundColor: "transparent",
+    paddingHorizontal: 14,
+    paddingTop: 4,
+  },
+  "text-firstItem": {
+    gap: 2,
+    minHeight: 50,
+  },
+  "text-firstItemActive": {},
+  "text-firstLabel": {
+    fontSize: 12,
+    fontWeight: "900",
+  },
+  "text-firstLabelActive": {
+    color: colors.text,
+  },
+
+  "gradient-indicatorSafeArea": {
+    backgroundColor: "rgba(5,8,18,0.98)",
+  },
+  "gradient-indicatorWrap": {
+    backgroundColor: "transparent",
+    paddingHorizontal: 12,
+    paddingTop: 4,
+  },
+  "gradient-indicatorItem": {
+    minHeight: 52,
+    paddingBottom: 3,
+  },
+  "gradient-indicatorItemActive": {},
+  "gradient-indicatorLabel": {
+    fontSize: 11,
+  },
+  "gradient-indicatorLabelActive": {
+    color: colors.text,
   },
 });

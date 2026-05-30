@@ -902,7 +902,7 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
                     </span>
                   ) : (
                     <Link
-                      href={`/discover/theme/${fact.categorySlug}`}
+                      href={`/theme/${fact.categorySlug}`}
                       onClick={() =>
                         void trackAnalyticsEvent({
                           entityType: "category",

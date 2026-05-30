@@ -307,7 +307,7 @@ export default function FactDetailPage() {
               </span>
             ) : (
               <Link
-                href={`/discover/theme/${fact.categorySlug}`}
+                href={`/theme/${fact.categorySlug}`}
                 className="rounded-full border border-white/15 bg-white/10 px-4 py-2 text-xs font-bold uppercase tracking-[0.22em] text-white/85 backdrop-blur-xl"
               >
                 {fact.category}
@@ -427,7 +427,7 @@ export default function FactDetailPage() {
           <div className="mt-6 grid gap-3">
             {!isSponsored ? (
               <Link
-                href={`/discover/theme/${fact.categorySlug}`}
+                href={`/theme/${fact.categorySlug}`}
                 className={premiumPrimaryCtaClassName}
               >
                 Explorer ce thème

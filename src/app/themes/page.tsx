@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
 
-export default function FactsThemePage() {
+export default function ThemesPage() {
   redirect("/explorer");
 }

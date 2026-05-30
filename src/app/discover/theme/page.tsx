@@ -1,1 +1,5 @@
-export { default } from "../../facts/theme/page";
+import { redirect } from "next/navigation";
+
+export default function DiscoverThemeIndexPage() {
+  redirect("/explorer");
+}

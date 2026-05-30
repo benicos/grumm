@@ -41,6 +41,11 @@ export type CategorySummary = {
   count?: number;
 };
 
+export type ThemeDiscoverySummary = CategorySummary & {
+  description: string;
+  sampleFacts: string[];
+};
+
 export type DailyProgressResult = {
   ok: boolean;
   viewedTodayCount: number;
@@ -112,6 +117,11 @@ type FeedRpcRow = {
 
 type ExplorerThemeRpcRow = FactCategory & {
   published_facts_count: number;
+};
+
+type ThemeSampleRow = {
+  title: string;
+  category_id: string | null;
 };
 
 type SearchFactRpcRow = FeedRpcRow & {
@@ -231,6 +241,31 @@ function mapCategory(category: FactCategory): CategorySummary {
     tone: category.tone,
     accent: category.accent_color,
   };
+}
+
+const themeDescriptionBySlug: Record<string, string> = {
+  art: "Œuvres, gestes et regards qui transforment notre façon de voir le monde.",
+  cinema: "Films, réalisateurs et secrets du septième art qui ont marqué les imaginaires.",
+  histoire: "Événements, personnages et dates qui ont façonné notre civilisation.",
+  litterature: "Livres, auteurs et idées qui traversent les époques.",
+  musique: "Œuvres, artistes et mouvements qui donnent un rythme à leur époque.",
+  nature: "Espèces, phénomènes et équilibres qui révèlent la puissance du vivant.",
+  philosophie: "Concepts, penseurs et questions qui aident à mieux lire le réel.",
+  psychologie: "Biais, comportements et mécanismes qui éclairent nos décisions.",
+  science: "Découvertes, inventions et mystères qui changent notre compréhension du monde.",
+  espace: "Planètes, missions et vertiges cosmiques pour prendre de la hauteur.",
+};
+
+function getThemeDescription(theme: CategorySummary) {
+  const normalizedSlug = theme.slug
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+
+  return (
+    themeDescriptionBySlug[normalizedSlug] ??
+    `${theme.name} comme univers de découverte, entre repères essentiels et faits inattendus.`
+  );
 }
 
 function getSupabaseDataErrorMessage(
@@ -621,6 +656,63 @@ export async function getAllExplorerThemes(limit = 200) {
   };
 }
 
+export async function getThemeDiscoverySummaries(
+  limit = 200,
+): Promise<ThemeDiscoverySummary[]> {
+  const supabase = createSupabaseBrowserClient();
+
+  if (!supabase) {
+    return [];
+  }
+
+  const themes = filterCommercialCollaborationCategories(
+    await getExplorerThemesWithCounts(supabase, "", limit),
+  );
+
+  if (themes.length === 0) {
+    return [];
+  }
+
+  const samplesResult = await supabase
+    .from("facts")
+    .select("title,category_id")
+    .eq("status", "published")
+    .in("category_id", themes.map((theme) => theme.id))
+    .order("published_at", { ascending: false, nullsFirst: false })
+    .order("created_at", { ascending: false })
+    .limit(Math.max(90, themes.length * 4));
+
+  if (samplesResult.error) {
+    throw new FeedError(
+      getSupabaseDataErrorMessage(samplesResult.error, {
+        operation: "read theme discovery samples",
+        table: "facts",
+      }),
+    );
+  }
+
+  const samplesByThemeId = new Map<string, string[]>();
+  ((samplesResult.data ?? []) as ThemeSampleRow[]).forEach((fact) => {
+    if (!fact.category_id || !fact.title?.trim()) {
+      return;
+    }
+
+    const current = samplesByThemeId.get(fact.category_id) ?? [];
+
+    if (current.length >= 3) {
+      return;
+    }
+
+    samplesByThemeId.set(fact.category_id, [...current, fact.title.trim()]);
+  });
+
+  return themes.map((theme) => ({
+    ...theme,
+    description: getThemeDescription(theme),
+    sampleFacts: samplesByThemeId.get(theme.id) ?? [],
+  }));
+}
+
 export async function getFactOfTheDay() {
   const supabase = createSupabaseBrowserClient();
 
@@ -654,6 +746,35 @@ export async function getFactOfTheDay() {
     interactionCount: 0,
     source: fallback.source,
   };
+}
+
+export async function getTodayEventFact() {
+  const supabase = createSupabaseBrowserClient();
+
+  if (!supabase) {
+    return getFactOfTheDay();
+  }
+
+  const today = new Date();
+  const { data, error } = await supabase
+    .from("facts")
+    .select(FACT_SELECT)
+    .eq("status", "published")
+    .eq("event_month", today.getMonth() + 1)
+    .eq("event_day", today.getDate())
+    .order("event_year", { ascending: true, nullsFirst: false })
+    .order("published_at", { ascending: false, nullsFirst: false })
+    .limit(1);
+
+  if (!error && data?.[0]) {
+    return {
+      fact: mapFact(data[0] as FactRow),
+      interactionCount: 0,
+      source: "supabase" as const,
+    };
+  }
+
+  return getFactOfTheDay();
 }
 
 export async function getFactBySlug(slug: string) {

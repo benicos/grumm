@@ -18,7 +18,7 @@ const sections = [
   {
     title: "Responsable du traitement",
     body: [
-      "Le responsable du traitement est l’éditeur du service Grumm. Les demandes relatives aux données personnelles peuvent être envoyées depuis la page Contact du site.",
+      "Le responsable du traitement est l’éditeur du service Grumm. Les demandes relatives aux données personnelles peuvent être envoyées à contact@grumm.fr ou depuis la page Contact du site.",
       "Les informations d’identification administrative ou légale de l’éditeur peuvent être complétées dans les mentions légales si nécessaire.",
     ],
   },
@@ -33,6 +33,7 @@ const sections = [
     title: "Données analytics",
     body: [
       "Grumm utilise un système analytics interne first-party. Il mesure des événements utiles comme l’ouverture du service, les pages vues, les recherches, les lectures de faits, les likes, les sauvegardes, les partages, les clics sur les sources et certaines actions administratives.",
+      "Le site peut aussi utiliser Vercel Analytics pour mesurer des statistiques techniques et agrégées de consultation du site web. Ces mesures servent à comprendre la performance et l’usage général du service, sans tracking publicitaire ni revente de données.",
       "L’identifiant anonyme grumm_anonymous_id est un UUID généré une seule fois et stocké localement. Il ne repose pas sur du fingerprinting et ne permet pas, à lui seul, d’identifier une personne.",
       "Aucune adresse IP n’est stockée en clair dans les tables analytics applicatives.",
     ],
@@ -97,7 +98,7 @@ const sections = [
     title: "Services utilisés",
     body: [
       "Supabase est utilisé pour l’authentification, la base de données, les règles d’accès et la synchronisation des données.",
-      "Vercel peut être utilisé pour l’hébergement et la livraison du site web.",
+      "Vercel peut être utilisé pour l’hébergement, la livraison du site web et Vercel Analytics.",
       "Expo peut être utilisé pour le développement, le test et la distribution technique de l’application mobile.",
     ],
   },
@@ -118,14 +119,14 @@ const sections = [
   {
     title: "Modalités d’exercice des droits",
     body: [
-      "Les demandes s’effectuent depuis la page Contact. Grumm répondra dans les délais prévus par la réglementation applicable, sous réserve des contraintes légales, techniques et de sécurité.",
+      "Les demandes s’effectuent à contact@grumm.fr ou depuis la page Contact. Grumm répondra dans les délais prévus par la réglementation applicable, sous réserve des contraintes légales, techniques et de sécurité.",
       "Lorsqu’une suppression complète est demandée, certaines données peuvent être conservées temporairement si la loi l’exige ou si elles sont nécessaires à la défense de droits en cas de litige.",
     ],
   },
   {
     title: "Contact",
     body: [
-      "Pour toute question relative à la confidentialité, à la sécurité ou à l’exercice des droits, utilisez la page Contact disponible dans le pied de page du site.",
+      "Pour toute question relative à la confidentialité, à la sécurité ou à l’exercice des droits, contactez contact@grumm.fr ou utilisez la page Contact disponible dans le pied de page du site.",
     ],
   },
   {
@@ -144,7 +145,7 @@ export default function PrivacyPage() {
       intro="Grumm utilise les données strictement nécessaires au service, à la progression et à des analytics internes raisonnables. Aucune donnée n’est vendue, partagée à des fins commerciales ou utilisée pour créer un profil publicitaire."
     >
       <div className="mb-8 rounded-[18px] border border-[#ffd166]/18 bg-[#ffd166]/10 p-4 text-sm font-semibold leading-6 text-[#ffe4a1]">
-        Dernière mise à jour : 21 mai 2026.
+        Dernière mise à jour : 30 mai 2026.
       </div>
 
       <div className="space-y-8">

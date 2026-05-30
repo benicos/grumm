@@ -1,3 +1,10 @@
+import {
+  getErrorMessage,
+  logStructuredError,
+  logSupabaseError,
+  type LogContext,
+} from "@/lib/logger";
+
 type ErrorLike = {
   code?: string | number;
   details?: string;
@@ -8,13 +15,14 @@ type ErrorLike = {
 };
 
 export type ErrorContext = {
+  component?: string;
   operation?: string;
   route?: string;
   source?: string;
   table?: string;
 };
 
-const DEFAULT_PROD_MESSAGE = "Une erreur est survenue. Réessaie dans quelques instants.";
+const DEFAULT_PROD_MESSAGE = "Impossible de terminer cette action pour le moment.";
 
 export function isDebugErrorsEnabled() {
   return (
@@ -37,19 +45,7 @@ function getErrorValue(error: unknown, key: keyof ErrorLike) {
 }
 
 function getRawMessage(error: unknown) {
-  if (error instanceof Error) {
-    return error.message;
-  }
-
-  if (isErrorLike(error) && error.message) {
-    return String(error.message);
-  }
-
-  if (typeof error === "string") {
-    return error;
-  }
-
-  return "Erreur inconnue";
+  return getErrorMessage(error);
 }
 
 function formatContext(context?: ErrorContext) {
@@ -62,6 +58,7 @@ function formatContext(context?: ErrorContext) {
     context.table ? `table=${context.table}` : null,
     context.operation ? `operation=${context.operation}` : null,
     context.route ? `route=${context.route}` : null,
+    context.component ? `component=${context.component}` : null,
   ]
     .filter(Boolean)
     .join(" ");
@@ -77,6 +74,12 @@ export function formatAppError(
     prodMessage?: string;
   } = {},
 ) {
+  if (context?.source === "Supabase") {
+    logSupabaseError(error, context as LogContext);
+  } else {
+    logStructuredError(error, context as LogContext);
+  }
+
   if (!isDebugErrorsEnabled()) {
     return prodMessage;
   }
@@ -98,11 +101,7 @@ export function formatAppError(
 }
 
 export function logAppError(error: unknown, context?: ErrorContext) {
-  if (!isDebugErrorsEnabled()) {
-    return;
-  }
-
-  console.warn("[Grumm]", formatAppError(error, { context }), error);
+  logStructuredError(error, context as LogContext);
 }
 
 export function getConfiguredErrorMessage() {

@@ -54,6 +54,9 @@ export type Database = {
           author_id: string | null;
           status: "draft" | "pending_review" | "published" | "rejected" | "archived";
           published_at: string | null;
+          event_day: number | null;
+          event_month: number | null;
+          event_year: number | null;
           display_order: number;
           tone: string | null;
           accent_color: string | null;
@@ -74,6 +77,9 @@ export type Database = {
           author_id?: string | null;
           status?: "draft" | "pending_review" | "published" | "rejected" | "archived";
           published_at?: string | null;
+          event_day?: number | null;
+          event_month?: number | null;
+          event_year?: number | null;
           display_order?: number;
           tone?: string | null;
           accent_color?: string | null;
@@ -94,6 +100,9 @@ export type Database = {
           author_id?: string | null;
           status?: "draft" | "pending_review" | "published" | "rejected" | "archived";
           published_at?: string | null;
+          event_day?: number | null;
+          event_month?: number | null;
+          event_year?: number | null;
           display_order?: number;
           tone?: string | null;
           accent_color?: string | null;

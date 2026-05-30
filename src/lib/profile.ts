@@ -12,6 +12,7 @@ import {
   normalizeDifficultyLevel,
   normalizeLearningGoal,
 } from "@/lib/learning";
+import { isPasswordValid, passwordValidationMessage } from "@/lib/password";
 import type { UserRole } from "@/lib/roles";
 import {
   getUsernameValidationMessage,
@@ -532,11 +533,11 @@ export async function updateProfilePassword(
     return { ok: false, field: "global", message: auth.message };
   }
 
-  if (password.length < 8) {
+  if (!isPasswordValid(password)) {
     return {
       ok: false,
       field: "password",
-      message: "Le mot de passe doit contenir au moins 8 caractères.",
+      message: passwordValidationMessage,
     };
   }
 

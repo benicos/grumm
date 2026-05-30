@@ -5,6 +5,7 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 import { userMessages } from "../config/app";
 import type { Database } from "../../../../src/types/database";
+import { logStructuredError } from "./logger";
 
 let mobileSupabaseClient: SupabaseClient<Database> | null = null;
 const SUPABASE_TIMEOUT_MS = 9000;
@@ -49,12 +50,23 @@ export async function withSupabaseTimeout<T>(
 ): Promise<T> {
   return new Promise((resolve, reject) => {
     const timeout = setTimeout(() => {
-      reject(new Error(message));
+      const error = new Error(message);
+      logStructuredError(error, {
+        operation: "supabase request timeout",
+        source: "Network",
+      });
+      reject(error);
     }, timeoutMs);
 
     Promise.resolve(promise)
       .then(resolve)
-      .catch(reject)
+      .catch((error) => {
+        logStructuredError(error, {
+          operation: "supabase request",
+          source: "Supabase",
+        });
+        reject(error);
+      })
       .finally(() => clearTimeout(timeout));
   });
 }

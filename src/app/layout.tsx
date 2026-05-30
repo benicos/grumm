@@ -1,9 +1,14 @@
 import type { Metadata } from "next";
+import { Analytics } from "@vercel/analytics/next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { siteConfig } from "@/config/app";
 import { getSiteUrl } from "@/lib/serverMetadata";
 import AnalyticsProvider from "./components/AnalyticsProvider";
 import { AuthProvider } from "./auth/AuthProvider";
+import {
+  BrowserErrorInstrumentation,
+  GlobalErrorBoundary,
+} from "./components/ErrorInstrumentation";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -36,9 +41,13 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
-        <AuthProvider>
-          <AnalyticsProvider>{children}</AnalyticsProvider>
-        </AuthProvider>
+        <GlobalErrorBoundary>
+          <BrowserErrorInstrumentation />
+          <AuthProvider>
+            <AnalyticsProvider>{children}</AnalyticsProvider>
+          </AuthProvider>
+          <Analytics />
+        </GlobalErrorBoundary>
       </body>
     </html>
   );

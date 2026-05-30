@@ -13,7 +13,6 @@ type NavbarProps = {
 };
 
 const links = [
-  { label: "Accueil", href: "/" },
   { label: "Découvrir", href: "/discover" },
   { label: "Explorer", href: "/explorer" },
 ];

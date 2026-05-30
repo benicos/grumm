@@ -4,8 +4,9 @@ import { toPng } from "html-to-image";
 import { Download, Link as LinkIcon, Share2, X } from "lucide-react";
 import { type CSSProperties, useMemo, useRef, useState } from "react";
 import { siteConfig, socialShareConfig } from "@/config/app";
-import { cleanFactSource, type FeedFact } from "@/lib/facts";
-import FactSource from "../FactSource";
+import type { FeedFact } from "@/lib/facts";
+import { getToneBackground } from "@/lib/gradients";
+import { logNetworkError, logStructuredError } from "@/lib/logger";
 import { premiumPrimaryCtaClassName } from "../buttonStyles";
 
 type FactShareModalProps = {
@@ -31,8 +32,24 @@ function clampStyle(lines: number): CSSProperties {
   };
 }
 
-function dataUrlToBlob(dataUrl: string) {
-  return fetch(dataUrl).then((response) => response.blob());
+async function dataUrlToBlob(dataUrl: string) {
+  const response = await fetch(dataUrl);
+
+  if (!response.ok) {
+    const responseText = await response.text().catch(() => null);
+    const error = new Error(`Unable to convert generated share image to blob: ${response.status}`);
+    logNetworkError(error, {
+      method: "GET",
+      operation: "convert share image data URL to blob",
+      response: responseText,
+      status: response.status,
+      statusText: response.statusText,
+      url: "data:image/png",
+    });
+    throw error;
+  }
+
+  return response.blob();
 }
 
 export default function FactShareModal({ fact, onClose }: FactShareModalProps) {
@@ -57,11 +74,10 @@ export default function FactShareModal({ fact, onClose }: FactShareModalProps) {
 
   const activeFact = fact;
   const fileName = `grumm-${activeFact.slug}-story.png`;
-  const title = truncateText(activeFact.title, 76);
-  const detail = truncateText(activeFact.detail, 170);
-  const source = truncateText(activeFact.source, 68);
-  const shareText = activeFact.hook?.trim() || activeFact.title;
-  const displayUrl = siteConfig.publicUrl.replace(/^https?:\/\//, "");
+  const title = truncateText(activeFact.title, 96);
+  const detail = truncateText(activeFact.detail, 250);
+  const shareText = `Découvert sur Grumm.\n${factUrl}`;
+  const toneBackground = getToneBackground(activeFact.tone);
 
   async function renderStoryBlob() {
     const node = cardRef.current;
@@ -99,6 +115,13 @@ export default function FactShareModal({ fact, onClose }: FactShareModalProps) {
       URL.revokeObjectURL(objectUrl);
       setStatus("Image téléchargée.");
     } catch (error) {
+      logStructuredError(error, {
+        component: "FactShareModal",
+        operation: "download share image",
+        props: { factId: activeFact.id, slug: activeFact.slug },
+        route: window.location.pathname,
+        source: "Frontend",
+      });
       setStatus(
         error instanceof Error
           ? error.message
@@ -135,7 +158,7 @@ export default function FactShareModal({ fact, onClose }: FactShareModalProps) {
 
       await navigator.share({
         files: [file],
-        text: `${shareText}\n\n${factUrl}`,
+        text: shareText,
         title: activeFact.title,
       });
       setStatus("Image prête à être partagée.");
@@ -143,6 +166,13 @@ export default function FactShareModal({ fact, onClose }: FactShareModalProps) {
       if (error instanceof DOMException && error.name === "AbortError") {
         setStatus(null);
       } else {
+        logStructuredError(error, {
+          component: "FactShareModal",
+          operation: "share image",
+          props: { factId: activeFact.id, slug: activeFact.slug },
+          route: window.location.pathname,
+          source: "Frontend",
+        });
         setStatus(socialShareConfig.fallbackMessage);
       }
     } finally {
@@ -156,7 +186,7 @@ export default function FactShareModal({ fact, onClose }: FactShareModalProps) {
     try {
       if (navigator.share) {
         await navigator.share({
-          text: `${shareText}\n\n${factUrl}`,
+          text: "Découvert sur Grumm.",
           title: activeFact.title,
           url: factUrl,
         });
@@ -191,68 +221,47 @@ export default function FactShareModal({ fact, onClose }: FactShareModalProps) {
           <X className="h-5 w-5" />
         </button>
 
-        <div className="mx-auto w-full max-w-[360px] overflow-hidden">
+        <div className="mx-auto hidden w-full max-w-[360px] overflow-hidden lg:block">
           <div
-            ref={cardRef}
-            className="relative isolate h-[640px] w-[360px] max-w-full overflow-hidden bg-[#07111f] text-white shadow-2xl"
-            style={{ borderRadius: 0 }}
+            className={`relative isolate h-[640px] w-[360px] max-w-full overflow-hidden ${toneBackground.className} text-white shadow-2xl`}
+            style={{ ...toneBackground.style, borderRadius: 0 }}
           >
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_13%,rgba(255,209,102,0.22),transparent_28%),radial-gradient(circle_at_78%_22%,rgba(106,227,192,0.16),transparent_30%),linear-gradient(145deg,#07111f_0%,#132338_48%,#08101d_100%)]" />
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_13%,rgba(255,255,255,0.20),transparent_28%),radial-gradient(circle_at_78%_22%,rgba(255,255,255,0.10),transparent_30%),linear-gradient(180deg,rgba(0,0,0,0.08),rgba(0,0,0,0.70))]" />
             <div className="absolute inset-0 opacity-[0.08] [background-image:linear-gradient(rgba(255,255,255,0.5)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.5)_1px,transparent_1px)] [background-size:34px_34px]" />
             <div className="absolute inset-x-0 bottom-0 h-72 bg-gradient-to-t from-black/70 to-transparent" />
 
-            <div className="relative flex h-full min-h-0 flex-col px-6 py-4">
-
-              <div className="mt-4">
+            <div className="relative flex h-full min-h-0 flex-col px-7 py-8">
+              <div>
                 <span className="inline-flex max-w-full overflow-hidden rounded-full border border-white/12 bg-white/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.2em] text-[#ffd166]">
                   <span className="truncate">{activeFact.category}</span>
                 </span>
               </div>
 
-              <div className="flex min-h-0 flex-1 items-center py-6">
+              <div className="flex min-h-0 flex-1 items-center py-8">
                 <div className="min-w-0">
                   <h2
-                    className="max-h-[190px] overflow-hidden text-[34px] font-black leading-[1.03] tracking-[-0.04em]"
+                    className="max-h-[170px] overflow-hidden text-[30px] font-black leading-[1.03] tracking-[-0.035em]"
                     style={clampStyle(5)}
                   >
                     {title}
                   </h2>
                   <p
-                    className="mt-5 max-h-[138px] overflow-hidden text-[16px] font-semibold leading-[1.42] text-white/78"
-                    style={clampStyle(6)}
+                    className="mt-6 max-h-[236px] overflow-hidden text-[18px] font-semibold leading-[1.45] text-white/82"
+                    style={clampStyle(9)}
                   >
                     {detail}
                   </p>
                 </div>
               </div>
 
-              <div className="shrink-0 space-y-4">
-                {source ? (
-                  <div className="rounded-[18px] border border-white/10 bg-white/[0.08] p-4 backdrop-blur-md">
-                    <p className="text-[10px] font-black uppercase tracking-[0.18em] text-white/42">
-                      Source
-                    </p>
-                    <p
-                      className="mt-1 max-h-[34px] overflow-hidden text-[13px] font-bold leading-snug text-white/72"
-                      style={clampStyle(2)}
-                    >
-                      {source}
-                    </p>
-                  </div>
-                ) : null}
-
-                <div className="flex items-end justify-between gap-5">
-                  <div className="flex items-center gap-2 text-white/62">
-                    <span className="grid h-7 w-7 place-items-center rounded-[10px] bg-gradient-to-br from-[#ffd166] to-[#6ae3c0] text-xs font-black text-[#06111d]">
-                      V
-                    </span>
-                    <span className="text-[12px] font-black tracking-[-0.03em]">
-                      Grumm.
-                    </span>
-                  </div>
-                  <p className="max-w-[150px] text-right text-[11px] font-bold text-white/40">
-                    {displayUrl}
-                  </p>
+              <div className="shrink-0">
+                <div className="flex items-center gap-2 text-white/70">
+                  <span className="grid h-8 w-8 place-items-center rounded-[11px] bg-gradient-to-br from-[#ffd166] to-[#6ae3c0] text-sm font-black text-[#06111d]">
+                    G
+                  </span>
+                  <span className="text-[14px] font-black tracking-[-0.03em]">
+                    Grumm.
+                  </span>
                 </div>
               </div>
             </div>
@@ -269,15 +278,41 @@ export default function FactShareModal({ fact, onClose }: FactShareModalProps) {
           <p className="mt-4 max-w-xl text-sm leading-6 text-white/58">
             Tu as appris quelque chose ? Fais le savoir à tes amis en partageant ce fait de manière simple et rapide.
           </p>
-          {cleanFactSource(activeFact.source) ? (
-            <div className="mt-5 max-w-xl rounded-md border border-white/10 bg-white/[0.045] px-4 py-3">
-              <FactSource
-                className="text-sm text-white/58"
-                source={activeFact.source}
-                sourceUrl={activeFact.sourceUrl}
-              />
+          <div
+            ref={cardRef}
+            className={`pointer-events-none fixed -left-[9999px] top-0 h-[640px] w-[360px] overflow-hidden ${toneBackground.className} text-white`}
+            style={{ ...toneBackground.style, borderRadius: 0 }}
+            aria-hidden="true"
+          >
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_13%,rgba(255,255,255,0.20),transparent_28%),radial-gradient(circle_at_78%_22%,rgba(255,255,255,0.10),transparent_30%),linear-gradient(180deg,rgba(0,0,0,0.08),rgba(0,0,0,0.70))]" />
+            <div className="absolute inset-0 opacity-[0.08] [background-image:linear-gradient(rgba(255,255,255,0.5)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.5)_1px,transparent_1px)] [background-size:34px_34px]" />
+            <div className="absolute inset-x-0 bottom-0 h-72 bg-gradient-to-t from-black/70 to-transparent" />
+            <div className="relative flex h-full min-h-0 flex-col px-7 py-8">
+              <div>
+                <span className="inline-flex max-w-full overflow-hidden rounded-full border border-white/12 bg-white/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.2em] text-[#ffd166]">
+                  <span className="truncate">{activeFact.category}</span>
+                </span>
+              </div>
+              <div className="flex min-h-0 flex-1 items-center py-8">
+                <div className="min-w-0">
+                  <h2 className="max-h-[170px] overflow-hidden text-[30px] font-black leading-[1.03] tracking-[-0.035em]" style={clampStyle(5)}>
+                    {title}
+                  </h2>
+                  <p className="mt-6 max-h-[236px] overflow-hidden text-[18px] font-semibold leading-[1.45] text-white/82" style={clampStyle(9)}>
+                    {detail}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 text-white/70">
+                <span className="grid h-8 w-8 place-items-center rounded-[11px] bg-gradient-to-br from-[#ffd166] to-[#6ae3c0] text-sm font-black text-[#06111d]">
+                  G
+                </span>
+                <span className="text-[14px] font-black tracking-[-0.03em]">
+                  Grumm.
+                </span>
+              </div>
             </div>
-          ) : null}
+          </div>
 
           <div className="mt-7 grid gap-3 sm:grid-cols-2">
             <button

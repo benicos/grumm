@@ -21,6 +21,7 @@ import { AppState } from "../../components/AppState";
 import { premiumPrimaryCtaClassName } from "../../components/buttonStyles";
 import HeroBackground from "../../components/HeroBackground";
 import Navbar from "../../components/Navbar";
+import PasswordRuleChecklist from "../../auth/PasswordRuleChecklist";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -262,9 +263,10 @@ function SettingsForms({
               onChange={(event) => setPassword(event.target.value)}
               className="mt-2 w-full rounded-md border border-white/10 bg-black/20 px-4 py-3 text-white outline-none transition placeholder:text-white/35 focus:border-[#ffd166]"
               minLength={8}
-              placeholder="8 caractères minimum"
+              placeholder="Mot de passe securise"
               type="password"
             />
+            <PasswordRuleChecklist password={password} />
             <FieldError message={errors.password} />
           </label>
           <button

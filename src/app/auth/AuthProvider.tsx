@@ -11,7 +11,9 @@ import {
   useState,
 } from "react";
 import {
+  clearSupabaseAuthStorage,
   createSupabaseBrowserClient,
+  isInvalidRefreshTokenError,
   isSupabaseConfigured,
 } from "@/lib/supabase/client";
 import {
@@ -21,6 +23,7 @@ import {
 } from "@/lib/roles";
 import { getBadgeInfo, type GradeDefinition } from "@/lib/badges";
 import { type LearningGoal, normalizeLearningGoal } from "@/lib/learning";
+import { logSupabaseError } from "@/lib/logger";
 
 type AuthContextValue = {
   user: User | null;
@@ -59,6 +62,41 @@ function withTimeout<T>(promise: PromiseLike<T>, fallback: unknown): Promise<T> 
       .catch(() => resolve(fallback as T))
       .finally(() => window.clearTimeout(timeout));
   });
+}
+
+async function getSafeSession(
+  supabase: NonNullable<ReturnType<typeof createSupabaseBrowserClient>>,
+) {
+  try {
+    const result = await withTimeout(supabase.auth.getSession(), {
+      data: { session: null },
+      error: null,
+    });
+
+    if (isInvalidRefreshTokenError(result.error)) {
+      logSupabaseError(result.error, {
+        operation: "restore auth session",
+        route: typeof window !== "undefined" ? window.location.pathname : undefined,
+      });
+      clearSupabaseAuthStorage();
+      await supabase.auth.signOut({ scope: "local" }).catch(() => undefined);
+
+      return { data: { session: null }, error: null };
+    }
+
+    return result;
+  } catch (error) {
+    if (isInvalidRefreshTokenError(error)) {
+      logSupabaseError(error, {
+        operation: "restore auth session",
+        route: typeof window !== "undefined" ? window.location.pathname : undefined,
+      });
+      clearSupabaseAuthStorage();
+      await supabase.auth.signOut({ scope: "local" }).catch(() => undefined);
+    }
+
+    return { data: { session: null }, error: null };
+  }
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -180,10 +218,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    const { data } = await withTimeout(supabase.auth.getSession(), {
-      data: { session: null },
-      error: null,
-    });
+    const { data } = await getSafeSession(supabase);
     const nextProfile = await resolveProfile(data.session);
     commitAuthState(data.session, nextProfile);
     setIsLoading(false);
@@ -218,10 +253,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setIsLoading(false);
     }
 
-    withTimeout(supabase.auth.getSession(), {
-      data: { session: null },
-      error: null,
-    }).then(async ({ data }) => {
+    getSafeSession(supabase).then(async ({ data }) => {
       await applySession(data.session);
     });
 
@@ -230,6 +262,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } = supabase.auth.onAuthStateChange((event, nextSession) => {
       if (event === "INITIAL_SESSION") {
         return;
+      }
+
+      if (!nextSession && event === "SIGNED_OUT") {
+        clearSupabaseAuthStorage();
       }
 
       const currentSession = sessionRef.current;

@@ -156,7 +156,7 @@ function ThemeInsightsPanel({ profile }: { profile: UserProfileSummary }) {
           {profile.topThemes.map((theme) => (
             <Link
               key={theme.slug}
-              href={`/discover/theme/${theme.slug}`}
+              href={`/theme/${theme.slug}`}
               className="group rounded-[18px] border border-white/10 bg-black/16 p-4 transition hover:border-white/20 hover:bg-white/[0.045]"
             >
               <div className="flex items-center justify-between gap-3">

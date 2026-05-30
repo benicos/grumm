@@ -1,10 +1,17 @@
-import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import {
+  clearSupabaseAuthStorage,
+  createSupabaseBrowserClient,
+  isInvalidRefreshTokenError,
+} from "@/lib/supabase/client";
+import { dailyGoalConfig } from "@/config/app";
 import { formatAppError, getConfiguredErrorMessage } from "@/lib/errors";
+import { logSupabaseError } from "@/lib/logger";
 import {
   DEFAULT_LEARNING_GOAL,
   type LearningGoal,
   normalizeLearningGoal,
 } from "@/lib/learning";
+import { isPasswordValid, passwordValidationMessage } from "@/lib/password";
 import {
   getUsernameValidationMessage,
   normalizeUsername,
@@ -65,14 +72,14 @@ export function getSupabaseErrorMessage(message: string) {
   }
 
   if (normalizedMessage.includes("password")) {
-    return "Le mot de passe doit contenir au moins 6 caractères.";
+    return passwordValidationMessage;
   }
 
   if (normalizedMessage.includes("email")) {
     return "L'adresse email n'est pas valide.";
   }
 
-  return "Une erreur est survenue. Reessaie dans quelques instants.";
+  return "Impossible de finaliser cette action pour le moment.";
 }
 
 function getSupabaseField(message: string): "username" | "email" | "password" | "global" {
@@ -153,6 +160,10 @@ export async function signInWithEmail(
   });
 
   if (error) {
+    logSupabaseError(error, {
+      operation: "sign in with email",
+      route: typeof window !== "undefined" ? window.location.pathname : undefined,
+    });
     return {
       ok: false,
       message: getSupabaseErrorMessage(error.message),
@@ -168,6 +179,7 @@ export async function signUpWithEmail(
   password: string,
   usernameInput: string,
   learningGoalInput: LearningGoal = DEFAULT_LEARNING_GOAL,
+  dailyGoalInput: number = dailyGoalConfig.defaultGoal,
 ): Promise<AuthResult> {
   const supabase = createSupabaseBrowserClient();
 
@@ -177,10 +189,20 @@ export async function signUpWithEmail(
 
   const username = normalizeUsername(usernameInput);
   const learningGoal = normalizeLearningGoal(learningGoalInput);
+  const dailyGoal = Number.isInteger(dailyGoalInput)
+    ? Math.min(
+        Math.max(dailyGoalInput, dailyGoalConfig.minGoal),
+        dailyGoalConfig.maxGoal,
+      )
+    : dailyGoalConfig.defaultGoal;
   const usernameError = getUsernameValidationMessage(username);
 
   if (usernameError) {
     return { ok: false, message: usernameError, field: "username" };
+  }
+
+  if (!isPasswordValid(password)) {
+    return { ok: false, message: passwordValidationMessage, field: "password" };
   }
 
   const availability = await isUsernameAvailable(username);
@@ -206,6 +228,7 @@ export async function signUpWithEmail(
     password,
     options: {
       data: {
+        daily_goal: dailyGoal,
         learning_goal: learningGoal,
         username,
       },
@@ -213,6 +236,10 @@ export async function signUpWithEmail(
   });
 
   if (error) {
+    logSupabaseError(error, {
+      operation: "signup",
+      route: typeof window !== "undefined" ? window.location.pathname : undefined,
+    });
     return {
       ok: false,
       message: getSupabaseErrorMessage(error.message),
@@ -224,7 +251,12 @@ export async function signUpWithEmail(
     const { error: profileError } = await supabase
       .from("profiles")
       .upsert(
-        { id: data.user.id, learning_goal: learningGoal, username },
+        {
+          daily_goal: dailyGoal,
+          id: data.user.id,
+          learning_goal: learningGoal,
+          username,
+        },
         { onConflict: "id" },
       );
 
@@ -263,8 +295,13 @@ export async function signOut(): Promise<AuthResult> {
   }
 
   const { error } = await supabase.auth.signOut();
+  clearSupabaseAuthStorage();
 
-  if (error) {
+  if (error && !isInvalidRefreshTokenError(error)) {
+    logSupabaseError(error, {
+      operation: "sign out",
+      route: typeof window !== "undefined" ? window.location.pathname : undefined,
+    });
     return { ok: false, message: getSupabaseErrorMessage(error.message) };
   }
 
@@ -297,6 +334,10 @@ export async function requestPasswordReset(email: string): Promise<AuthResult> {
   });
 
   if (error) {
+    logSupabaseError(error, {
+      operation: "request password reset",
+      route: typeof window !== "undefined" ? window.location.pathname : undefined,
+    });
     return {
       ok: false,
       message: getSupabaseErrorMessage(error.message),
@@ -317,17 +358,25 @@ export async function updatePasswordAfterReset(password: string): Promise<AuthRe
     return { ok: false, message: getSupabaseErrorMessage("supabase_unconfigured") };
   }
 
-  if (password.length < 8) {
+  if (!isPasswordValid(password)) {
     return {
       ok: false,
-      message: "Le mot de passe doit contenir au moins 8 caractères.",
+      message: passwordValidationMessage,
       field: "password",
     };
   }
 
   const {
     data: { session },
+    error: sessionError,
   } = await supabase.auth.getSession();
+
+  if (sessionError) {
+    logSupabaseError(sessionError, {
+      operation: "read password reset session",
+      route: typeof window !== "undefined" ? window.location.pathname : undefined,
+    });
+  }
 
   if (!session) {
     return {
@@ -342,6 +391,10 @@ export async function updatePasswordAfterReset(password: string): Promise<AuthRe
   });
 
   if (error) {
+    logSupabaseError(error, {
+      operation: "update password after reset",
+      route: typeof window !== "undefined" ? window.location.pathname : undefined,
+    });
     return {
       ok: false,
       message: getSupabaseErrorMessage(error.message),

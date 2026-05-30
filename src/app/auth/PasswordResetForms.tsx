@@ -4,7 +4,9 @@ import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { requestPasswordReset, updatePasswordAfterReset } from "@/lib/auth";
 import { appRoutes } from "@/config/app";
+import { isPasswordValid, passwordValidationMessage } from "@/lib/password";
 import { premiumPrimaryCtaClassName } from "../components/buttonStyles";
+import PasswordRuleChecklist from "./PasswordRuleChecklist";
 import { useAuth } from "./AuthProvider";
 
 function Message({
@@ -104,6 +106,12 @@ export function PasswordUpdateForm() {
       return;
     }
 
+    if (!isPasswordValid(password)) {
+      setMessage(passwordValidationMessage);
+      setMessageTone("error");
+      return;
+    }
+
     setIsSubmitting(true);
     const result = await updatePasswordAfterReset(password);
     setIsSubmitting(false);
@@ -132,7 +140,7 @@ export function PasswordUpdateForm() {
         Nouveau mot de passe
       </h1>
       <p className="mt-3 text-sm leading-6 text-white/58">
-        Choisis un mot de passe d&apos;au moins 8 caractères pour retrouver ton espace.
+        Choisis un mot de passe securise pour retrouver ton espace.
       </p>
 
       <div className="mt-7 space-y-4">
@@ -148,8 +156,9 @@ export function PasswordUpdateForm() {
             required
             minLength={8}
             className="mt-2 w-full rounded-md border border-white/10 bg-black/20 px-4 py-3 text-white outline-none transition placeholder:text-white/35 focus:border-[#ffd166]"
-            placeholder="8 caractères minimum"
+            placeholder="Mot de passe securise"
           />
+          <PasswordRuleChecklist password={password} />
         </label>
         <label className="block">
           <span className="text-sm font-semibold text-white/72">

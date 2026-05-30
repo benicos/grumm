@@ -1,6 +1,7 @@
 "use client";
 
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { logSupabaseError } from "@/lib/logger";
 import type { Json } from "@/types/database";
 
 export type AnalyticsEventName =
@@ -220,6 +221,10 @@ async function createSession() {
   });
 
   if (error) {
+    logSupabaseError(error, {
+      operation: "create analytics session",
+      table: "analytics_sessions",
+    });
     currentSession = { ...session, id: null };
     storeSession(currentSession);
     return currentSession;
@@ -268,7 +273,7 @@ async function updateSessionNow(endSession = false) {
     Math.round(((endedAt ?? now()) - session.startedAt) / 1000),
   );
 
-  await supabase
+  const { error } = await supabase
     .from("analytics_sessions")
     .update({
       duration_seconds: durationSeconds,
@@ -277,6 +282,13 @@ async function updateSessionNow(endSession = false) {
       pages_viewed: session.pagesViewed,
     })
     .eq("id", session.id);
+
+  if (error) {
+    logSupabaseError(error, {
+      operation: endSession ? "end analytics session" : "update analytics session",
+      table: "analytics_sessions",
+    });
+  }
 }
 
 function scheduleSessionUpdate() {
@@ -326,7 +338,7 @@ async function flushEvents() {
   const session = await ensureSession();
   touchSession(session);
 
-  await supabase.from("analytics_events").insert(
+  const { error } = await supabase.from("analytics_events").insert(
     batch.map((event) => ({
       anonymous_id: session.anonymousId,
       entity_id: event.entityId ?? null,
@@ -338,6 +350,14 @@ async function flushEvents() {
       user_id: session.userId,
     })),
   );
+
+  if (error) {
+    logSupabaseError(error, {
+      operation: "insert analytics events",
+      payload: { batchSize: batch.length },
+      table: "analytics_events",
+    });
+  }
 
   if (eventQueue.length > 0) {
     scheduleEventFlush();
@@ -486,6 +506,11 @@ export async function startFactRead(factId: string): Promise<FactReadToken> {
   });
 
   if (error) {
+    logSupabaseError(error, {
+      operation: "insert fact read event",
+      payload: { factId },
+      table: "fact_read_events",
+    });
     return { ...token, id: null };
   }
 
@@ -518,7 +543,7 @@ export async function finishFactRead(
     endedAt - token.startedAt >= MIN_COMPLETED_READ_MS;
 
   if (token.id && supabase) {
-    await supabase
+    const { error } = await supabase
       .from("fact_read_events")
       .update({
         completed,
@@ -526,6 +551,14 @@ export async function finishFactRead(
         ended_at: new Date(endedAt).toISOString(),
       })
       .eq("id", token.id);
+
+    if (error) {
+      logSupabaseError(error, {
+        operation: "finish fact read event",
+        payload: { factId: token.factId, reason: options?.reason },
+        table: "fact_read_events",
+      });
+    }
   }
 
   await trackAnalyticsEvent({
