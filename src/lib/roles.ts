@@ -28,6 +28,7 @@ export const PERMISSIONS = [
   "users.delete",
   "roles.manage",
   "grades.manage",
+  "quizzes.manage",
 ] as const;
 
 export type PermissionKey = (typeof PERMISSIONS)[number];
@@ -42,6 +43,7 @@ export const PERMISSION_LABELS: Record<PermissionKey, string> = {
   "grades.manage": "Gérer les grades",
   "interactions.manage": "Likes et enregistrements",
   "profile.manage": "Gérer son profil",
+  "quizzes.manage": "Gérer les questions quiz",
   "roles.manage": "Gérer les rôles",
   "themes.manage": "Gérer les thèmes",
   "users.delete": "Supprimer des utilisateurs",
@@ -62,6 +64,7 @@ export const SYSTEM_ROLE_PERMISSIONS: Record<string, PermissionKey[]> = {
     "users.delete",
     "roles.manage",
     "grades.manage",
+    "quizzes.manage",
   ],
   membre: ["facts.read", "profile.manage", "interactions.manage"],
   redacteur: [

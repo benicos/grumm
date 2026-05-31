@@ -27,6 +27,14 @@ export type AdminFact = Database["public"]["Tables"]["facts"]["Row"] & {
   authorProfile?: AdminFactAuthor | null;
   categories: Pick<AdminCategory, "name" | "slug"> | null;
 };
+export type AdminQuizQuestion =
+  Database["public"]["Tables"]["quiz_questions"]["Row"] & {
+    facts:
+      | (Pick<AdminFact, "id" | "title" | "slug"> & {
+          categories: Pick<AdminCategory, "name" | "slug"> | null;
+        })
+      | null;
+  };
 export type AdminUserThemeStat = {
   accent: string;
   count: number;
@@ -154,6 +162,8 @@ type AdminClient = Extract<AdminAuth, { ok: true }>["supabase"];
 const DEFAULT_PAGE_SIZE: number = paginationConfig.adminDefaultPageSize;
 const ADMIN_FACT_SELECT =
   "id,category_id,slug,title,hook,content,difficulty_level,long_content,source,source_url,status,published_at,display_order,tone,accent_color,created_at,updated_at,categories(name,slug)";
+const ADMIN_QUIZ_SELECT =
+  "id,fact_id,question,correct_answer,wrong_answer_1,wrong_answer_2,wrong_answer_3,is_active,created_at,updated_at,facts(id,title,slug,categories(name,slug))";
 
 function normalizeSearchTerm(query?: string) {
   return query?.trim().replace(/[%,_]/g, " ").replace(/\s+/g, " ") ?? "";
@@ -1246,6 +1256,64 @@ export async function getAdminCategories({
   };
 }
 
+export async function getAdminQuizQuestions({
+  active,
+  page = 1,
+  pageSize = DEFAULT_PAGE_SIZE,
+  query,
+}: {
+  active?: "active" | "all" | "inactive";
+  page?: number;
+  pageSize?: number;
+  query?: string;
+} = {}): Promise<AdminListResult<AdminQuizQuestion>> {
+  const auth = await getAuthenticatedAdminClient();
+
+  if (!auth.ok) {
+    throw new Error(auth.message);
+  }
+
+  requirePermission(auth, "quizzes.manage");
+
+  const { from, page: safePage, pageSize: safePageSize, to } = getRange(
+    page,
+    pageSize,
+  );
+  const searchTerm = normalizeSearchTerm(query);
+  let request = auth.supabase
+    .from("quiz_questions")
+    .select(ADMIN_QUIZ_SELECT, { count: "exact" })
+    .order("created_at", { ascending: false })
+    .range(from, to);
+
+  if (searchTerm) {
+    request = request.or(
+      `question.ilike.%${searchTerm}%,correct_answer.ilike.%${searchTerm}%`,
+    );
+  }
+
+  if (active === "active") {
+    request = request.eq("is_active", true);
+  }
+
+  if (active === "inactive") {
+    request = request.eq("is_active", false);
+  }
+
+  const { data, count, error } = await request;
+
+  if (error) {
+    throwAdminError(error, "load admin quiz questions", "quiz_questions");
+  }
+
+  return {
+    items: (data ?? []) as AdminQuizQuestion[],
+    page: safePage,
+    pageSize: safePageSize,
+    total: count ?? 0,
+  };
+}
+
 export async function getAdminFacts({
   authorId,
   categoryId,
@@ -1646,6 +1714,79 @@ export async function getAdminFact(id: string): Promise<
   };
 }
 
+export async function searchAdminFactOptions(query: string): Promise<
+  {
+    categoryName: string | null;
+    id: string;
+    title: string;
+  }[]
+> {
+  const auth = await getAuthenticatedAdminClient();
+
+  if (!auth.ok) {
+    throw new Error(auth.message);
+  }
+
+  requirePermission(auth, "quizzes.manage");
+
+  const searchTerm = normalizeSearchTerm(query);
+
+  if (searchTerm.length < 2) {
+    return [];
+  }
+
+  const { data, error } = await auth.supabase
+    .from("facts")
+    .select("id,title,categories(name)")
+    .or(`title.ilike.%${searchTerm}%,slug.ilike.%${searchTerm}%`)
+    .order("updated_at", { ascending: false })
+    .limit(12);
+
+  if (error) {
+    throwAdminError(error, "search quiz facts", "facts");
+  }
+
+  return ((data ?? []) as {
+    categories: { name: string } | { name: string }[] | null;
+    id: string;
+    title: string;
+  }[]).map((fact) => {
+    const category = Array.isArray(fact.categories)
+      ? fact.categories[0]
+      : fact.categories;
+
+    return {
+      categoryName: category?.name ?? null,
+      id: fact.id,
+      title: fact.title,
+    };
+  });
+}
+
+export async function getAdminQuizQuestion(
+  id: string,
+): Promise<AdminQuizQuestion | null> {
+  const auth = await getAuthenticatedAdminClient();
+
+  if (!auth.ok) {
+    throw new Error(auth.message);
+  }
+
+  requirePermission(auth, "quizzes.manage");
+
+  const { data, error } = await auth.supabase
+    .from("quiz_questions")
+    .select(ADMIN_QUIZ_SELECT)
+    .eq("id", id)
+    .maybeSingle();
+
+  if (error) {
+    throwAdminError(error, "load admin quiz question", "quiz_questions");
+  }
+
+  return data as AdminQuizQuestion | null;
+}
+
 export async function getAdminRoles({
   page = 1,
   pageSize = DEFAULT_PAGE_SIZE,
@@ -1895,6 +2036,91 @@ export async function deleteAdminCategory(
   }
 
   return { ok: true, message: "Thème supprimé." };
+}
+
+export async function saveAdminQuizQuestion(input: {
+  correct_answer: string;
+  fact_id?: string | null;
+  id?: string;
+  is_active: boolean;
+  question: string;
+  wrong_answer_1: string;
+  wrong_answer_2: string;
+  wrong_answer_3: string;
+}): Promise<AdminMutationResult> {
+  const auth = await getAuthenticatedAdminClient();
+
+  if (!auth.ok) {
+    return { ok: false, message: auth.message };
+  }
+
+  if (!hasPermission(auth, "quizzes.manage")) {
+    return { ok: false, message: "Permission insuffisante." };
+  }
+
+  const payload = {
+    correct_answer: input.correct_answer.trim(),
+    fact_id: input.fact_id || null,
+    is_active: input.is_active,
+    question: input.question.trim(),
+    wrong_answer_1: input.wrong_answer_1.trim(),
+    wrong_answer_2: input.wrong_answer_2.trim(),
+    wrong_answer_3: input.wrong_answer_3.trim(),
+  };
+
+  if (
+    !payload.question ||
+    !payload.correct_answer ||
+    !payload.wrong_answer_1 ||
+    !payload.wrong_answer_2 ||
+    !payload.wrong_answer_3
+  ) {
+    return {
+      ok: false,
+      message: "Les quatre réponses et la question sont requises.",
+    };
+  }
+
+  const result = input.id
+    ? await auth.supabase.from("quiz_questions").update(payload).eq("id", input.id)
+    : await auth.supabase.from("quiz_questions").insert(payload);
+
+  if (result.error) {
+    return {
+      ok: false,
+      message: adminError(result.error, "save quiz question", "quiz_questions"),
+    };
+  }
+
+  return { ok: true, message: "Question quiz enregistrée." };
+}
+
+export async function deleteAdminQuizQuestion(
+  id: string,
+): Promise<AdminMutationResult> {
+  const auth = await getAuthenticatedAdminClient();
+
+  if (!auth.ok) {
+    return { ok: false, message: auth.message };
+  }
+
+  if (!hasPermission(auth, "quizzes.manage")) {
+    return { ok: false, message: "Permission insuffisante." };
+  }
+
+  const { error } = await auth.supabase
+    .from("quiz_questions")
+    .delete()
+    .eq("id", id);
+
+  if (error) {
+    return {
+      ok: false,
+      message: adminError(error, "delete quiz question", "quiz_questions"),
+    };
+  }
+
+  return { ok: true, message: "Question quiz supprimée." };
 }
 
 export async function saveAdminFact(input: {

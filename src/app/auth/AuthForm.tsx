@@ -82,6 +82,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
   const [signupStep, setSignupStep] = useState<SignupStep>("username");
   const [username, setUsername] = useState("");
   const [message, setMessage] = useState<string | null>(null);
+  const [messageTone, setMessageTone] = useState<"error" | "success">("error");
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const isLogin = mode === "login";
@@ -169,6 +170,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setMessage(null);
+    setMessageTone("error");
 
     if (!isLogin && signupStep !== "credentials") {
       goToNextSignupStep();
@@ -213,13 +215,15 @@ export default function AuthForm({ mode }: AuthFormProps) {
       if (result.field && result.field !== "global") {
         setFieldErrors({ [result.field]: result.message });
       } else {
+        setMessageTone("error");
         setMessage(result.message);
       }
       return;
     }
 
     if (result.requiresEmailConfirmation) {
-      setMessage(result.message ?? "Compte cree. Confirme ton email.");
+      setMessageTone("success");
+      setMessage(result.message ?? "Bienvenue sur Grumm. Confirme ton email pour commencer.");
       return;
     }
 
@@ -476,9 +480,26 @@ export default function AuthForm({ mode }: AuthFormProps) {
       </div>
 
       {message && (
-        <p className="mt-5 rounded-md border border-red-300/20 bg-red-500/10 px-4 py-3 text-sm text-red-100">
-          {message}
-        </p>
+        messageTone === "success" ? (
+          <div className="mt-5 rounded-[22px] border border-emerald-300/20 bg-emerald-400/10 px-4 py-4 text-emerald-50 shadow-[0_18px_60px_rgba(16,185,129,0.12)]">
+            <p className="text-lg font-black tracking-[-0.03em]">
+              Bienvenue sur Grumm.
+            </p>
+            <p className="mt-2 text-sm font-semibold leading-6 text-emerald-50/78">
+              {message}
+            </p>
+            <Link
+              href="/discover"
+              className="mt-4 inline-flex rounded-full border border-emerald-200/20 bg-white/10 px-4 py-2 text-sm font-black text-white transition hover:bg-white/15"
+            >
+              Commencer à découvrir
+            </Link>
+          </div>
+        ) : (
+          <p className="mt-5 rounded-md border border-red-300/20 bg-red-500/10 px-4 py-3 text-sm text-red-100">
+            {message}
+          </p>
+        )
       )}
 
       <div className="relative mt-6 flex gap-3">

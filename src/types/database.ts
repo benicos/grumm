@@ -505,6 +505,53 @@ export type Database = {
           },
         ];
       };
+      quiz_questions: {
+        Row: {
+          id: string;
+          fact_id: string | null;
+          question: string;
+          correct_answer: string;
+          wrong_answer_1: string;
+          wrong_answer_2: string;
+          wrong_answer_3: string;
+          is_active: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          fact_id?: string | null;
+          question: string;
+          correct_answer: string;
+          wrong_answer_1: string;
+          wrong_answer_2: string;
+          wrong_answer_3: string;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          fact_id?: string | null;
+          question?: string;
+          correct_answer?: string;
+          wrong_answer_1?: string;
+          wrong_answer_2?: string;
+          wrong_answer_3?: string;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "quiz_questions_fact_id_fkey";
+            columns: ["fact_id"];
+            isOneToOne: false;
+            referencedRelation: "facts";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       roles: {
         Row: {
           slug: string;

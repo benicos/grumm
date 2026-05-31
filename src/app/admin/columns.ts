@@ -46,6 +46,15 @@ export const adminEntityColumns = {
       { key: "type", label: "Type" },
     ],
   },
+  quizzes: {
+    label: "Quiz Questions",
+    columns: [
+      { key: "question", label: "Question" },
+      { key: "fact", label: "Fait associé" },
+      { key: "status", label: "Statut" },
+      { key: "updated", label: "Mise à jour" },
+    ],
+  },
 } as const;
 
 export type AdminEntityKey = keyof typeof adminEntityColumns;

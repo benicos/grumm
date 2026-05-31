@@ -30,6 +30,15 @@ type ReadFactRow = {
     | null;
 };
 
+type QuizQuestionRow = {
+  correct_answer: string;
+  fact_id: string | null;
+  question: string;
+  wrong_answer_1: string;
+  wrong_answer_2: string;
+  wrong_answer_3: string;
+};
+
 export type MemoryChallengeFact = {
   category: string;
   categorySlug: string;
@@ -115,11 +124,55 @@ function getQuestionPrompt(fact: MemoryChallengeFact) {
   return `Tu t'en souvenais ? Quel souvenir correspond à « ${fact.title} » ?`;
 }
 
-function buildQuestions(facts: MemoryChallengeFact[]) {
-  const questionCount = Math.min(MAX_MEMORY_QUESTIONS, facts.length);
-  const selectedFacts = shuffle(facts).slice(0, questionCount);
+function buildCuratedQuestions(
+  facts: MemoryChallengeFact[],
+  quizRows: QuizQuestionRow[],
+) {
+  const factById = new Map(facts.map((fact) => [fact.id, fact]));
 
-  return selectedFacts
+  return shuffle(quizRows)
+    .map((row) => {
+      if (!row.fact_id) {
+        return null;
+      }
+
+      const fact = factById.get(row.fact_id);
+
+      if (!fact) {
+        return null;
+      }
+
+      return {
+        correctAnswer: row.correct_answer,
+        factId: fact.id,
+        factSlug: fact.slug,
+        options: shuffle([
+          row.correct_answer,
+          row.wrong_answer_1,
+          row.wrong_answer_2,
+          row.wrong_answer_3,
+        ]),
+        prompt: row.question,
+        title: fact.title,
+      } satisfies MemoryChallengeQuestion;
+    })
+    .filter((question): question is MemoryChallengeQuestion => question !== null);
+}
+
+function buildQuestions(
+  facts: MemoryChallengeFact[],
+  quizRows: QuizQuestionRow[] = [],
+) {
+  const questionCount = Math.min(MAX_MEMORY_QUESTIONS, facts.length);
+  const curatedQuestions = buildCuratedQuestions(facts, quizRows);
+  const curatedFactIds = new Set(
+    curatedQuestions.map((question) => question.factId),
+  );
+  const selectedFacts = shuffle(
+    facts.filter((fact) => !curatedFactIds.has(fact.id)),
+  ).slice(0, Math.max(0, questionCount - curatedQuestions.length));
+
+  const generatedQuestions = selectedFacts
     .map((fact) => {
       const wrongAnswers = shuffle(
         facts
@@ -142,8 +195,12 @@ function buildQuestions(facts: MemoryChallengeFact[]) {
         title: fact.title,
       } satisfies MemoryChallengeQuestion;
     })
-    .filter((question): question is MemoryChallengeQuestion => question !== null)
-    .slice(0, MAX_MEMORY_QUESTIONS);
+    .filter((question): question is MemoryChallengeQuestion => question !== null);
+
+  return shuffle([...curatedQuestions, ...generatedQuestions]).slice(
+    0,
+    MAX_MEMORY_QUESTIONS,
+  );
 }
 
 async function getAuthenticatedMemoryClient() {
@@ -272,7 +329,34 @@ export async function createMemoryChallengeSession(): Promise<
   const facts = ((data ?? []) as ReadFactRow[])
     .map(mapReadFact)
     .filter((fact): fact is MemoryChallengeFact => fact !== null);
-  const questions = buildQuestions(facts);
+  const factIds = facts.map((fact) => fact.id);
+  const quizResult =
+    factIds.length > 0
+      ? await auth.supabase
+          .from("quiz_questions")
+          .select(
+            "fact_id,question,correct_answer,wrong_answer_1,wrong_answer_2,wrong_answer_3",
+          )
+          .eq("is_active", true)
+          .in("fact_id", factIds)
+          .limit(30)
+      : { data: [] as QuizQuestionRow[], error: null };
+
+  if (quizResult.error) {
+    return {
+      ok: false,
+      message: memoryError(
+        quizResult.error,
+        "read memory challenge curated questions",
+        "quiz_questions",
+      ),
+    };
+  }
+
+  const questions = buildQuestions(
+    facts,
+    (quizResult.data ?? []) as QuizQuestionRow[],
+  );
 
   if (facts.length < MIN_MEMORY_FACTS || questions.length < MIN_MEMORY_FACTS) {
     return {

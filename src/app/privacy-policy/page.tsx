@@ -25,14 +25,14 @@ const sections = [
   {
     title: "Données collectées",
     body: [
-      "Grumm peut traiter l’adresse email, le pseudo, l’objectif quotidien, les paramètres de profil, les faits lus, aimés, enregistrés ou partagés, ainsi que les informations techniques strictement nécessaires au fonctionnement du compte et de la session.",
+      "Grumm peut traiter l’adresse email, le pseudo, l’objectif quotidien, le niveau culturel choisi, les préférences de découverte, les paramètres de profil, les faits lus, aimés, enregistrés ou partagés, ainsi que les informations techniques strictement nécessaires au fonctionnement du compte et de la session.",
       "Grumm ne collecte pas de données sensibles au sens du RGPD, ne demande pas d’informations inutiles au service et ne cherche pas à identifier personnellement un visiteur anonyme.",
     ],
   },
   {
     title: "Données analytics",
     body: [
-      "Grumm utilise un système analytics interne first-party. Il mesure des événements utiles comme l’ouverture du service, les pages vues, les recherches, les lectures de faits, les likes, les sauvegardes, les partages, les clics sur les sources et certaines actions administratives.",
+      "Grumm utilise un système analytics interne first-party. Il mesure des événements utiles comme l’ouverture du service, les pages vues, les recherches, les lectures de faits, les likes, les sauvegardes, les partages, les clics sur les sources et certains événements techniques nécessaires à l’administration, à la modération et à la sécurité du service.",
       "Le site peut aussi utiliser Vercel Analytics pour mesurer des statistiques techniques et agrégées de consultation du site web. Ces mesures servent à comprendre la performance et l’usage général du service, sans tracking publicitaire ni revente de données.",
       "L’identifiant anonyme grumm_anonymous_id est un UUID généré une seule fois et stocké localement. Il ne repose pas sur du fingerprinting et ne permet pas, à lui seul, d’identifier une personne.",
       "Aucune adresse IP n’est stockée en clair dans les tables analytics applicatives.",
@@ -56,7 +56,7 @@ const sections = [
     title: "Durée de conservation",
     body: [
       "Les données de compte sont conservées tant que le compte existe, sauf obligation légale ou nécessité de sécurité. Les données de progression et d’interaction peuvent être conservées pour maintenir l’historique utilisateur.",
-      "Les données analytics sont conservées pour une durée raisonnable compatible avec leur finalité produit, puis supprimées ou agrégées lorsque leur conservation détaillée n’est plus nécessaire.",
+      "Les données analytics détaillées sont conservées au maximum 24 mois, puis supprimées ou agrégées lorsqu’elles ne sont plus nécessaires à l’amélioration du service.",
     ],
   },
   {
@@ -120,6 +120,7 @@ const sections = [
     title: "Modalités d’exercice des droits",
     body: [
       "Les demandes s’effectuent à contact@grumm.fr ou depuis la page Contact. Grumm répondra dans les délais prévus par la réglementation applicable, sous réserve des contraintes légales, techniques et de sécurité.",
+      "Les utilisateurs peuvent demander la suppression de leur compte et des données associées en écrivant à contact@grumm.fr ou depuis la page Contact.",
       "Lorsqu’une suppression complète est demandée, certaines données peuvent être conservées temporairement si la loi l’exige ou si elles sont nécessaires à la défense de droits en cas de litige.",
     ],
   },
