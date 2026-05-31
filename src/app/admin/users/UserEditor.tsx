@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   getAdminUserDetail,
   getAllAdminRoles,
@@ -19,6 +20,7 @@ import {
 } from "../ui";
 
 export default function UserEditor({ userId }: { userId: string }) {
+  const router = useRouter();
   const [detail, setDetail] = useState<AdminUserDetail | null>(null);
   const [roles, setRoles] = useState<AdminRole[]>([]);
   const [role, setRole] = useState("");
@@ -77,8 +79,8 @@ export default function UserEditor({ userId }: { userId: string }) {
       return;
     }
 
-    setMessage(result.message);
-    await loadUser();
+    router.push("/admin/users?updated=1");
+    router.refresh();
   }
 
   const profile = detail?.profile;

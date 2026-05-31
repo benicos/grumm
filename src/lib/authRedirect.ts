@@ -16,7 +16,7 @@ export function rememberAuthRedirect(path: string) {
   window.sessionStorage.setItem(AUTH_REDIRECT_KEY, path);
 }
 
-export function consumeAuthRedirect(fallback = "/profile") {
+export function consumeAuthRedirect(fallback = "/profil") {
   if (typeof window === "undefined") {
     return fallback;
   }

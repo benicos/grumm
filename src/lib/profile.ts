@@ -146,8 +146,15 @@ function mapRelatedFact(row: RelatedFactRow): FeedFact | null {
     detail: fact.content,
     difficultyLevel: normalizeDifficultyLevel(fact.difficulty_level),
     longContent: fact.long_content?.trim() || null,
-      source: cleanFactSource(fact.source),
+    seoDescription: null,
+    seoTitle: null,
+    source: cleanFactSource(fact.source),
     sourceUrl: fact.source_url?.trim() || null,
+    eventDay: null,
+    eventMonth: null,
+    eventYear: null,
+    publishedAt: null,
+    updatedAt: null,
     tone:
       fact.tone ??
       category?.tone ??
@@ -324,7 +331,9 @@ export async function getUserProfileSummary(): Promise<UserProfileSummary> {
   const todayRow = dailyRows.find((row) => row.progress_date === today);
   let memoryStats: MemoryStats = {
     averageScorePercent: null,
+    bestStreakDays: 0,
     challengesCompleted: 0,
+    currentStreakDays: 0,
     lastScore: null,
     lastTotal: null,
     revisableFacts: uniqueViews.size,

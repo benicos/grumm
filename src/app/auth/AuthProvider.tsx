@@ -12,6 +12,7 @@ import {
 } from "react";
 import {
   clearSupabaseAuthStorage,
+  clearMalformedSupabaseAuthStorage,
   createSupabaseBrowserClient,
   isInvalidRefreshTokenError,
   isSupabaseConfigured,
@@ -23,7 +24,6 @@ import {
 } from "@/lib/roles";
 import { getBadgeInfo, type GradeDefinition } from "@/lib/badges";
 import { type LearningGoal, normalizeLearningGoal } from "@/lib/learning";
-import { logSupabaseError } from "@/lib/logger";
 
 type AuthContextValue = {
   user: User | null;
@@ -74,10 +74,6 @@ async function getSafeSession(
     });
 
     if (isInvalidRefreshTokenError(result.error)) {
-      logSupabaseError(result.error, {
-        operation: "restore auth session",
-        route: typeof window !== "undefined" ? window.location.pathname : undefined,
-      });
       clearSupabaseAuthStorage();
       await supabase.auth.signOut({ scope: "local" }).catch(() => undefined);
 
@@ -87,10 +83,6 @@ async function getSafeSession(
     return result;
   } catch (error) {
     if (isInvalidRefreshTokenError(error)) {
-      logSupabaseError(error, {
-        operation: "restore auth session",
-        route: typeof window !== "undefined" ? window.location.pathname : undefined,
-      });
       clearSupabaseAuthStorage();
       await supabase.auth.signOut({ scope: "local" }).catch(() => undefined);
     }
@@ -227,6 +219,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let isMounted = true;
     let requestId = 0;
+    clearMalformedSupabaseAuthStorage();
     const supabase = createSupabaseBrowserClient();
 
     if (!supabase) {

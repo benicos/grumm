@@ -1,9 +1,13 @@
 import type { Metadata } from "next";
+import { buildDefaultMetadata } from "@/lib/serverMetadata";
 import InfoPageShell from "../components/InfoPageShell";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = buildDefaultMetadata({
+  canonicalPath: "/contact",
+  description:
+    "Contacte Grumm pour une question, une correction éditoriale ou une demande liée au compte.",
   title: "Contact",
-};
+});
 
 export default function ContactPage() {
   return (

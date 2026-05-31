@@ -256,7 +256,7 @@ export default function FactDetailPage() {
         eyebrow="Fait indisponible"
         title="Impossible de charger ce fait."
         description={error}
-        primaryHref="/discover"
+        primaryHref="/decouvrir"
         primaryLabel="Retour à Découvrir"
         secondaryHref="/explorer"
         secondaryLabel="Explorer"
@@ -270,7 +270,7 @@ export default function FactDetailPage() {
         eyebrow="404"
         title="Ce fait n'existe pas."
         description="Le slug demandé ne correspond à aucun fait visible."
-        primaryHref="/discover"
+        primaryHref="/decouvrir"
         primaryLabel="Retour à Découvrir"
         secondaryHref="/explorer"
         secondaryLabel="Explorer"
@@ -286,6 +286,25 @@ export default function FactDetailPage() {
       className={`${inter.className} min-h-screen overflow-hidden ${toneBackground.className} text-white`}
       style={toneBackground.style}
     >
+      {fact ? (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "Article",
+              headline: fact.seoTitle || fact.title,
+              description: fact.seoDescription || fact.hook || fact.detail,
+              datePublished: fact.publishedAt ?? undefined,
+              dateModified: fact.updatedAt ?? fact.publishedAt ?? undefined,
+              articleSection: fact.category,
+              author: { "@type": "Organization", name: "Grumm." },
+              publisher: { "@type": "Organization", name: "Grumm." },
+              mainEntityOfPage: `/fait/${fact.slug}`,
+            }),
+          }}
+        />
+      ) : null}
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_12%,rgba(255,255,255,0.2),transparent_28%),linear-gradient(180deg,rgba(0,0,0,0.12),rgba(0,0,0,0.72))]" />
       <Navbar />
 
@@ -386,7 +405,7 @@ export default function FactDetailPage() {
               </>
             )}
             <Link
-              href="/discover"
+              href="/decouvrir"
               className="rounded-full border border-white/15 bg-black/20 px-5 py-3 text-sm font-bold text-white/72 backdrop-blur-xl transition hover:scale-[1.02] hover:text-white"
             >
               Découvrir
@@ -434,7 +453,7 @@ export default function FactDetailPage() {
               </Link>
             ) : null}
             <Link
-              href="/discover"
+              href="/decouvrir"
               className="rounded-[14px] border border-white/10 px-4 py-3 text-center text-sm font-bold text-white/72 transition hover:border-white/20 hover:text-white"
             >
               Lire d&apos;autres faits

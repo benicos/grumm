@@ -95,7 +95,7 @@ export default function AdminFactDetailPage() {
       return;
     }
 
-    router.push("/admin/facts");
+    router.push("/admin/facts?deleted=1");
     router.refresh();
   }
 
@@ -103,7 +103,7 @@ export default function AdminFactDetailPage() {
     <>
       <AdminPageHeading
         current="Fait"
-        title={fact?.title ?? "Détail du fait"}
+        title={fact?.title ? "Détail du fait" : "Fait"}
         description="Consultation du contenu dans l'espace d'administration."
         action={
           <div className="flex flex-wrap gap-3">
@@ -191,6 +191,24 @@ export default function AdminFactDetailPage() {
                 value={fact.hook ?? "-"}
               />
               <DetailItem
+                label="Date éditoriale"
+                value={
+                  fact.event_day && fact.event_month
+                    ? `${String(fact.event_day).padStart(2, "0")}/${String(fact.event_month).padStart(2, "0")}${fact.event_year ? `/${fact.event_year}` : ""}`
+                    : "-"
+                }
+              />
+              <DetailItem
+                label="Titre SEO"
+                technicalName="seo_title"
+                value={fact.seo_title ?? "-"}
+              />
+              <DetailItem
+                label="Description SEO"
+                technicalName="seo_description"
+                value={fact.seo_description ?? "-"}
+              />
+              <DetailItem
                 label="Créé le"
                 technicalName="created_at"
                 value={formatDate(fact.created_at)}
@@ -276,6 +294,24 @@ export default function AdminFactDetailPage() {
                   value={fact.accent_color ?? "-"}
                 />
               </AdminAttributeList>
+            </AdminCard>
+
+            <AdminCard className="p-6">
+              <h2 className="text-lg font-semibold text-gray-800">Question</h2>
+              <div className="mt-5 rounded-2xl border border-gray-200 bg-gray-50 p-4 text-sm">
+                {fact.quizQuestion ? (
+                  <Link
+                    href={`/admin/quizzes/${fact.quizQuestion.id}`}
+                    className="font-medium text-[#465fff] hover:underline"
+                  >
+                    Question associée : {fact.quizQuestion.question}
+                  </Link>
+                ) : (
+                  <p className="text-gray-500">
+                    Aucune question quiz n'est encore associée à ce fait.
+                  </p>
+                )}
+              </div>
             </AdminCard>
           </div>
         </>

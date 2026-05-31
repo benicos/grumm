@@ -62,7 +62,7 @@ export default function AdminUserDetailPage() {
     <>
       <AdminPageHeading
         current="Utilisateur"
-        title={profile?.username ?? "Utilisateur"}
+        title={profile?.username ? "Utilisateur" : "Utilisateur"}
         description="Consultation du compte, du rôle et de la progression."
         action={
           <div className="flex flex-wrap gap-3">

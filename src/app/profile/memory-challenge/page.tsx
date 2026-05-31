@@ -3,7 +3,12 @@
 import { Inter } from "next/font/google";
 import Link from "next/link";
 import { Brain, Check, RotateCcw, X } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { type CSSProperties, useEffect, useMemo, useState } from "react";
+import {
+  getRandomQuizCopy,
+  getRandomQuizResultCopy,
+  quizCopy,
+} from "@/config/quizCopy";
 import {
   completeMemoryChallengeSession,
   createMemoryChallengeSession,
@@ -28,18 +33,42 @@ type AnswerState = {
   selectedAnswer: string;
 };
 
-function getResultMessage(score: number, total: number) {
-  const ratio = score / Math.max(total, 1);
+type FeedbackState = AnswerState & {
+  detail: string;
+  title: string;
+};
 
-  if (ratio >= 0.8) {
-    return "Bien vu. Ces faits sont déjà bien installés.";
+const confettiPieces = [
+  { color: "#f4ead5", x: "-48px", y: "-42px", rotate: "-24deg" },
+  { color: "#c5ccd6", x: "-22px", y: "-64px", rotate: "18deg" },
+  { color: "#6ae3c0", x: "18px", y: "-58px", rotate: "34deg" },
+  { color: "#ffd166", x: "48px", y: "-36px", rotate: "-18deg" },
+] as const;
+
+function SoberConfetti({ active }: { active: boolean }) {
+  if (!active) {
+    return null;
   }
 
-  if (ratio >= 0.5) {
-    return "Tu en avais gardé une bonne partie. Une autre passe et ça restera.";
-  }
-
-  return "Ça revient doucement. Relire les faits suffit souvent à les ancrer.";
+  return (
+    <div aria-hidden className="pointer-events-none absolute right-6 top-5 h-16 w-24">
+      {confettiPieces.map((piece, index) => (
+        <span
+          key={`${piece.color}-${index}`}
+          className="quiz-confetti-piece"
+          style={
+            {
+              "--quiz-confetti-color": piece.color,
+              "--quiz-confetti-delay": `${index * 55}ms`,
+              "--quiz-confetti-rotate": piece.rotate,
+              "--quiz-confetti-x": piece.x,
+              "--quiz-confetti-y": piece.y,
+            } as CSSProperties
+          }
+        />
+      ))}
+    </div>
+  );
 }
 
 function ChallengeContent() {
@@ -47,10 +76,11 @@ function ChallengeContent() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<AnswerState[]>([]);
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
-  const [feedback, setFeedback] = useState<AnswerState | null>(null);
+  const [feedback, setFeedback] = useState<FeedbackState | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isCompleted, setIsCompleted] = useState(false);
+  const [resultMessage, setResultMessage] = useState("");
   const [error, setError] = useState<string | null>(null);
   const currentQuestion = session?.questions[currentIndex] ?? null;
   const score = useMemo(
@@ -67,6 +97,7 @@ function ChallengeContent() {
     setFeedback(null);
     setCurrentIndex(0);
     setIsCompleted(false);
+    setResultMessage("");
 
     const result = await createMemoryChallengeSession();
 
@@ -93,10 +124,16 @@ function ChallengeContent() {
     setIsSaving(true);
 
     const isCorrect = answer === currentQuestion.correctAnswer;
-    const nextFeedback = {
+    const correctCopy = isCorrect ? getRandomQuizCopy("correctFeedback") : null;
+    const wrongCopy = isCorrect ? null : getRandomQuizCopy("wrongFeedback");
+    const nextFeedback: FeedbackState = {
+      detail: isCorrect
+        ? correctCopy?.detail ?? ""
+        : `${wrongCopy?.detailPrefix ?? ""} ${currentQuestion.correctAnswer}`.trim(),
       isCorrect,
       question: currentQuestion,
       selectedAnswer: answer,
+      title: correctCopy?.title ?? wrongCopy?.title ?? "",
     };
     const saveResult = await saveMemoryChallengeAnswer({
       correctAnswer: currentQuestion.correctAnswer,
@@ -132,6 +169,9 @@ function ChallengeContent() {
     }
 
     const finalScore = answers.filter((answer) => answer.isCorrect).length;
+    setResultMessage(
+      getRandomQuizResultCopy(finalScore, session.questions.length),
+    );
     const result = await completeMemoryChallengeSession({
       score: finalScore,
       sessionId: session.id,
@@ -148,7 +188,7 @@ function ChallengeContent() {
   if (isLoading) {
     return (
       <div className="rounded-[30px] border border-white/10 bg-white/[0.055] p-8 text-white/62 backdrop-blur-xl">
-        Préparation de ton défi mémoire...
+        {quizCopy.loading}
       </div>
     );
   }
@@ -157,12 +197,12 @@ function ChallengeContent() {
     return (
       <AppState
         eyebrow="Défi mémoire"
-        title="Pas encore prêt."
+        title={quizCopy.empty.title}
         description={error}
-        primaryHref="/discover"
-        primaryLabel="Lire quelques faits"
-        secondaryHref="/profile"
-        secondaryLabel="Retour profil"
+        primaryHref="/decouvrir"
+        primaryLabel={quizCopy.empty.primaryLabel}
+        secondaryHref="/profil"
+        secondaryLabel={quizCopy.buttons.returnProfile}
       />
     );
   }
@@ -173,7 +213,7 @@ function ChallengeContent() {
 
   if (isCompleted) {
     return (
-      <section className="mx-auto max-w-3xl rounded-[34px] border border-white/10 bg-[linear-gradient(145deg,rgba(255,255,255,0.085),rgba(255,255,255,0.032))] p-6 text-center shadow-[0_34px_120px_rgba(0,0,0,0.32)] backdrop-blur-2xl sm:p-8">
+      <section className="mx-auto max-w-5xl rounded-[30px] border border-white/10 bg-[linear-gradient(145deg,rgba(255,255,255,0.075),rgba(255,255,255,0.026))] p-6 text-center shadow-[0_28px_90px_rgba(0,0,0,0.26)] backdrop-blur-2xl sm:p-8">
         <p className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-[0.22em] text-[#6ae3c0]">
           <Brain className="h-4 w-4" />
           Résultat
@@ -182,7 +222,7 @@ function ChallengeContent() {
           {score}/{session.questions.length}
         </h1>
         <p className="mx-auto mt-5 max-w-xl text-base font-semibold leading-8 text-white/66">
-          {getResultMessage(score, session.questions.length)}
+          {resultMessage}
         </p>
 
         <div className="mt-8 grid gap-3 sm:grid-cols-2">
@@ -192,24 +232,24 @@ function ChallengeContent() {
             className={`${premiumPrimaryCtaClassName} justify-center`}
           >
             <RotateCcw className="mr-2 h-4 w-4" />
-            Relancer
+            {quizCopy.buttons.relaunch}
           </button>
           <Link
-            href="/profile"
+            href="/profil"
             className="inline-flex justify-center rounded-full border border-white/12 px-5 py-3 text-sm font-black text-white/70 transition hover:border-white/24 hover:text-white"
           >
-            Retour profil
+            {quizCopy.buttons.returnProfile}
           </Link>
         </div>
 
         <div className="mt-8 divide-y divide-white/10 text-left">
-          {answers.map((answer) => (
+          {answers.map((answer, index) => (
             <Link
-              key={answer.question.factId}
-              href={`/fact/${answer.question.factSlug}`}
+              key={`${answer.question.factId}-${index}`}
+              href={`/fait/${answer.question.factSlug}`}
               className="block py-4 text-sm font-semibold text-white/62 transition hover:text-white"
             >
-              Relire : {answer.question.title}
+              {quizCopy.buttons.reviewPrefix} {answer.question.factTitle}
             </Link>
           ))}
         </div>
@@ -218,7 +258,8 @@ function ChallengeContent() {
   }
 
   return (
-    <section className="mx-auto max-w-3xl rounded-[34px] border border-white/10 bg-[radial-gradient(circle_at_82%_18%,rgba(106,227,192,0.12),transparent_28%),linear-gradient(145deg,rgba(255,255,255,0.085),rgba(255,255,255,0.032))] p-5 shadow-[0_34px_120px_rgba(0,0,0,0.32)] backdrop-blur-2xl sm:p-8">
+    <section className="relative mx-auto max-w-5xl overflow-hidden rounded-[30px] border border-white/10 bg-[radial-gradient(circle_at_82%_12%,rgba(244,234,213,0.105),transparent_30%),linear-gradient(145deg,rgba(255,255,255,0.074),rgba(255,255,255,0.024))] p-5 shadow-[0_26px_88px_rgba(0,0,0,0.28)] backdrop-blur-2xl sm:p-8">
+      <SoberConfetti active={Boolean(feedback?.isCorrect)} />
       <div className="flex flex-wrap items-center justify-between gap-4">
         <p className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-[0.22em] text-[#6ae3c0]">
           <Brain className="h-4 w-4" />
@@ -229,8 +270,11 @@ function ChallengeContent() {
         </span>
       </div>
 
-      <h1 className="mt-6 text-[clamp(2rem,6vw,4rem)] font-black leading-[0.98] tracking-[-0.06em] text-white">
+      <p className="mt-7 text-sm font-bold uppercase tracking-[0.14em] text-white/44">
         {currentQuestion.prompt}
+      </p>
+      <h1 className="mt-3 max-w-2xl text-[clamp(1.65rem,4.8vw,3.1rem)] font-black leading-[1.02] tracking-[-0.045em] text-white">
+        {currentQuestion.title}
       </h1>
 
       <div className="mt-8 grid gap-3">
@@ -245,17 +289,17 @@ function ChallengeContent() {
               type="button"
               disabled={Boolean(feedback) || isSaving}
               onClick={() => void chooseAnswer(option)}
-              className={`flex items-center justify-between gap-4 rounded-[20px] border px-4 py-4 text-left text-sm font-bold leading-6 transition ${
+              className={`flex items-start justify-between gap-4 rounded-[20px] border px-4 py-4 text-left text-sm font-bold leading-7 transition ${
                 isCorrect
                   ? "border-emerald-300/35 bg-emerald-400/12 text-emerald-50"
                   : isWrongSelected
-                    ? "border-red-300/30 bg-red-500/10 text-red-50"
+                    ? "border-amber-200/24 bg-amber-100/8 text-white/82"
                     : "border-white/10 bg-black/16 text-white/72 hover:border-white/24 hover:bg-white/[0.055]"
               }`}
             >
-              <span>{option}</span>
+              <span className="min-w-0 whitespace-normal break-words">{option}</span>
               {isCorrect ? <Check className="h-4 w-4 shrink-0" /> : null}
-              {isWrongSelected ? <X className="h-4 w-4 shrink-0" /> : null}
+              {isWrongSelected ? <X className="h-4 w-4 shrink-0 text-amber-100/70" /> : null}
             </button>
           );
         })}
@@ -263,26 +307,18 @@ function ChallengeContent() {
 
       {feedback ? (
         <div className="mt-6 rounded-[22px] border border-white/10 bg-black/18 p-4">
-          <p className="text-lg font-black text-white">
-            {feedback.isCorrect ? "Bien vu." : "Presque."}
+          <p className="text-lg font-black text-white">{feedback.title}</p>
+          <p className="mt-2 text-sm font-semibold leading-6 text-white/62">
+            {feedback.detail}
           </p>
-          {!feedback.isCorrect ? (
-            <p className="mt-2 text-sm font-semibold leading-6 text-white/62">
-              La bonne réponse était : {feedback.question.correctAnswer}
-            </p>
-          ) : (
-            <p className="mt-2 text-sm font-semibold leading-6 text-white/62">
-              Tu l'avais retenu.
-            </p>
-          )}
           <button
             type="button"
             onClick={() => void goNext()}
             className={`${premiumPrimaryCtaClassName} mt-5 justify-center`}
           >
             {currentIndex + 1 === session.questions.length
-              ? "Voir le résultat"
-              : "Continuer"}
+              ? quizCopy.buttons.result
+              : quizCopy.buttons.continue}
           </button>
         </div>
       ) : null}
@@ -304,21 +340,13 @@ export default function MemoryChallengePage() {
       >
         <HeroBackground />
         <Navbar />
-        <main className="relative z-10 mx-auto w-full max-w-[980px] px-6 py-12 sm:py-16 lg:px-8">
-          <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
-            <div>
-              <p className="w-fit rounded-full border border-white/10 bg-white/[0.055] px-3 py-1 text-sm/6 font-semibold text-white/62 backdrop-blur-xl">
-                Réviser
-              </p>
-              <h1 className="mt-5 text-[clamp(2.4rem,7vw,5.4rem)] font-black leading-[0.92] tracking-[-0.065em] text-white">
-                Défi mémoire
-              </h1>
-            </div>
+        <main className="relative z-10 mx-auto w-full max-w-[1120px] px-4 py-8 sm:px-6 sm:py-12 lg:px-8">
+          <div className="mb-5 flex flex-wrap items-center justify-end gap-4">
             <Link
-              href="/profile"
+              href="/profil"
               className="rounded-full border border-white/12 px-5 py-3 text-sm font-black text-white/70 transition hover:border-white/24 hover:text-white"
             >
-              Retour profil
+              {quizCopy.buttons.returnProfile}
             </Link>
           </div>
           <ChallengeContent />

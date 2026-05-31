@@ -2,6 +2,7 @@
 
 import type { FormEvent } from "react";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { getAdminCategory, saveAdminCategory } from "@/lib/admin";
 import { AdminBackLink, AdminField } from "../forms";
 import {
@@ -102,6 +103,7 @@ function isCssColor(value: string) {
 }
 
 export default function ThemeEditor({ themeId }: { themeId?: string }) {
+  const router = useRouter();
   const [form, setForm] = useState<ThemeFormState>(emptyTheme);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -201,7 +203,8 @@ export default function ThemeEditor({ themeId }: { themeId?: string }) {
       return;
     }
 
-    setMessage(result.message);
+    router.push(`/admin/themes?${editing ? "updated" : "created"}=1`);
+    router.refresh();
 
     if (!editing) {
       setForm(emptyTheme);

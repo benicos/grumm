@@ -2,6 +2,7 @@
 
 import type { FormEvent } from "react";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   getAdminQuizQuestion,
   saveAdminQuizQuestion,
@@ -46,6 +47,7 @@ const emptyQuiz: QuizFormState = {
 };
 
 export default function QuizEditor({ questionId }: { questionId?: string }) {
+  const router = useRouter();
   const [form, setForm] = useState<QuizFormState>(emptyQuiz);
   const [factQuery, setFactQuery] = useState("");
   const [factOptions, setFactOptions] = useState<FactOption[]>([]);
@@ -155,7 +157,8 @@ export default function QuizEditor({ questionId }: { questionId?: string }) {
       return;
     }
 
-    setMessage(result.message);
+    router.push(`/admin/quizzes?${editing ? "updated" : "created"}=1`);
+    router.refresh();
 
     if (!editing) {
       setForm(emptyQuiz);

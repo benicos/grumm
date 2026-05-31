@@ -1,4 +1,4 @@
-import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+﻿import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { gradeIconOptions, paginationConfig } from "@/config/app";
 import { getBadgeInfo } from "@/lib/badges";
 import { isCommercialCollaborationSlug } from "@/lib/commercial";
@@ -26,6 +26,7 @@ export type AdminFactAuthor = Pick<AdminProfile, "id" | "role" | "username">;
 export type AdminFact = Database["public"]["Tables"]["facts"]["Row"] & {
   authorProfile?: AdminFactAuthor | null;
   categories: Pick<AdminCategory, "name" | "slug"> | null;
+  quizQuestion?: Pick<AdminQuizQuestion, "id" | "question" | "is_active"> | null;
 };
 export type AdminQuizQuestion =
   Database["public"]["Tables"]["quiz_questions"]["Row"] & {
@@ -67,11 +68,11 @@ export type AdminUserDetail = {
 };
 
 export const FACT_STATUS_LABELS: Record<FactStatus, string> = {
-  archived: "Archivé",
+  archived: "Archiv?",
   draft: "Brouillon",
   pending_review: "En attente",
-  published: "Publié",
-  rejected: "Rejeté",
+  published: "Publi?",
+  rejected: "Rejet?",
 };
 
 export type AdminListResult<T> = {
@@ -153,7 +154,7 @@ export type AdminAnalyticsSearchStat = {
 };
 
 type AdminMutationResult =
-  | { ok: true; message: string }
+  | { id?: string; ok: true; message: string }
   | { ok: false; message: string };
 
 type AdminAuth = Awaited<ReturnType<typeof getAuthenticatedAdminClient>>;
@@ -161,7 +162,7 @@ type AdminClient = Extract<AdminAuth, { ok: true }>["supabase"];
 
 const DEFAULT_PAGE_SIZE: number = paginationConfig.adminDefaultPageSize;
 const ADMIN_FACT_SELECT =
-  "id,category_id,slug,title,hook,content,difficulty_level,long_content,source,source_url,status,published_at,display_order,tone,accent_color,created_at,updated_at,categories(name,slug)";
+  "id,category_id,slug,title,hook,content,difficulty_level,long_content,seo_title,seo_description,event_day,event_month,event_year,source,source_url,status,published_at,display_order,tone,accent_color,created_at,updated_at,categories(name,slug)";
 const ADMIN_QUIZ_SELECT =
   "id,fact_id,question,correct_answer,wrong_answer_1,wrong_answer_2,wrong_answer_3,is_active,created_at,updated_at,facts(id,title,slug,categories(name,slug))";
 
@@ -237,7 +238,7 @@ async function getAuthenticatedAdminClient() {
   }
 
   if (!hasPermission({ permissions, role }, "admin.access")) {
-    return { ok: false as const, message: "Accès réservé." };
+    return { ok: false as const, message: "Acc?s r?serv?." };
   }
 
   return { ok: true as const, permissions, role, supabase, user };
@@ -250,7 +251,7 @@ function adminError(error: unknown, operation: string, table: string) {
       source: "Supabase",
       table,
     },
-    prodMessage: "Cette action n’a pas pu être effectuée.",
+    prodMessage: "Cette action n?a pas pu ?tre effectu?e.",
   });
 }
 
@@ -334,8 +335,8 @@ function formatAdminActivity(
   type: AdminUserActivity["type"],
 ): AdminUserActivity[] {
   const labels = {
-    like: "A aimé",
-    save: "A enregistré",
+    like: "A aim?",
+    save: "A enregistr?",
     view: "A lu",
   } satisfies Record<AdminUserActivity["type"], string>;
 
@@ -572,7 +573,7 @@ export async function getAdminDashboardData(): Promise<AdminDashboardData> {
     stats: [
       { label: "Faits", value: factsCount.count ?? 0 },
       { label: "En attente", value: pendingFactsCount.count ?? 0 },
-      { label: "Thèmes", value: categoriesCount.count ?? 0 },
+      { label: "Th?mes", value: categoriesCount.count ?? 0 },
       { label: "Vues uniques", value: viewsCount.count ?? 0 },
       { label: "Objectifs aujourd'hui", value: goalsTodayCount.count ?? 0 },
       ...(adminRole
@@ -898,7 +899,7 @@ function toFactStats(
       return {
         id,
         slug: fact?.slug ?? id,
-        title: fact?.title ?? "Fait supprimé ou indisponible",
+        title: fact?.title ?? "Fait supprim? ou indisponible",
         value,
       };
     });
@@ -969,7 +970,7 @@ export async function getAdminAnalyticsData(): Promise<AdminAnalyticsData> {
   }
 
   if (auth.role !== "administrateur") {
-    throw new Error("Accès réservé aux administrateurs.");
+    throw new Error("Acc?s r?serv? aux administrateurs.");
   }
 
   const dashboardWindow = getDashboardWindow();
@@ -1685,7 +1686,7 @@ export async function getAdminFact(id: string): Promise<
     throw new Error(auth.message);
   }
 
-  const [factResult, categoriesResult] = await Promise.all([
+  const [factResult, categoriesResult, quizResult] = await Promise.all([
     auth.supabase
       .from("facts")
       .select(ADMIN_FACT_SELECT)
@@ -1695,9 +1696,16 @@ export async function getAdminFact(id: string): Promise<
       .from("categories")
       .select("*")
       .order("name", { ascending: true }),
+    auth.supabase
+      .from("quiz_questions")
+      .select("id,question,is_active")
+      .eq("fact_id", id)
+      .order("updated_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
   ]);
 
-  const error = factResult.error ?? categoriesResult.error;
+  const error = factResult.error ?? categoriesResult.error ?? quizResult.error;
 
   if (error) {
     throwAdminError(error, "load admin fact", "facts");
@@ -1706,10 +1714,22 @@ export async function getAdminFact(id: string): Promise<
   const hydrated = factResult.data
     ? (await attachFactAuthors(auth, [factResult.data as AdminFact]))[0]
     : null;
+  const fact = hydrated
+    ? {
+        ...hydrated,
+        quizQuestion: quizResult.data
+          ? {
+              id: quizResult.data.id,
+              is_active: quizResult.data.is_active,
+              question: quizResult.data.question,
+            }
+          : null,
+      }
+    : null;
 
   return {
     categories: (categoriesResult.data ?? []) as AdminCategory[],
-    fact: hydrated,
+    fact,
     role: auth.role,
   };
 }
@@ -1987,7 +2007,7 @@ export async function saveAdminCategory(input: {
   const name = input.name.trim();
 
   if (!name) {
-    return { ok: false, message: "Le nom du thème est requis." };
+    return { ok: false, message: "Le nom du th?me est requis." };
   }
 
   const payload = {
@@ -2010,7 +2030,7 @@ export async function saveAdminCategory(input: {
     };
   }
 
-  return { ok: true, message: "Thème enregistré." };
+  return { ok: true, message: "Th?me enregistr?." };
 }
 
 export async function deleteAdminCategory(
@@ -2035,7 +2055,7 @@ export async function deleteAdminCategory(
     };
   }
 
-  return { ok: true, message: "Thème supprimé." };
+  return { ok: true, message: "Th?me supprim?." };
 }
 
 export async function saveAdminQuizQuestion(input: {
@@ -2077,7 +2097,7 @@ export async function saveAdminQuizQuestion(input: {
   ) {
     return {
       ok: false,
-      message: "Les quatre réponses et la question sont requises.",
+      message: "Les quatre r?ponses et la question sont requises.",
     };
   }
 
@@ -2092,7 +2112,7 @@ export async function saveAdminQuizQuestion(input: {
     };
   }
 
-  return { ok: true, message: "Question quiz enregistrée." };
+  return { ok: true, message: "Question quiz enregistr?e." };
 }
 
 export async function deleteAdminQuizQuestion(
@@ -2120,16 +2140,28 @@ export async function deleteAdminQuizQuestion(
     };
   }
 
-  return { ok: true, message: "Question quiz supprimée." };
+  return { ok: true, message: "Question quiz supprim?e." };
 }
 
 export async function saveAdminFact(input: {
   category_id: string;
   content: string;
   difficulty_level?: DifficultyLevel;
+  event_day?: number | null;
+  event_month?: number | null;
+  event_year?: number | null;
   hook?: string | null;
   id?: string;
   long_content?: string | null;
+  quiz?: {
+    correct_answer: string;
+    question: string;
+    wrong_answer_1: string;
+    wrong_answer_2: string;
+    wrong_answer_3: string;
+  } | null;
+  seo_description?: string | null;
+  seo_title?: string | null;
   source?: string | null;
   source_url?: string | null;
   status?: FactStatus;
@@ -2143,6 +2175,8 @@ export async function saveAdminFact(input: {
 
   const title = input.title.trim();
   const hook = input.hook?.trim() ?? "";
+  const seoTitle = input.seo_title?.trim() || null;
+  const seoDescription = input.seo_description?.trim() || null;
 
   if (!input.category_id || !title || !input.content.trim()) {
     return {
@@ -2151,17 +2185,73 @@ export async function saveAdminFact(input: {
     };
   }
 
+  if (seoTitle && seoTitle.length > 90) {
+    return { ok: false, message: "Le titre SEO doit rester sous 90 caractères." };
+  }
+
+  if (seoDescription && seoDescription.length > 220) {
+    return {
+      ok: false,
+      message: "La description SEO doit rester sous 220 caractères.",
+    };
+  }
+
+  if (
+    (input.event_day && (!input.event_month || input.event_day < 1 || input.event_day > 31)) ||
+    (input.event_month && (input.event_month < 1 || input.event_month > 12))
+  ) {
+    return {
+      ok: false,
+      message: "La date éditoriale doit contenir un jour et un mois valides.",
+    };
+  }
+
   try {
     const canPublish = hasPermission(auth, "facts.publish");
     const status = canPublish ? input.status ?? "published" : "pending_review";
+    const quiz = input.quiz
+      ? {
+          correct_answer: input.quiz.correct_answer.trim(),
+          question: input.quiz.question.trim(),
+          wrong_answer_1: input.quiz.wrong_answer_1.trim(),
+          wrong_answer_2: input.quiz.wrong_answer_2.trim(),
+          wrong_answer_3: input.quiz.wrong_answer_3.trim(),
+        }
+      : null;
+    const hasQuizInput =
+      Boolean(quiz?.question) ||
+      Boolean(quiz?.correct_answer) ||
+      Boolean(quiz?.wrong_answer_1) ||
+      Boolean(quiz?.wrong_answer_2) ||
+      Boolean(quiz?.wrong_answer_3);
+
+    if (
+      hasQuizInput &&
+      (!quiz?.question ||
+        !quiz.correct_answer ||
+        !quiz.wrong_answer_1 ||
+        !quiz.wrong_answer_2 ||
+        !quiz.wrong_answer_3)
+    ) {
+      return {
+        ok: false,
+        message:
+          "Complète la question quiz et les quatre réponses, ou laisse toute la section vide.",
+      };
+    }
+
     const basePayload = {
       category_id: input.category_id,
       content: input.content.trim(),
       difficulty_level: normalizeDifficultyLevel(input.difficulty_level),
+      event_day: input.event_day || null,
+      event_month: input.event_month || null,
+      event_year: input.event_year || null,
       hook: hook || null,
       long_content: input.long_content?.trim() || null,
-      published_at:
-        status === "published" ? new Date().toISOString() : null,
+      published_at: status === "published" ? new Date().toISOString() : null,
+      seo_description: seoDescription,
+      seo_title: seoTitle,
       source: input.source?.trim() || null,
       source_url: input.source_url?.trim() || null,
       status,
@@ -2169,12 +2259,21 @@ export async function saveAdminFact(input: {
     };
 
     const result = input.id
-      ? await auth.supabase.from("facts").update(basePayload).eq("id", input.id)
-      : await auth.supabase.from("facts").insert({
-          ...basePayload,
-          author_id: auth.user.id,
-          display_order: await getNextFactDisplayOrder(auth.supabase),
-        });
+      ? await auth.supabase
+          .from("facts")
+          .update(basePayload)
+          .eq("id", input.id)
+          .select("id")
+          .single()
+      : await auth.supabase
+          .from("facts")
+          .insert({
+            ...basePayload,
+            author_id: auth.user.id,
+            display_order: await getNextFactDisplayOrder(auth.supabase),
+          })
+          .select("id")
+          .single();
 
     if (result.error) {
       return {
@@ -2182,22 +2281,48 @@ export async function saveAdminFact(input: {
         message: adminError(result.error, "save fact", "facts"),
       };
     }
+
+    const factId = result.data.id;
+
+    if (hasQuizInput && quiz) {
+      const quizResult = await auth.supabase.from("quiz_questions").insert({
+        ...quiz,
+        fact_id: factId,
+        is_active: true,
+      });
+
+      if (quizResult.error) {
+        if (!input.id) {
+          await auth.supabase.from("facts").delete().eq("id", factId);
+        }
+
+        return {
+          ok: false,
+          message: adminError(
+            quizResult.error,
+            "create quiz question for fact",
+            "quiz_questions",
+          ),
+        };
+      }
+    }
+
+    return {
+      id: factId,
+      ok: true,
+      message: hasPermission(auth, "facts.publish")
+        ? "Fait enregistré."
+        : "Ton fait a été envoyé pour validation.",
+    };
   } catch (error) {
     return {
       ok: false,
       message:
         error instanceof Error
           ? error.message
-          : "Ce fait n’a pas pu être enregistré.",
+          : "Ce fait n'a pas pu être enregistré.",
     };
   }
-
-  return {
-    ok: true,
-    message: hasPermission(auth, "facts.publish")
-      ? "Fait enregistré."
-      : "Ton fait a ete envoye pour validation.",
-  };
 }
 
 export async function deleteAdminFact(id: string): Promise<AdminMutationResult> {
@@ -2255,7 +2380,7 @@ export async function updateAdminFactStatus(
   const messages: Record<typeof status, string> = {
     draft: "Fait repasse en brouillon.",
     pending_review: "Fait renvoye en validation.",
-    published: "Fait publié.",
+    published: "Fait publi?.",
     rejected: "Fait rejete.",
   };
 
@@ -2288,7 +2413,7 @@ export async function updateProfileRole(
     };
   }
 
-  return { ok: true, message: "Rôle mis à jour." };
+  return { ok: true, message: "R?le mis ? jour." };
 }
 
 export async function deleteAdminUser(id: string): Promise<AdminMutationResult> {
@@ -2336,7 +2461,7 @@ export async function saveAdminRole(input: {
   const name = input.name.trim();
 
   if (!slug || !name) {
-    return { ok: false, message: "Nom et identifiant du rôle sont requis." };
+    return { ok: false, message: "Nom et identifiant du r?le sont requis." };
   }
 
   const permissions = [...new Set(input.permissions)];
@@ -2358,7 +2483,7 @@ export async function saveAdminRole(input: {
     };
   }
 
-  return { ok: true, message: "Rôle enregistré." };
+  return { ok: true, message: "R?le enregistr?." };
 }
 
 export async function deleteAdminRole(slug: string): Promise<AdminMutationResult> {
@@ -2381,7 +2506,7 @@ export async function deleteAdminRole(slug: string): Promise<AdminMutationResult
     };
   }
 
-  return { ok: true, message: "Rôle supprimé." };
+  return { ok: true, message: "R?le supprim?." };
 }
 
 export async function saveAdminGrade(input: {
@@ -2434,7 +2559,7 @@ export async function saveAdminGrade(input: {
     };
   }
 
-  return { ok: true, message: "Grade enregistré." };
+  return { ok: true, message: "Grade enregistr?." };
 }
 
 export async function deleteAdminGrade(id: string): Promise<AdminMutationResult> {

@@ -13,7 +13,7 @@ export default function Forbidden() {
       description="Cette ressource demande une connexion ou des droits supplémentaires."
       primaryHref="/login"
       primaryLabel="Se connecter"
-      secondaryHref="/discover"
+      secondaryHref="/decouvrir"
       secondaryLabel="Retour à Découvrir"
     />
   );

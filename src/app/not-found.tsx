@@ -13,7 +13,7 @@ export default function NotFound() {
       description="Oups, le lien est peut-être ancien ou le contenu a été déplacé."
       primaryHref="/"
       primaryLabel="Retour accueil"
-      secondaryHref="/discover"
+      secondaryHref="/decouvrir"
       secondaryLabel="Ouvrir Découvrir"
     />
   );

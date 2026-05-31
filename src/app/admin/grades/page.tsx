@@ -57,7 +57,12 @@ export default function AdminGradesPage() {
       actions={{
         onDelete: (grade) => {
           if (window.confirm(`Supprimer le grade "${grade.name}" ?`)) {
-            void deleteAdminGrade(grade.id).then(() => router.refresh());
+            void deleteAdminGrade(grade.id).then((result) => {
+              if (result.ok) {
+                router.push("/admin/grades?deleted=1");
+              }
+              router.refresh();
+            });
           }
         },
         onEdit: (grade) => router.push(`/admin/grades/${grade.id}/edit`),

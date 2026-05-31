@@ -3,7 +3,7 @@ import {
   createSupabaseBrowserClient,
   isInvalidRefreshTokenError,
 } from "@/lib/supabase/client";
-import { dailyGoalConfig } from "@/config/app";
+import { dailyGoalConfig, signupDailyGoalOptions } from "@/config/app";
 import { formatAppError, getConfiguredErrorMessage } from "@/lib/errors";
 import { logSupabaseError } from "@/lib/logger";
 import {
@@ -189,11 +189,11 @@ export async function signUpWithEmail(
 
   const username = normalizeUsername(usernameInput);
   const learningGoal = normalizeLearningGoal(learningGoalInput);
-  const dailyGoal = Number.isInteger(dailyGoalInput)
-    ? Math.min(
-        Math.max(dailyGoalInput, dailyGoalConfig.minGoal),
-        dailyGoalConfig.maxGoal,
-      )
+  const roundedDailyGoal = Math.round(dailyGoalInput);
+  const dailyGoal = signupDailyGoalOptions.includes(
+    roundedDailyGoal as (typeof signupDailyGoalOptions)[number],
+  )
+    ? roundedDailyGoal
     : dailyGoalConfig.defaultGoal;
   const usernameError = getUsernameValidationMessage(username);
 

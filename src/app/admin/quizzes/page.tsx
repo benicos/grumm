@@ -56,7 +56,12 @@ export default function AdminQuizQuestionsPage() {
       actions={{
         onDelete: (question) => {
           if (window.confirm("Supprimer cette question quiz ?")) {
-            void deleteAdminQuizQuestion(question.id).then(() => router.refresh());
+            void deleteAdminQuizQuestion(question.id).then((result) => {
+              if (result.ok) {
+                router.push("/admin/quizzes?deleted=1");
+              }
+              router.refresh();
+            });
           }
         },
         onEdit: (question) => router.push(`/admin/quizzes/${question.id}/edit`),

@@ -40,6 +40,32 @@ export function clearSupabaseAuthStorage() {
     .forEach((key) => window.localStorage.removeItem(key));
 }
 
+export function clearMalformedSupabaseAuthStorage() {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  Object.keys(window.localStorage)
+    .filter((key) => key.startsWith("sb-") && key.includes("auth-token"))
+    .forEach((key) => {
+      const value = window.localStorage.getItem(key);
+
+      if (!value) {
+        return;
+      }
+
+      try {
+        const parsed = JSON.parse(value) as { refresh_token?: unknown };
+
+        if (typeof parsed.refresh_token !== "string" || !parsed.refresh_token) {
+          window.localStorage.removeItem(key);
+        }
+      } catch {
+        window.localStorage.removeItem(key);
+      }
+    });
+}
+
 export function createSupabaseBrowserClient() {
   if (typeof window === "undefined") {
     return null;

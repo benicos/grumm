@@ -20,7 +20,7 @@ export default function DiscoverThemePage() {
         eyebrow="Acces reserve"
         title="Verification des droits..."
         description="Ce flux est reserve aux profils editoriaux."
-        primaryHref="/discover"
+        primaryHref="/decouvrir"
         primaryLabel="Retour a Decouvrir"
       />
     );
@@ -35,7 +35,7 @@ export default function DiscoverThemePage() {
         eyebrow="Acces reserve"
         title="Ce theme n'est pas accessible."
         description="Les collaborations commerciales sont gerees dans les espaces editoriaux de Grumm."
-        primaryHref="/discover"
+        primaryHref="/decouvrir"
         primaryLabel="Retour a Decouvrir"
         secondaryHref="/explorer"
         secondaryLabel="Explorer"

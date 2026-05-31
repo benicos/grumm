@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { Inter } from "next/font/google";
 import Link from "next/link";
@@ -133,6 +133,8 @@ function ProgressPanel({ profile }: { profile: UserProfileSummary }) {
 }
 
 function ThemeInsightsPanel({ profile }: { profile: UserProfileSummary }) {
+  const maxBubbleSize = 104;
+
   return (
     <section className="mt-6 rounded-[26px] border border-white/10 bg-white/[0.045] p-5 shadow-[0_28px_90px_rgba(0,0,0,0.22)] backdrop-blur-xl">
       <div className="flex items-center justify-between gap-4">
@@ -140,12 +142,15 @@ function ThemeInsightsPanel({ profile }: { profile: UserProfileSummary }) {
           <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#ffd166]">
             <span className="inline-flex items-center gap-2">
               <Layers3 className="h-4 w-4" aria-hidden="true" />
-              Thèmes vus
+              Carte du savoir
             </span>
           </p>
           <h2 className="mt-2 text-xl font-extrabold tracking-[-0.04em]">
-            Tes thèmes les plus consultés
+            Tes thèmes les plus explorés
           </h2>
+          <p className="mt-2 max-w-2xl text-sm font-semibold leading-6 text-white/56">
+            Ta carte du savoir se construit à mesure que tu découvres et retiens de nouveaux faits.
+          </p>
         </div>
         <span className="rounded-full border border-white/10 bg-black/18 px-3 py-1 text-xs font-bold text-white/50">
           Top {Math.max(profile.topThemes.length, 0)}
@@ -153,23 +158,27 @@ function ThemeInsightsPanel({ profile }: { profile: UserProfileSummary }) {
       </div>
 
       {profile.topThemes.length > 0 ? (
-        <div className="mt-5 grid gap-3 md:grid-cols-2">
+        <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {profile.topThemes.map((theme) => (
             <Link
               key={theme.slug}
               href={`/theme/${theme.slug}`}
-              className="group rounded-[18px] border border-white/10 bg-black/16 p-4 transition hover:border-white/20 hover:bg-white/[0.045]"
+              className="group flex min-h-[150px] flex-col justify-between rounded-[22px] border border-white/10 bg-black/16 p-4 transition hover:-translate-y-0.5 hover:border-white/20 hover:bg-white/[0.045]"
             >
-              <div className="flex items-center justify-between gap-3">
-                <span className="flex min-w-0 items-center gap-3 font-bold text-white">
-                  <span
-                    className="h-2.5 w-2.5 shrink-0 rounded-full"
-                    style={{ backgroundColor: theme.accent }}
-                  />
-                  <span className="truncate">{theme.name}</span>
-                </span>
-                <span className="rounded-full bg-white/8 px-3 py-1 text-xs font-black text-white/58">
-                  {theme.count}
+              <span
+                className="grid rounded-full border border-white/10 bg-white/8 text-center text-xs font-black text-white shadow-[0_16px_50px_rgba(0,0,0,0.24)]"
+                style={{
+                  background: `radial-gradient(circle at 32% 24%, ${theme.accent}55, rgba(255,255,255,0.08))`,
+                  height: Math.max(62, (theme.percent / 100) * maxBubbleSize),
+                  width: Math.max(62, (theme.percent / 100) * maxBubbleSize),
+                }}
+              >
+                <span className="m-auto">{theme.count}</span>
+              </span>
+              <div>
+                <p className="font-extrabold text-white">{theme.name}</p>
+                <span className="mt-1 block text-xs font-semibold text-white/48">
+                  {theme.count} {theme.count > 1 ? "faits" : "fait"}
                 </span>
               </div>
             </Link>
@@ -177,7 +186,7 @@ function ThemeInsightsPanel({ profile }: { profile: UserProfileSummary }) {
         </div>
       ) : (
         <div className="mt-5 rounded-lg border border-white/10 bg-black/16 p-4 text-sm leading-6 text-white/62">
-          Consulte quelques faits pour faire apparaître tes thèmes favoris.
+          Consulte quelques faits pour faire apparaître ta carte du savoir.
         </div>
       )}
     </section>
@@ -190,9 +199,11 @@ function MemoryChallengePanel({ profile }: { profile: UserProfileSummary }) {
   const lastScore =
     stats.lastScore !== null && stats.lastTotal !== null
       ? `${stats.lastScore}/${stats.lastTotal}`
-      : "—";
+      : "?";
   const average =
-    stats.averageScorePercent !== null ? `${stats.averageScorePercent}%` : "—";
+    stats.averageScorePercent !== null ? `${stats.averageScorePercent}%` : "?";
+  const currentStreak =
+    stats.currentStreakDays > 0 ? `${stats.currentStreakDays} jours` : "—";
 
   return (
     <section className="mt-6 overflow-hidden rounded-[30px] border border-white/10 bg-[radial-gradient(circle_at_82%_18%,rgba(106,227,192,0.14),transparent_28%),linear-gradient(145deg,rgba(255,255,255,0.078),rgba(255,255,255,0.028))] p-5 shadow-[0_30px_100px_rgba(0,0,0,0.26)] backdrop-blur-xl sm:p-6">
@@ -224,6 +235,10 @@ function MemoryChallengePanel({ profile }: { profile: UserProfileSummary }) {
             <span className="font-semibold text-white/50">Moyenne</span>
             <span className="font-black text-white">{average}</span>
           </div>
+          <div className="flex items-center justify-between rounded-[16px] border border-white/10 bg-black/16 px-4 py-3">
+            <span className="font-semibold text-white/50">Série actuelle</span>
+            <span className="font-black text-white">{currentStreak}</span>
+          </div>
         </div>
       </div>
 
@@ -234,7 +249,10 @@ function MemoryChallengePanel({ profile }: { profile: UserProfileSummary }) {
               ? `${stats.challengesCompleted} défi${
                   stats.challengesCompleted > 1 ? "s" : ""
                 } terminé${stats.challengesCompleted > 1 ? "s" : ""}.`
-              : "Ton premier défi est prêt."}
+              : "Ton premier défi est prêt."}{" "}
+            {stats.bestStreakDays > 0
+              ? `Meilleure série : ${stats.bestStreakDays} jours.`
+              : ""}
           </p>
         ) : (
           <p className="text-sm font-semibold text-white/56">
@@ -243,7 +261,7 @@ function MemoryChallengePanel({ profile }: { profile: UserProfileSummary }) {
         )}
 
         <Link
-          href={isUnlocked ? "/profile/memory-challenge" : "/discover"}
+          href={isUnlocked ? "/profil/memory-challenge" : "/decouvrir"}
           className={
             isUnlocked
               ? `${premiumPrimaryCtaClassName} justify-center`
@@ -330,7 +348,7 @@ function FactList({
                   sourceUrl={fact.sourceUrl}
                 />
               </div>
-              <Link href={`/fact/${fact.slug}`} className="block">
+              <Link href={`/fait/${fact.slug}`} className="block">
                 <p className="text-base font-bold leading-snug tracking-[-0.03em] transition group-hover:text-[#ffe2a3]">
                   {fact.title}
                 </p>
@@ -361,7 +379,7 @@ function FactList({
               onClick={() => setPage((current) => Math.max(current - 1, 1))}
               className="rounded-md border border-white/10 px-3 py-2 font-bold transition hover:border-white/20 disabled:cursor-not-allowed disabled:opacity-40"
             >
-              Precedent
+              Précédent
             </button>
             <button
               type="button"
@@ -434,7 +452,7 @@ function ProfileContent() {
         }
         primaryHref="/login"
         primaryLabel="Se connecter"
-        secondaryHref="/discover"
+        secondaryHref="/decouvrir"
         secondaryLabel="Retour à Découvrir"
       />
     );
@@ -461,7 +479,7 @@ function ProfileContent() {
 
             <div className="-mt-3 mb-4 flex justify-end">
               <Link
-                href="/profile/edit"
+                href="/profil/edit"
                 className={`${premiumPrimaryCtaClassName} shadow-[0_18px_65px_rgba(255,209,102,0.20)]`}
               >
                 <Pencil className="mr-2 h-4 w-4" aria-hidden="true" />

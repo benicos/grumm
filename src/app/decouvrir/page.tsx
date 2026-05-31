@@ -1,0 +1,19 @@
+import type { Metadata } from "next";
+import { Suspense } from "react";
+import { buildDefaultMetadata } from "@/lib/serverMetadata";
+import DecouvrirClient from "./DecouvrirClient";
+
+export const metadata: Metadata = buildDefaultMetadata({
+  canonicalPath: "/decouvrir",
+  description:
+    "Découvre un flux de faits courts, culturels et mémorables sur Grumm.",
+  title: "Découvrir",
+});
+
+export default function DecouvrirPage() {
+  return (
+    <Suspense>
+      <DecouvrirClient />
+    </Suspense>
+  );
+}

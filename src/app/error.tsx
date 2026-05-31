@@ -25,7 +25,7 @@ export default function Error({
         eyebrow="Erreur"
         title="Grumm. a perdu le fil."
         description="Une erreur inattendue est survenue. Tu peux relancer la page ou revenir à Découvrir."
-        primaryHref="/discover"
+        primaryHref="/decouvrir"
         primaryLabel="Retour à Découvrir"
         secondaryHref="/"
         secondaryLabel="Accueil"

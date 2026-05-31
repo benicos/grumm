@@ -65,7 +65,7 @@ export function getBadgeInfo(
   }
 
   return {
-    badge: current.badge ?? null,
+      badge: current.badge ?? null,
     currentThreshold: current.requiredGoals,
     nextThreshold: next.requiredGoals,
     progress:

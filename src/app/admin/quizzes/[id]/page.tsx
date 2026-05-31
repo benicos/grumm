@@ -76,7 +76,7 @@ export default function AdminQuizQuestionDetailPage() {
       return;
     }
 
-    router.push("/admin/quizzes");
+    router.push("/admin/quizzes?deleted=1");
     router.refresh();
   }
 

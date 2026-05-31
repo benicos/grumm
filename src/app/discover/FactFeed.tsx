@@ -331,7 +331,7 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
     }
 
     markFactReadInteraction(factReadTokenRef.current);
-    router.push(`/fact/${fact.slug || fact.id}`);
+    router.push(`/fait/${fact.slug || fact.id}`);
   };
 
   const shareFact = () => {
@@ -787,7 +787,7 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
         description="Ce lien ne correspond à aucun thème visible."
         primaryHref="/explorer"
         primaryLabel="Explorer les thèmes"
-        secondaryHref="/discover"
+        secondaryHref="/decouvrir"
         secondaryLabel="Découvrir"
       />
     );
@@ -799,7 +799,7 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
         eyebrow="Découvrir indisponible"
         title="Les faits ne peuvent pas être chargés."
         description={feedError}
-        primaryHref="/discover"
+        primaryHref="/decouvrir"
         primaryLabel="Recharger Découvrir"
         secondaryHref="/explorer"
         secondaryLabel="Explorer"
@@ -937,7 +937,7 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
 
                     {isSponsored ? (
                       <a
-                        href={fact.sourceUrl ?? "#"}
+                href={fact.sourceUrl ?? "#"}
                         target={fact.sourceUrl ? "_blank" : undefined}
                         rel={fact.sourceUrl ? "noopener noreferrer" : undefined}
                         className="mt-7 inline-flex rounded-full bg-white px-5 py-3 text-sm font-extrabold text-[#07111f] shadow-[0_18px_55px_rgba(255,255,255,0.16)] transition hover:-translate-y-0.5 hover:bg-[#ffe7ad] lg:hidden"
@@ -1074,7 +1074,7 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
 
                 {isSponsored ? (
                   <a
-                    href={fact.sourceUrl ?? "#"}
+                href={fact.sourceUrl ?? "#"}
                     target={fact.sourceUrl ? "_blank" : undefined}
                     rel={fact.sourceUrl ? "noopener noreferrer" : undefined}
                     className="absolute right-5 top-1/2 hidden -translate-y-1/2 rounded-full bg-white px-5 py-3 text-sm font-extrabold text-[#07111f] shadow-[0_18px_55px_rgba(255,255,255,0.16)] transition hover:scale-[1.03] hover:bg-[#ffe7ad] sm:right-8 lg:inline-flex"

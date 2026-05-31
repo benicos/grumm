@@ -434,9 +434,9 @@ function ProfileEditContent() {
         eyebrow="Profil"
         title="Impossible de charger tes parametres."
         description={error}
-        primaryHref="/profile"
+        primaryHref="/profil"
         primaryLabel="Retour profil"
-        secondaryHref="/discover"
+        secondaryHref="/decouvrir"
         secondaryLabel="Retour à Découvrir"
       />
     );
@@ -459,7 +459,7 @@ function ProfileEditContent() {
             </h1>
           </div>
           <Link
-            href="/profile"
+            href="/profil"
             className="rounded-md border border-white/10 px-4 py-3 text-sm font-bold text-white/72 transition hover:border-white/20 hover:text-white"
           >
             Retour profil

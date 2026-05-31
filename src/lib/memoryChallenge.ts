@@ -1,4 +1,5 @@
 import { isCommercialCollaborationSlug } from "@/lib/commercial";
+import { quizCopy } from "@/config/quizCopy";
 import { formatAppError, getConfiguredErrorMessage } from "@/lib/errors";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import type { Database } from "@/types/database";
@@ -50,8 +51,10 @@ export type MemoryChallengeFact = {
 
 export type MemoryChallengeQuestion = {
   correctAnswer: string;
+  factTitle: string;
   factId: string;
   factSlug: string;
+  isCustom: boolean;
   options: string[];
   prompt: string;
   title: string;
@@ -64,7 +67,9 @@ export type MemoryChallengeSession = {
 
 export type MemoryStats = {
   averageScorePercent: number | null;
+  bestStreakDays: number;
   challengesCompleted: number;
+  currentStreakDays: number;
   lastScore: number | null;
   lastTotal: number | null;
   revisableFacts: number;
@@ -120,8 +125,8 @@ function shuffle<T>(items: T[]) {
   return [...items].sort(() => Math.random() - 0.5);
 }
 
-function getQuestionPrompt(fact: MemoryChallengeFact) {
-  return `Tu t'en souvenais ? Quel souvenir correspond à « ${fact.title} » ?`;
+function getQuestionPrompt(): string {
+  return quizCopy.generatedQuestionPrompt;
 }
 
 function buildCuratedQuestions(
@@ -142,19 +147,23 @@ function buildCuratedQuestions(
         return null;
       }
 
-      return {
+      const question: MemoryChallengeQuestion = {
         correctAnswer: row.correct_answer,
+        factTitle: fact.title,
         factId: fact.id,
         factSlug: fact.slug,
+        isCustom: true,
         options: shuffle([
           row.correct_answer,
           row.wrong_answer_1,
           row.wrong_answer_2,
           row.wrong_answer_3,
         ]),
-        prompt: row.question,
-        title: fact.title,
-      } satisfies MemoryChallengeQuestion;
+        prompt: quizCopy.customQuestionPrompt,
+        title: row.question,
+      };
+
+      return question;
     })
     .filter((question): question is MemoryChallengeQuestion => question !== null);
 }
@@ -186,14 +195,18 @@ function buildQuestions(
         return null;
       }
 
-      return {
+      const question: MemoryChallengeQuestion = {
         correctAnswer: fact.promptAnswer,
+        factTitle: fact.title,
         factId: fact.id,
         factSlug: fact.slug,
+        isCustom: false,
         options: shuffle([fact.promptAnswer, ...wrongAnswers]),
-        prompt: getQuestionPrompt(fact),
+        prompt: getQuestionPrompt(),
         title: fact.title,
-      } satisfies MemoryChallengeQuestion;
+      };
+
+      return question;
     })
     .filter((question): question is MemoryChallengeQuestion => question !== null);
 
@@ -225,6 +238,58 @@ async function getAuthenticatedMemoryClient() {
   return { ok: true as const, supabase, user };
 }
 
+function getLocalDateKey(value: string) {
+  const date = new Date(value);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
+
+function getMemoryStreaks(completedAtValues: string[]) {
+  const completedDays = new Set(
+    completedAtValues
+      .filter(Boolean)
+      .map(getLocalDateKey),
+  );
+  const sortedDays = [...completedDays].sort();
+  let bestStreakDays = 0;
+  let runningStreak = 0;
+  let previousTime: number | null = null;
+
+  sortedDays.forEach((day) => {
+    const currentTime = new Date(`${day}T00:00:00`).getTime();
+    const oneDay = 24 * 60 * 60 * 1000;
+
+    runningStreak =
+      previousTime !== null && currentTime - previousTime === oneDay
+        ? runningStreak + 1
+        : 1;
+    bestStreakDays = Math.max(bestStreakDays, runningStreak);
+    previousTime = currentTime;
+  });
+
+  const today = getLocalDateKey(new Date().toISOString());
+  const yesterday = getLocalDateKey(
+    new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
+  );
+  let currentStreakDays = 0;
+
+  if (completedDays.has(today) || completedDays.has(yesterday)) {
+    const cursor = new Date(
+      `${completedDays.has(today) ? today : yesterday}T00:00:00`,
+    );
+
+    while (completedDays.has(getLocalDateKey(cursor.toISOString()))) {
+      currentStreakDays += 1;
+      cursor.setDate(cursor.getDate() - 1);
+    }
+  }
+
+  return { bestStreakDays, currentStreakDays };
+}
+
 function memoryError(error: unknown, operation: string, table?: string) {
   return formatAppError(error, {
     context: {
@@ -242,7 +307,9 @@ export async function getMemoryChallengeStats(): Promise<MemoryStats> {
   if (!auth.ok) {
     return {
       averageScorePercent: null,
+      bestStreakDays: 0,
       challengesCompleted: 0,
+      currentStreakDays: 0,
       lastScore: null,
       lastTotal: null,
       revisableFacts: 0,
@@ -282,6 +349,11 @@ export async function getMemoryChallengeStats(): Promise<MemoryStats> {
   const sessions = sessionsResult.data ?? [];
   const completed = sessions.filter((session) => session.total_questions > 0);
   const last = completed[0];
+  const streaks = getMemoryStreaks(
+    completed
+      .map((session) => session.completed_at)
+      .filter((value): value is string => Boolean(value)),
+  );
   const averageScorePercent =
     completed.length > 0
       ? Math.round(
@@ -295,7 +367,9 @@ export async function getMemoryChallengeStats(): Promise<MemoryStats> {
 
   return {
     averageScorePercent,
+    bestStreakDays: streaks.bestStreakDays,
     challengesCompleted: completed.length,
+    currentStreakDays: streaks.currentStreakDays,
     lastScore: last?.score ?? null,
     lastTotal: last?.total_questions ?? null,
     revisableFacts,
@@ -362,7 +436,7 @@ export async function createMemoryChallengeSession(): Promise<
     return {
       ok: false,
       message:
-        "Lis encore quelques faits pour débloquer ton premier défi mémoire.",
+        quizCopy.empty.description,
       reason: "not_enough_facts",
     };
   }

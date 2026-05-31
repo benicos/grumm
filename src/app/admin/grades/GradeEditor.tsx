@@ -2,6 +2,7 @@
 
 import type { FormEvent } from "react";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { gradeIconOptions } from "@/config/app";
 import { getAdminGrade, saveAdminGrade } from "@/lib/admin";
 import { AdminBackLink, AdminField, adminFieldClassName } from "../forms";
@@ -33,6 +34,7 @@ const emptyGrade: GradeFormState = {
 };
 
 export default function GradeEditor({ gradeId }: { gradeId?: string }) {
+  const router = useRouter();
   const [form, setForm] = useState<GradeFormState>(emptyGrade);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -113,7 +115,8 @@ export default function GradeEditor({ gradeId }: { gradeId?: string }) {
       return;
     }
 
-    setMessage(result.message);
+    router.push(`/admin/grades?${editing ? "updated" : "created"}=1`);
+    router.refresh();
 
     if (!editing) {
       setForm(emptyGrade);

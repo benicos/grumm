@@ -74,7 +74,12 @@ export default function AdminUsersPage() {
       actions={{
         onDelete: (user) => {
           if (window.confirm(`Supprimer l'utilisateur "${user.username}" ?`)) {
-            void deleteAdminUser(user.id).then(() => router.refresh());
+            void deleteAdminUser(user.id).then((result) => {
+              if (result.ok) {
+                router.push("/admin/users?deleted=1");
+              }
+              router.refresh();
+            });
           }
         },
         onEdit: (user) => router.push(`/admin/users/${user.id}/edit`),

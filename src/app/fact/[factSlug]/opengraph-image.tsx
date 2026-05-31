@@ -79,7 +79,7 @@ export default async function OpenGraphImage({
               textTransform: "uppercase",
             }}
           >
-            {fact.themeName ?? "Découvrir"}
+            {fact.themeName ?? "D?couvrir"}
           </div>
         </div>
 

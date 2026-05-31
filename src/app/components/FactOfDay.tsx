@@ -88,7 +88,7 @@ export default function FactOfDay() {
             </div>
 
             <Link
-              href={`/fact/${fact.slug}`}
+              href={`/fait/${fact.slug}`}
               className={premiumPrimaryCtaClassName}
             >
               Lire le fait

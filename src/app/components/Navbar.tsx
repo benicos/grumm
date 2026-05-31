@@ -13,8 +13,9 @@ type NavbarProps = {
 };
 
 const links = [
-  { label: "Découvrir", href: "/discover" },
+  { label: "Découvrir", href: "/decouvrir" },
   { label: "Explorer", href: "/explorer" },
+  { label: "Contact", href: "/contact" },
 ];
 
 function MenuIcon() {
@@ -94,7 +95,7 @@ export default function Navbar({ fixed = false }: NavbarProps) {
   const accountControl = isAuthenticated ? (
     <div className="hidden items-center gap-2 sm:flex">
       <Link
-        href="/profile"
+        href="/profil"
         className="flex max-w-[190px] items-center gap-2 rounded-md px-3 py-2 text-sm font-bold text-white transition hover:bg-white/5"
         title={profile?.gradeName ?? undefined}
       >
@@ -208,7 +209,7 @@ export default function Navbar({ fixed = false }: NavbarProps) {
                   {isAuthenticated ? (
                     <div className="space-y-2">
                       <Link
-                        href="/profile"
+                        href="/profil"
                         onClick={() => setIsOpen(false)}
                         className="-mx-3 flex items-center gap-3 rounded-lg px-3 py-2.5 text-base/7 font-semibold text-white hover:bg-white/5"
                       >

@@ -128,7 +128,12 @@ export default function AdminFactsPage() {
       actions={{
         onDelete: (fact) => {
           if (window.confirm(`Supprimer le fait "${fact.title}" ?`)) {
-            void deleteAdminFact(fact.id).then(() => router.refresh());
+            void deleteAdminFact(fact.id).then((result) => {
+              if (result.ok) {
+                router.push("/admin/facts?deleted=1");
+              }
+              router.refresh();
+            });
           }
         },
         onEdit: (fact) => router.push(`/admin/facts/${fact.id}/edit`),

@@ -2,6 +2,10 @@
 
 import { Component, type ErrorInfo, type ReactNode, useEffect } from "react";
 import { logReactError, logStructuredError } from "@/lib/logger";
+import {
+  clearSupabaseAuthStorage,
+  isInvalidRefreshTokenError,
+} from "@/lib/supabase/client";
 import { AppState } from "./AppState";
 
 type ErrorBoundaryProps = {
@@ -38,7 +42,7 @@ export class GlobalErrorBoundary extends Component<
           eyebrow="Erreur"
           title="Grumm. n'a pas pu afficher cette vue."
           description="L'erreur a été journalisée avec son contexte technique. Tu peux relancer la page."
-          primaryHref="/discover"
+          primaryHref="/decouvrir"
           primaryLabel="Retour à Découvrir"
           secondaryHref="/explorer"
           secondaryLabel="Explorer"
@@ -53,6 +57,12 @@ export class GlobalErrorBoundary extends Component<
 export function BrowserErrorInstrumentation() {
   useEffect(() => {
     const handleError = (event: ErrorEvent) => {
+      if (isInvalidRefreshTokenError(event.error ?? event.message)) {
+        clearSupabaseAuthStorage();
+        event.preventDefault();
+        return;
+      }
+
       logStructuredError(event.error ?? event.message, {
         component: "window.onerror",
         operation: "uncaught browser error",
@@ -68,6 +78,12 @@ export function BrowserErrorInstrumentation() {
     };
 
     const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
+      if (isInvalidRefreshTokenError(event.reason)) {
+        clearSupabaseAuthStorage();
+        event.preventDefault();
+        return;
+      }
+
       logStructuredError(event.reason, {
         component: "window.onunhandledrejection",
         operation: "unhandled promise rejection",

@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import type { AdminListResult } from "@/lib/admin";
 import {
@@ -69,6 +69,7 @@ export default function AdminListingPage<Row>({
   title: string;
 }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [rows, setRows] = useState<Row[]>([]);
   const [page, setPage] = useState(1);
   const [pageSize] = useState(5);
@@ -153,6 +154,14 @@ export default function AdminListingPage<Row>({
       const value = filterValues[filter.id];
       return Boolean(value && value !== "all");
     });
+  const actionMessage =
+    searchParams.get("created") === "1"
+      ? "Élément créé avec succès."
+      : searchParams.get("updated") === "1"
+        ? "Modifications enregistrées avec succès."
+        : searchParams.get("deleted") === "1"
+          ? "Élément supprimé avec succès."
+          : null;
 
   return (
     <>
@@ -168,6 +177,7 @@ export default function AdminListingPage<Row>({
           ) : undefined
         }
       />
+      <AdminNotice message={actionMessage} />
       <AdminNotice message={error} tone="error" />
 
       <AdminCard>

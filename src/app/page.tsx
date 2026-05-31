@@ -47,7 +47,7 @@ export default function GrummLanding() {
 
             <div className="mt-10 flex flex-wrap items-center justify-center gap-6">
               <Link
-                href="/discover"
+                href="/decouvrir"
                 className={`${premiumPrimaryCtaClassName} min-h-[58px] px-10 text-base shadow-2xl`}
               >
                 Découvrir le flux
@@ -88,7 +88,7 @@ export default function GrummLanding() {
                   icon: "01",
                   title: "Découvrir",
                   text: "Un flux de découvertes courtes et surprenantes. Une idée à la fois, sans distraction.",
-                  href: "/discover",
+                  href: "/decouvrir",
                   alt: "Découvrir",
                 },
                 {

@@ -38,7 +38,12 @@ export default function AdminThemesPage() {
       actions={{
         onDelete: (theme) => {
           if (window.confirm(`Supprimer le thème "${theme.name}" ?`)) {
-            void deleteAdminCategory(theme.id).then(() => router.refresh());
+            void deleteAdminCategory(theme.id).then((result) => {
+              if (result.ok) {
+                router.push("/admin/themes?deleted=1");
+              }
+              router.refresh();
+            });
           }
         },
         onEdit: (theme) => router.push(`/admin/themes/${theme.id}/edit`),

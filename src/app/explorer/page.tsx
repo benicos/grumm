@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { Inter } from "next/font/google";
 import Link from "next/link";
@@ -66,7 +66,7 @@ function SearchResultCard({ fact }: { fact: FeedFact }) {
 
   return (
     <Link
-      href={`/fact/${fact.slug}`}
+      href={`/fait/${fact.slug}`}
       className={`group relative min-h-[230px] overflow-hidden rounded-[26px] border border-white/10 ${toneBackground.className} p-5 shadow-[0_24px_80px_rgba(0,0,0,0.22)] transition duration-300 hover:-translate-y-1 hover:border-white/24`}
       style={toneBackground.style}
     >
@@ -259,7 +259,7 @@ export default function ExplorerPage() {
         eyebrow="Explorer"
         title="Impossible de charger Explorer."
         description={error}
-        primaryHref="/discover"
+        primaryHref="/decouvrir"
         primaryLabel="Ouvrir Découvrir"
         secondaryHref="/"
         secondaryLabel="Accueil"
@@ -286,7 +286,7 @@ export default function ExplorerPage() {
             Que veux-tu apprendre aujourd&apos;hui ?
           </h1>
           <p className="mt-6 max-w-2xl text-base font-semibold leading-8 text-white/62 sm:text-lg">
-            Trouve un thème, une époque, une œuvre ou une idée, puis laisse
+            Trouve un thème, une époque, une oeuvre ou une idée, puis laisse
             Grumm. t&apos;ouvrir la bonne porte.
           </p>
 
@@ -348,6 +348,27 @@ export default function ExplorerPage() {
           </section>
         ) : (
           <div className="space-y-16 pb-20">
+            <section className="grid gap-5 rounded-[34px] border border-white/10 bg-white/[0.055] p-6 shadow-[0_28px_100px_rgba(0,0,0,0.24)] backdrop-blur-2xl md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
+              <div>
+                <p className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-[0.22em] text-[#6ae3c0]">
+                  <Shuffle className="h-4 w-4" />
+                  Pas d&apos;idée ?
+                </p>
+                <h2 className="mt-3 text-3xl font-black tracking-[-0.055em] text-white">
+                  Laisse Grumm. choisir une direction.
+                </h2>
+                <p className="mt-2 text-sm font-semibold leading-6 text-white/56">
+                  Un thème au hasard, pour ouvrir une porte sans réfléchir.
+                </p>
+              </div>
+              <Link
+                href={randomTheme ? `/theme/${randomTheme.slug}` : "/decouvrir"}
+                className={`${premiumPrimaryCtaClassName} justify-center`}
+              >
+                Découvrir un thème au hasard
+              </Link>
+            </section>
+
             <section>
               <div className="mb-6 flex flex-wrap items-end justify-between gap-5">
                 <SectionTitle
@@ -374,26 +395,6 @@ export default function ExplorerPage() {
               )}
             </section>
 
-            <section className="grid gap-5 rounded-[34px] border border-white/10 bg-white/[0.055] p-6 shadow-[0_28px_100px_rgba(0,0,0,0.24)] backdrop-blur-2xl md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
-              <div>
-                <p className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-[0.22em] text-[#6ae3c0]">
-                  <Shuffle className="h-4 w-4" />
-                  Pas d&apos;idée ?
-                </p>
-                <h2 className="mt-3 text-3xl font-black tracking-[-0.055em] text-white">
-                  Laisse Grumm. choisir une direction.
-                </h2>
-                <p className="mt-2 text-sm font-semibold leading-6 text-white/56">
-                  Un thème au hasard, pour ouvrir une porte sans réfléchir.
-                </p>
-              </div>
-              <Link
-                href={randomTheme ? `/theme/${randomTheme.slug}` : "/discover"}
-                className={`${premiumPrimaryCtaClassName} justify-center`}
-              >
-                Découvrir un thème au hasard
-              </Link>
-            </section>
 
             {popularSearches.length > 0 ? (
               <section>
@@ -420,7 +421,7 @@ export default function ExplorerPage() {
               <div className="mb-6 flex flex-wrap items-end justify-between gap-5">
                 <SectionTitle eyebrow="Tous les thèmes" title="Le catalogue Grumm." />
                 <Link
-                  href="/discover/theme"
+                  href="/theme"
                   className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/[0.07] px-5 py-3 text-sm font-black text-white transition hover:border-white/24 hover:bg-white/[0.11]"
                 >
                   Vue dédiée

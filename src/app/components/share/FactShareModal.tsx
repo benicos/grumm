@@ -62,10 +62,10 @@ export default function FactShareModal({ fact, onClose }: FactShareModalProps) {
     }
 
     if (typeof window !== "undefined") {
-      return `${window.location.origin}/fact/${fact.slug}`;
+      return `${window.location.origin}/fait/${fact.slug}`;
     }
 
-    return `${siteConfig.publicUrl}/fact/${fact.slug}`;
+    return `${siteConfig.publicUrl}/fait/${fact.slug}`;
   }, [fact]);
 
   if (!fact) {

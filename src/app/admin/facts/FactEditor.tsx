@@ -2,6 +2,7 @@
 
 import type { FormEvent } from "react";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   FACT_STATUS_LABELS,
   getAdminFact,
@@ -29,13 +30,26 @@ type FactFormState = {
   category_id: string;
   content: string;
   difficulty_level: DifficultyLevel;
+  event_day: string;
+  event_month: string;
+  event_year: string;
   hook: string;
   id: string;
   long_content: string;
+  seo_description: string;
+  seo_title: string;
   source: string;
   source_url: string;
   status: FactStatus;
   title: string;
+};
+
+type FactQuizFormState = {
+  correct_answer: string;
+  question: string;
+  wrong_answer_1: string;
+  wrong_answer_2: string;
+  wrong_answer_3: string;
 };
 
 const factStatuses: FactStatus[] = [
@@ -46,14 +60,27 @@ const factStatuses: FactStatus[] = [
   "archived",
 ];
 
+const emptyQuizForm: FactQuizFormState = {
+  correct_answer: "",
+  question: "",
+  wrong_answer_1: "",
+  wrong_answer_2: "",
+  wrong_answer_3: "",
+};
+
 function getEmptyFact(canPublish: boolean): FactFormState {
   return {
     category_id: "",
     content: "",
     difficulty_level: "intermediate",
+    event_day: "",
+    event_month: "",
+    event_year: "",
     hook: "",
     id: "",
     long_content: "",
+    seo_description: "",
+    seo_title: "",
     source: "",
     source_url: "",
     status: canPublish ? "published" : "pending_review",
@@ -66,9 +93,14 @@ function factToForm(fact: AdminFact): FactFormState {
     category_id: fact.category_id,
     content: fact.content,
     difficulty_level: fact.difficulty_level,
+    event_day: fact.event_day ? String(fact.event_day) : "",
+    event_month: fact.event_month ? String(fact.event_month) : "",
+    event_year: fact.event_year ? String(fact.event_year) : "",
     hook: fact.hook ?? "",
     id: fact.id,
     long_content: fact.long_content ?? "",
+    seo_description: fact.seo_description ?? "",
+    seo_title: fact.seo_title ?? "",
     source: fact.source ?? "",
     source_url: fact.source_url ?? "",
     status: fact.status,
@@ -77,12 +109,14 @@ function factToForm(fact: AdminFact): FactFormState {
 }
 
 export default function FactEditor({ factId }: { factId?: string }) {
+  const router = useRouter();
   const { profile } = useAuth();
   const canPublish = hasPermission(profile, "facts.publish");
   const [categories, setCategories] = useState<AdminCategory[]>([]);
   const [form, setForm] = useState<FactFormState>(() =>
     getEmptyFact(canPublish),
   );
+  const [quizForm, setQuizForm] = useState<FactQuizFormState>(emptyQuizForm);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -148,7 +182,13 @@ export default function FactEditor({ factId }: { factId?: string }) {
     const result = await saveAdminFact({
       ...form,
       id: form.id || undefined,
+      event_day: form.event_day ? Number(form.event_day) : null,
+      event_month: form.event_month ? Number(form.event_month) : null,
+      event_year: form.event_year ? Number(form.event_year) : null,
       long_content: form.long_content || null,
+      quiz: editing ? null : quizForm,
+      seo_description: form.seo_description || null,
+      seo_title: form.seo_title || null,
       source_url: form.source_url || null,
       status: canPublish ? form.status : undefined,
     });
@@ -160,13 +200,15 @@ export default function FactEditor({ factId }: { factId?: string }) {
       return;
     }
 
-    setMessage(result.message);
+    router.push(`/admin/facts?${editing ? "updated" : "created"}=1`);
+    router.refresh();
 
     if (!editing) {
       setForm({
         ...getEmptyFact(canPublish),
         category_id: form.category_id,
       });
+      setQuizForm(emptyQuizForm);
     }
   }
 
@@ -224,6 +266,66 @@ export default function FactEditor({ factId }: { factId?: string }) {
                 setForm((current) => ({ ...current, long_content }))
               }
             />
+
+            <section className="rounded-2xl border border-gray-200 bg-gray-50 p-5">
+              <h2 className="text-base font-semibold text-gray-800">
+                Date éditoriale
+              </h2>
+              <p className="mt-1 text-sm text-gray-500">
+                Optionnelle. Le jour et le mois permettent une mise en avant annuelle.
+              </p>
+              <div className="mt-5 grid gap-5 sm:grid-cols-3">
+                <AdminField
+                  label="Jour"
+                  type="number"
+                  value={form.event_day}
+                  onChange={(event_day) =>
+                    setForm((current) => ({ ...current, event_day }))
+                  }
+                />
+                <AdminField
+                  label="Mois"
+                  type="number"
+                  value={form.event_month}
+                  onChange={(event_month) =>
+                    setForm((current) => ({ ...current, event_month }))
+                  }
+                />
+                <AdminField
+                  label="Année"
+                  type="number"
+                  value={form.event_year}
+                  onChange={(event_year) =>
+                    setForm((current) => ({ ...current, event_year }))
+                  }
+                />
+              </div>
+            </section>
+
+            <section className="rounded-2xl border border-gray-200 bg-gray-50 p-5">
+              <h2 className="text-base font-semibold text-gray-800">SEO</h2>
+              <p className="mt-1 text-sm text-gray-500">
+                Optionnel. Si ces champs restent vides, Grumm utilise le titre et le contenu du fait.
+              </p>
+              <div className="mt-5 grid gap-5">
+                <AdminField
+                  label="Titre SEO"
+                  value={form.seo_title}
+                  onChange={(seo_title) =>
+                    setForm((current) => ({ ...current, seo_title }))
+                  }
+                />
+                <AdminField
+                  label="Description SEO"
+                  textarea
+                  rows={3}
+                  value={form.seo_description}
+                  onChange={(seo_description) =>
+                    setForm((current) => ({ ...current, seo_description }))
+                  }
+                />
+              </div>
+            </section>
 
             <div className="grid gap-5 lg:grid-cols-2">
               <label className="block text-sm font-medium text-gray-700">
@@ -311,6 +413,70 @@ export default function FactEditor({ factId }: { factId?: string }) {
                 }
               />
             </div>
+
+            {!editing ? (
+              <section className="rounded-2xl border border-gray-200 bg-gray-50 p-5">
+                <h2 className="text-base font-semibold text-gray-800">
+                  Question quiz associée
+                </h2>
+                <p className="mt-1 text-sm text-gray-500">
+                  Optionnel. Si cette section reste vide, seul le fait sera créé.
+                </p>
+                <div className="mt-5 grid gap-5">
+                  <AdminField
+                    label="Question personnalisée"
+                    textarea
+                    rows={3}
+                    value={quizForm.question}
+                    onChange={(question) =>
+                      setQuizForm((current) => ({ ...current, question }))
+                    }
+                  />
+                  <div className="grid gap-5 lg:grid-cols-2">
+                    <AdminField
+                      label="Réponse correcte"
+                      value={quizForm.correct_answer}
+                      onChange={(correct_answer) =>
+                        setQuizForm((current) => ({
+                          ...current,
+                          correct_answer,
+                        }))
+                      }
+                    />
+                    <AdminField
+                      label="Réponse incorrecte 1"
+                      value={quizForm.wrong_answer_1}
+                      onChange={(wrong_answer_1) =>
+                        setQuizForm((current) => ({
+                          ...current,
+                          wrong_answer_1,
+                        }))
+                      }
+                    />
+                    <AdminField
+                      label="Réponse incorrecte 2"
+                      value={quizForm.wrong_answer_2}
+                      onChange={(wrong_answer_2) =>
+                        setQuizForm((current) => ({
+                          ...current,
+                          wrong_answer_2,
+                        }))
+                      }
+                    />
+                    <AdminField
+                      label="Réponse incorrecte 3"
+                      value={quizForm.wrong_answer_3}
+                      onChange={(wrong_answer_3) =>
+                        setQuizForm((current) => ({
+                          ...current,
+                          wrong_answer_3,
+                        }))
+                      }
+                    />
+                  </div>
+                </div>
+              </section>
+            ) : null}
 
             <div className="flex flex-wrap gap-3">
               <AdminButton type="submit" disabled={busy}>

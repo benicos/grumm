@@ -26,8 +26,15 @@ export type FeedFact = {
   detail: string;
   difficultyLevel: DifficultyLevel;
   longContent: string | null;
+  seoDescription: string | null;
+  seoTitle: string | null;
   source: string | null;
   sourceUrl: string | null;
+  eventDay: number | null;
+  eventMonth: number | null;
+  eventYear: number | null;
+  publishedAt: string | null;
+  updatedAt: string | null;
   tone: string;
   accent: string;
 };
@@ -88,9 +95,16 @@ type FactRow = {
   hook: string | null;
   content: string;
   difficulty_level?: DifficultyLevel | null;
+  event_day?: number | null;
+  event_month?: number | null;
+  event_year?: number | null;
   long_content?: string | null;
+  seo_description?: string | null;
+  seo_title?: string | null;
   source: string | null;
   source_url?: string | null;
+  published_at?: string | null;
+  updated_at?: string | null;
   tone: string | null;
   accent_color: string | null;
   categories: FactCategory | FactCategory[] | null;
@@ -103,9 +117,16 @@ type FeedRpcRow = {
   hook: string | null;
   content: string;
   difficulty_level?: DifficultyLevel | null;
+  event_day?: number | null;
+  event_month?: number | null;
+  event_year?: number | null;
   long_content?: string | null;
+  seo_description?: string | null;
+  seo_title?: string | null;
   source: string | null;
   source_url: string | null;
+  published_at?: string | null;
+  updated_at?: string | null;
   tone: string | null;
   accent_color: string | null;
   category_id: string;
@@ -145,7 +166,7 @@ type RawDailyProgressRow = {
 };
 
 const FACT_SELECT =
-  "id,slug,title,hook,content,difficulty_level,long_content,source,source_url,tone,accent_color,categories(id,name,slug,tone,accent_color)";
+  "id,slug,title,hook,content,difficulty_level,long_content,seo_title,seo_description,event_day,event_month,event_year,published_at,updated_at,source,source_url,tone,accent_color,categories(id,name,slug,tone,accent_color)";
 
 function isMissingSourceLabel(value: string) {
   const normalized = value
@@ -193,8 +214,15 @@ function mapFact(fact: FactRow): FeedFact {
     detail: fact.content,
     difficultyLevel: normalizeDifficultyLevel(fact.difficulty_level),
     longContent: fact.long_content?.trim() || null,
+    seoDescription: cleanOptionalText(fact.seo_description),
+    seoTitle: cleanOptionalText(fact.seo_title),
     source: cleanFactSource(fact.source),
     sourceUrl: cleanOptionalText(fact.source_url),
+    eventDay: fact.event_day ?? null,
+    eventMonth: fact.event_month ?? null,
+    eventYear: fact.event_year ?? null,
+    publishedAt: fact.published_at ?? null,
+    updatedAt: fact.updated_at ?? null,
     tone:
       fact.tone ??
       category?.tone ??
@@ -216,8 +244,15 @@ function mapFeedRpcFact(fact: FeedRpcRow): FeedFact {
       fact.difficulty_level ?? DEFAULT_DIFFICULTY_LEVEL,
     ),
     longContent: fact.long_content?.trim() || null,
+    seoDescription: cleanOptionalText(fact.seo_description),
+    seoTitle: cleanOptionalText(fact.seo_title),
     source: cleanFactSource(fact.source),
     sourceUrl: cleanOptionalText(fact.source_url),
+    eventDay: fact.event_day ?? null,
+    eventMonth: fact.event_month ?? null,
+    eventYear: fact.event_year ?? null,
+    publishedAt: fact.published_at ?? null,
+    updatedAt: fact.updated_at ?? null,
     tone:
       fact.tone ??
       fact.category_tone ??

@@ -2,6 +2,7 @@
 
 import type { FormEvent } from "react";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { getAdminRole, saveAdminRole } from "@/lib/admin";
 import {
   PERMISSION_LABELS,
@@ -31,6 +32,7 @@ const emptyRole: RoleFormState = {
 };
 
 export default function RoleEditor({ roleSlug }: { roleSlug?: string }) {
+  const router = useRouter();
   const [form, setForm] = useState<RoleFormState>(emptyRole);
   const [systemRole, setSystemRole] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -119,7 +121,8 @@ export default function RoleEditor({ roleSlug }: { roleSlug?: string }) {
       return;
     }
 
-    setMessage(result.message);
+    router.push(`/admin/roles?${editing ? "updated" : "created"}=1`);
+    router.refresh();
 
     if (!editing) {
       setForm(emptyRole);

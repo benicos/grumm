@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { appRoutes, dailyGoalConfig } from "@/config/app";
+import { appRoutes, dailyGoalConfig, signupDailyGoalOptions } from "@/config/app";
 import { trackAnalyticsEvent } from "@/lib/analytics/web";
 import { signInWithEmail, signUpWithEmail } from "@/lib/auth";
 import { consumeAuthRedirect, getLegacyNextParam } from "@/lib/authRedirect";
@@ -37,8 +37,6 @@ const signupSteps: SignupStep[] = [
   "dailyGoal",
   "credentials",
 ];
-
-const dailyGoalOptions = [3, 5, 10, 15] as const;
 
 function FieldError({ message }: { message?: string }) {
   if (!message) {
@@ -95,12 +93,12 @@ export default function AuthForm({ mode }: AuthFormProps) {
     : getUsernameValidationMessage(normalizedUsername);
 
   function getRedirectTarget() {
-    return getLegacyNextParam() ?? consumeAuthRedirect("/profile");
+    return getLegacyNextParam() ?? consumeAuthRedirect("/profil");
   }
 
   useEffect(() => {
     if (!isLoading && isAuthenticated) {
-      router.replace("/profile");
+      router.replace("/profil");
     }
   }, [isAuthenticated, isLoading, router]);
 
@@ -121,11 +119,11 @@ export default function AuthForm({ mode }: AuthFormProps) {
 
     if (
       step === "dailyGoal" &&
-      (!Number.isInteger(dailyGoal) ||
-        dailyGoal < dailyGoalConfig.minGoal ||
-        dailyGoal > dailyGoalConfig.maxGoal)
+      !signupDailyGoalOptions.includes(
+        dailyGoal as (typeof signupDailyGoalOptions)[number],
+      )
     ) {
-      nextFieldErrors.dailyGoal = `Choisis un objectif entre ${dailyGoalConfig.minGoal} et ${dailyGoalConfig.maxGoal}.`;
+      nextFieldErrors.dailyGoal = "Choisis 5, 10, 20 ou 40 faits par jour.";
     }
 
     if (step === "credentials") {
@@ -321,7 +319,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
             Choisis un rythme realiste. Tu pourras le modifier depuis ton profil.
           </p>
           <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
-            {dailyGoalOptions.map((option) => {
+            {signupDailyGoalOptions.map((option) => {
               const selected = dailyGoal === option;
 
               return (
@@ -344,22 +342,6 @@ export default function AuthForm({ mode }: AuthFormProps) {
               );
             })}
           </div>
-          <label className="mt-4 block">
-            <span className="text-xs font-bold uppercase tracking-[0.16em] text-white/42">
-              Personnaliser
-            </span>
-            <input
-              value={dailyGoal}
-              onChange={(event) => {
-                setDailyGoal(Number(event.target.value));
-                setFieldError("dailyGoal");
-              }}
-              type="number"
-              min={dailyGoalConfig.minGoal}
-              max={dailyGoalConfig.maxGoal}
-              className="mt-2 w-full rounded-[16px] border border-white/10 bg-white/[0.055] px-4 py-3 text-white outline-none transition placeholder:text-white/35 focus:border-[#ffd166] focus:bg-white/[0.08]"
-            />
-          </label>
           <FieldError message={fieldErrors.dailyGoal} />
         </fieldset>
       );
@@ -489,7 +471,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
               {message}
             </p>
             <Link
-              href="/discover"
+              href="/decouvrir"
               className="mt-4 inline-flex rounded-full border border-emerald-200/20 bg-white/10 px-4 py-2 text-sm font-black text-white transition hover:bg-white/15"
             >
               Commencer à découvrir

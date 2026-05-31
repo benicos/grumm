@@ -17,7 +17,7 @@ export function AppState({
   description,
   primaryHref = "/",
   primaryLabel = "Retour accueil",
-  secondaryHref = "/discover",
+  secondaryHref = "/decouvrir",
   secondaryLabel = "Découvrir",
 }: AppStateProps) {
   return (

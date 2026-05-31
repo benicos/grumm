@@ -51,6 +51,8 @@ export type Database = {
           long_content: string | null;
           source: string | null;
           source_url: string | null;
+          seo_title: string | null;
+          seo_description: string | null;
           author_id: string | null;
           status: "draft" | "pending_review" | "published" | "rejected" | "archived";
           published_at: string | null;
@@ -74,6 +76,8 @@ export type Database = {
           long_content?: string | null;
           source?: string | null;
           source_url?: string | null;
+          seo_title?: string | null;
+          seo_description?: string | null;
           author_id?: string | null;
           status?: "draft" | "pending_review" | "published" | "rejected" | "archived";
           published_at?: string | null;
@@ -97,6 +101,8 @@ export type Database = {
           long_content?: string | null;
           source?: string | null;
           source_url?: string | null;
+          seo_title?: string | null;
+          seo_description?: string | null;
           author_id?: string | null;
           status?: "draft" | "pending_review" | "published" | "rejected" | "archived";
           published_at?: string | null;

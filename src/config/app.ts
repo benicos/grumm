@@ -11,14 +11,14 @@ export const appRoutes = {
   about: "/about",
   admin: "/admin",
   contact: "/contact",
-  discover: "/discover",
+  discover: "/decouvrir",
   explorer: "/explorer",
   forgotPassword: "/forgot-password",
   home: "/",
   login: "/login",
   privacy: "/privacy-policy",
-  profile: "/profile",
-  profileEdit: "/profile/edit",
+  profile: "/profil",
+  profileEdit: "/profil/edit",
   register: "/register",
   resetPassword: "/reset-password",
 } as const;
@@ -28,6 +28,8 @@ export const dailyGoalConfig = {
   maxGoal: 100,
   minGoal: 1,
 } as const;
+
+export const signupDailyGoalOptions = [5, 10, 20, 40] as const;
 
 export const paginationConfig = {
   adminDefaultPageSize: 5,

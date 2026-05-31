@@ -57,7 +57,12 @@ export default function AdminRolesPage() {
       actions={{
         onDelete: (role) => {
           if (!role.is_system && window.confirm(`Supprimer le rôle "${role.name}" ?`)) {
-            void deleteAdminRole(role.slug).then(() => router.refresh());
+            void deleteAdminRole(role.slug).then((result) => {
+              if (result.ok) {
+                router.push("/admin/roles?deleted=1");
+              }
+              router.refresh();
+            });
           }
         },
         onEdit: (role) => router.push(`/admin/roles/${role.slug}/edit`),

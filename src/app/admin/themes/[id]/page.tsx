@@ -88,7 +88,7 @@ export default function AdminThemeDetailPage() {
       return;
     }
 
-    router.push("/admin/themes");
+    router.push("/admin/themes?deleted=1");
     router.refresh();
   }
 
@@ -96,7 +96,7 @@ export default function AdminThemeDetailPage() {
     <>
       <AdminPageHeading
         current="Thème"
-        title={theme?.name ?? "Détail du thème"}
+        title={theme?.name ? "D?tail du th?me" : "Th?me"}
         description="Consultation de la catégorie dans l'espace d'administration."
         action={
           <div className="flex flex-wrap gap-3">
