@@ -5,137 +5,94 @@ import InfoPageShell from "../components/InfoPageShell";
 export const metadata: Metadata = buildDefaultMetadata({
   canonicalPath: "/politique-confidentialite",
   description:
-    "Politique de confidentialité Grumm, données de compte, analytics internes et droits RGPD.",
+    "Politique de confidentialité Grumm : compte, progression, likes, sauvegardes, personnalisation du feed et analytics limités.",
   title: "Politique de confidentialité",
 });
 
 const sections = [
   {
-    title: "Introduction",
+    title: "Pourquoi cette politique existe",
     body: [
-      "Grumm est une plateforme de découverte de faits courts, mémorables et sourcés. Cette politique explique quelles données peuvent être traitées, pourquoi elles le sont et quels droits sont ouverts aux utilisateurs et visiteurs.",
-      "Les données servent uniquement à faire fonctionner Grumm, sécuriser le service, personnaliser l’expérience et comprendre l’usage global du produit afin de l’améliorer.",
+      "Grumm permet de découvrir, enregistrer et retenir des faits culturels. Pour faire fonctionner le service, certaines données sont nécessaires : compte utilisateur, préférences, progression, interactions et données techniques limitées.",
+      "La règle suivie est simple : collecter peu, collecter utile, ne pas vendre les données et ne pas faire de suivi publicitaire.",
     ],
   },
   {
     title: "Responsable du traitement",
     body: [
-      "Le responsable du traitement est l’éditeur du service Grumm. Les demandes relatives aux données personnelles peuvent être envoyées à contact@grumm.fr ou depuis la page Contact du site.",
-      "Les informations d’identification administrative ou légale de l’éditeur peuvent être complétées dans les mentions légales si nécessaire.",
+      "Le responsable du traitement est l'éditeur du service Grumm. Les informations légales de l'éditeur sont indiquées ou à compléter dans les mentions légales.",
+      "Pour toute demande liée aux données personnelles, vous pouvez écrire à contact@grumm.fr ou utiliser la page Contact.",
     ],
   },
   {
-    title: "Données collectées",
+    title: "Données de compte",
     body: [
-      "Grumm peut traiter l’adresse email, le pseudo, l’objectif quotidien, le niveau culturel choisi, les préférences de découverte, les paramètres de profil, les faits lus, aimés, enregistrés ou partagés, ainsi que les informations techniques strictement nécessaires au fonctionnement du compte et de la session.",
-      "Grumm ne collecte pas de données sensibles au sens du RGPD, ne demande pas d’informations inutiles au service et ne cherche pas à identifier personnellement un visiteur anonyme.",
+      "Lors de la création d'un compte, Grumm peut traiter l'adresse email, le pseudo, l'identifiant utilisateur Supabase, l'objectif quotidien, le niveau ou objectif culturel choisi, les préférences de profil et les informations nécessaires à l'authentification.",
+      "Les mots de passe sont gérés par Supabase Auth. Grumm ne stocke pas les mots de passe en clair dans sa base applicative.",
     ],
   },
   {
-    title: "Données analytics",
+    title: "Progression et personnalisation",
     body: [
-      "Grumm utilise un système analytics interne first-party. Il mesure des événements utiles comme l’ouverture du service, les pages vues, les recherches, les lectures de faits, les likes, les sauvegardes, les partages, les clics sur les sources et certains événements techniques nécessaires à l’administration, à la modération et à la sécurité du service.",
-      "Le site peut aussi utiliser Vercel Analytics pour mesurer des statistiques techniques et agrégées de consultation du site web. Ces mesures servent à comprendre la performance et l’usage général du service, sans tracking publicitaire ni revente de données.",
-      "L’identifiant anonyme grumm_anonymous_id est un UUID généré une seule fois et stocké localement. Il ne repose pas sur du fingerprinting et ne permet pas, à lui seul, d’identifier une personne.",
-      "Aucune adresse IP n’est stockée en clair dans les tables analytics applicatives.",
+      "Pour fournir les fonctionnalités du produit, Grumm enregistre notamment les faits lus, les likes, les sauvegardes, les objectifs quotidiens, les séries, les résultats du quiz mémoire et les thèmes consultés.",
+      "Ces signaux peuvent être utilisés pour personnaliser le feed : favoriser les faits non vus, tenir compte du niveau choisi, proposer des thèmes proches de vos intérêts et éviter de répéter trop vite les mêmes contenus.",
     ],
   },
   {
-    title: "Finalités du traitement",
+    title: "Analytics et mesures d'usage",
     body: [
-      "Les traitements ont pour finalités l’authentification, la gestion du compte, la sauvegarde des préférences, la progression de lecture, la sécurité, la modération, l’administration des contenus, la mesure interne d’audience et l’amélioration de l’expérience utilisateur.",
-      "Les statistiques sont utilisées uniquement pour comprendre l’usage du service, détecter les contenus utiles, améliorer Grumm et piloter le produit.",
+      "Grumm utilise des analytics internes limités pour comprendre l'usage du service : sessions, pages vues, recherches Explorer, lectures de faits, durée avant changement de fait, likes, sauvegardes, partages, clics sur les sources et objectifs atteints.",
+      "Ces mesures servent à améliorer le produit, identifier les contenus utiles, repérer les recherches sans résultat et suivre la stabilité du service. Elles ne servent pas à créer un profil publicitaire.",
+      "Le site utilise aussi Vercel Analytics pour des statistiques techniques et agrégées de consultation. Aucun service de session replay, d'enregistrement clavier, de fingerprinting ou de publicité comportementale n'a été identifié dans le code.",
     ],
   },
   {
-    title: "Base légale",
+    title: "Visiteurs non connectés",
     body: [
-      "Les traitements nécessaires au compte et aux fonctionnalités demandées reposent sur l’exécution du service. Les traitements liés à la sécurité reposent sur l’intérêt légitime de Grumm à protéger son service.",
-      "Les analytics internes, limités, non publicitaires et non intrusifs, reposent sur l’intérêt légitime d’amélioration du service, dans le respect des principes de minimisation et de proportionnalité.",
-    ],
-  },
-  {
-    title: "Durée de conservation",
-    body: [
-      "Les données de compte sont conservées tant que le compte existe, sauf obligation légale ou nécessité de sécurité. Les données de progression et d’interaction peuvent être conservées pour maintenir l’historique utilisateur.",
-      "Les données analytics détaillées sont conservées au maximum 24 mois, puis supprimées ou agrégées lorsqu’elles ne sont plus nécessaires à l’amélioration du service.",
+      "Un visiteur non connecté peut recevoir un identifiant anonyme stocké localement afin de mesurer l'usage global et d'améliorer l'expérience. Cet identifiant ne contient pas de nom, d'email ou de donnée directement identifiante.",
+      "La mémoire de session du feed peut aussi retenir temporairement les faits déjà servis afin d'éviter les doublons pendant le scroll.",
     ],
   },
   {
     title: "Cookies et stockage local",
     body: [
-      "Grumm peut utiliser le stockage local du navigateur pour conserver la session Supabase, l’identifiant anonyme analytics grumm_anonymous_id et certains états techniques nécessaires à l’expérience.",
-      "Sur l’application iOS Expo, des informations équivalentes peuvent être stockées dans AsyncStorage. Ces éléments ne servent pas au tracking publicitaire.",
+      "Grumm peut utiliser le stockage local du navigateur pour conserver la session Supabase, un identifiant anonyme, des préférences techniques et une mémoire légère du feed.",
+      "Dans l'application iOS, des informations équivalentes peuvent être stockées via AsyncStorage ou SecureStore selon les mécanismes utilisés par Supabase et l'application.",
     ],
   },
   {
-    title: "Utilisateurs connectés",
+    title: "Services techniques utilisés",
     body: [
-      "Lorsqu’un utilisateur se connecte, les nouvelles sessions analytics peuvent être associées à son identifiant utilisateur afin de mesurer l’usage interne du service et la progression. L’ancien historique anonyme peut rester séparé.",
-      "Les actions de lecture, like, sauvegarde et profil servent à fournir les fonctionnalités visibles dans l’application.",
+      "Supabase est utilisé pour l'authentification, la base de données, les règles d'accès, la progression et la synchronisation des données.",
+      "Vercel peut être utilisé pour l'hébergement du site, la livraison des pages et Vercel Analytics.",
+      "Expo peut être utilisé pour le développement, le test et la distribution technique de l'application mobile.",
     ],
   },
   {
-    title: "Visiteurs anonymes",
+    title: "Durée de conservation",
     body: [
-      "Un visiteur non connecté peut être associé à un UUID anonyme stocké localement. Cet identifiant ne contient pas de nom, email, numéro de téléphone, adresse IP en clair ou autre donnée directement identifiante.",
-      "Grumm ne pratique pas de suivi cross-site et ne tente pas de réconcilier un visiteur anonyme par des méthodes invasives.",
+      "Les données de compte sont conservées tant que le compte existe, sauf obligation légale, besoin de sécurité ou demande de suppression applicable.",
+      "Les données de progression et d'interaction peuvent être conservées pour maintenir l'expérience utilisateur. Les données analytics détaillées ont vocation à être supprimées ou agrégées lorsqu'elles ne sont plus nécessaires à l'amélioration du service.",
     ],
   },
   {
-    title: "Sécurité des données",
+    title: "Sécurité",
     body: [
-      "Grumm applique des mesures raisonnables de sécurité : authentification Supabase, règles d’accès, séparation des droits administratifs, limitation des données collectées et absence de collecte intrusive.",
-      "Aucun système ne peut garantir un risque zéro. En cas d’incident nécessitant une notification, Grumm appliquera les obligations légales applicables.",
+      "Grumm s'appuie sur Supabase Auth, les politiques RLS, la séparation des rôles, des accès administratifs limités et une collecte réduite des données.",
+      "Aucun système n'est totalement exempt de risque. En cas d'incident nécessitant une notification, Grumm appliquera les obligations légales applicables.",
     ],
   },
   {
-    title: "Hébergement",
+    title: "Vos droits",
     body: [
-      "Les données applicatives sont hébergées via Supabase. Le site web peut être hébergé via Vercel. L’application mobile est distribuée et testée via l’écosystème Expo lorsque pertinent.",
-      "Ces prestataires agissent dans le cadre technique nécessaire à l’hébergement, au déploiement, à l’authentification et au fonctionnement du service.",
-    ],
-  },
-  {
-    title: "Services utilisés",
-    body: [
-      "Supabase est utilisé pour l’authentification, la base de données, les règles d’accès et la synchronisation des données.",
-      "Vercel peut être utilisé pour l’hébergement, la livraison du site web et Vercel Analytics.",
-      "Expo peut être utilisé pour le développement, le test et la distribution technique de l’application mobile.",
-    ],
-  },
-  {
-    title: "Absence de revente et publicité",
-    body: [
-      "Grumm ne vend pas les données personnelles, ne les partage pas à des fins commerciales, ne crée pas de profil publicitaire et ne pratique pas de publicité comportementale.",
-      "Grumm n’utilise pas de session replay, n’enregistre pas les frappes clavier, ne suit pas les mouvements de souris et ne recourt pas au fingerprinting.",
-    ],
-  },
-  {
-    title: "Droits RGPD",
-    body: [
-      "Conformément au RGPD, les personnes concernées peuvent demander l’accès, la rectification, l’effacement, la limitation, l’opposition au traitement et, lorsque applicable, la portabilité de leurs données.",
-      "Une demande peut nécessiter une vérification raisonnable de l’identité afin d’éviter qu’un tiers accède à des données qui ne lui appartiennent pas.",
-    ],
-  },
-  {
-    title: "Modalités d’exercice des droits",
-    body: [
-      "Les demandes s’effectuent à contact@grumm.fr ou depuis la page Contact. Grumm répondra dans les délais prévus par la réglementation applicable, sous réserve des contraintes légales, techniques et de sécurité.",
-      "Les utilisateurs peuvent demander la suppression de leur compte et des données associées en écrivant à contact@grumm.fr ou depuis la page Contact.",
-      "Lorsqu’une suppression complète est demandée, certaines données peuvent être conservées temporairement si la loi l’exige ou si elles sont nécessaires à la défense de droits en cas de litige.",
+      "Conformément au RGPD, vous pouvez demander l'accès, la rectification, l'effacement, la limitation, l'opposition au traitement et, lorsque applicable, la portabilité de vos données.",
+      "Une vérification raisonnable de l'identité peut être demandée afin d'éviter qu'un tiers accède à des données qui ne lui appartiennent pas.",
     ],
   },
   {
     title: "Contact",
     body: [
-      "Pour toute question relative à la confidentialité, à la sécurité ou à l’exercice des droits, contactez contact@grumm.fr ou utilisez la page Contact disponible dans le pied de page du site.",
-    ],
-  },
-  {
-    title: "Modifications de la politique",
-    body: [
-      "Grumm peut modifier cette politique pour refléter l’évolution du service, des traitements ou de la réglementation. La date de dernière mise à jour indique la version applicable.",
+      "Pour toute question relative à la confidentialité, à la sécurité ou à l'exercice de vos droits, contactez contact@grumm.fr ou utilisez la page Contact.",
     ],
   },
 ];
@@ -145,10 +102,10 @@ export default function PrivacyPage() {
     <InfoPageShell
       eyebrow="Confidentialité"
       title="Une collecte limitée, utile et maîtrisée."
-      intro="Grumm utilise les données strictement nécessaires au service, à la progression et à des analytics internes raisonnables. Aucune donnée n’est vendue, partagée à des fins commerciales ou utilisée pour créer un profil publicitaire."
+      intro="Grumm utilise les données nécessaires au fonctionnement du service, à la progression et à des analytics raisonnables. Les données ne sont pas vendues et ne servent pas à du ciblage publicitaire."
     >
       <div className="mb-8 rounded-[18px] border border-[#ffd166]/18 bg-[#ffd166]/10 p-4 text-sm font-semibold leading-6 text-[#ffe4a1]">
-        Dernière mise à jour : 30 mai 2026.
+        Dernière mise à jour : 2 juin 2026.
       </div>
 
       <div className="space-y-8">

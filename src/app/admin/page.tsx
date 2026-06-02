@@ -6,9 +6,11 @@ import { useEffect, useState } from "react";
 import {
   getAdminAnalyticsData,
   getAdminDashboardData,
+  getAdminFeedDebugRows,
   type AdminAnalyticsData,
   type AdminAnalyticsMetric,
   type AdminDashboardData,
+  type AdminFeedDebugRow,
 } from "@/lib/admin";
 import {
   AdminCard,
@@ -201,6 +203,8 @@ export default function AdminDashboardPage() {
   const [analytics, setAnalytics] = useState<AdminAnalyticsData | null>(null);
   const [analyticsError, setAnalyticsError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [feedDebugRows, setFeedDebugRows] = useState<AdminFeedDebugRow[]>([]);
+  const [feedDebugError, setFeedDebugError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -225,6 +229,16 @@ export default function AdminDashboardPage() {
             if (mounted) {
               setAnalyticsError(
                 "Les analytics ne sont pas disponibles pour le moment.",
+              );
+            }
+          }
+
+          try {
+            setFeedDebugRows(await getAdminFeedDebugRows());
+          } catch {
+            if (mounted) {
+              setFeedDebugError(
+                "Le debug du score feed n'est pas disponible pour le moment.",
               );
             }
           }
@@ -291,6 +305,7 @@ export default function AdminDashboardPage() {
       />
       <AdminNotice message={error} tone="error" />
       <AdminNotice message={analyticsError} tone="error" />
+      <AdminNotice message={feedDebugError} tone="error" />
 
       {(data?.pendingFactsCount ?? 0) > 0 ? (
         <AdminWarningAlert
@@ -461,6 +476,66 @@ export default function AdminDashboardPage() {
                   )}
                 />
               </dl>
+            </AdminCard>
+          </section>
+
+          <section className="mt-7">
+            <SectionHeading
+              title="Debug score"
+              description="Lecture admin des principaux composants du score feed V2."
+            />
+            <AdminCard className="overflow-hidden">
+              <div className="max-w-full overflow-x-auto">
+                <table className="w-full min-w-[760px] text-left text-sm">
+                  <thead className="border-b border-gray-100 bg-gray-50">
+                    <tr>
+                      <th className="px-5 py-3 font-medium text-gray-500">
+                        Fait
+                      </th>
+                      <th className="px-5 py-3 font-medium text-gray-500">
+                        Thème
+                      </th>
+                      <th className="px-5 py-3 text-right font-medium text-gray-500">
+                        Score
+                      </th>
+                      <th className="px-5 py-3 font-medium text-gray-500">
+                        Détail
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {feedDebugRows.length > 0 ? (
+                      feedDebugRows.map((row) => (
+                        <tr key={row.id}>
+                          <td className="px-5 py-4 font-medium text-gray-800">
+                            {row.title}
+                          </td>
+                          <td className="px-5 py-4 text-gray-600">
+                            {row.categoryName}
+                          </td>
+                          <td className="px-5 py-4 text-right font-semibold text-gray-800">
+                            {row.score}
+                          </td>
+                          <td className="px-5 py-4">
+                            <code className="block max-w-[360px] truncate rounded-lg bg-gray-50 px-3 py-2 text-xs text-gray-600">
+                              {JSON.stringify(row.scoreDebug)}
+                            </code>
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td
+                          colSpan={4}
+                          className="px-5 py-10 text-center text-sm text-gray-500"
+                        >
+                          Aucun score disponible.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </AdminCard>
           </section>
         </>

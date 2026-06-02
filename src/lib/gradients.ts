@@ -22,6 +22,19 @@ export function getToneBackground(tone?: string | null): {
     };
   }
 
+  const colors = [...value.matchAll(/\[(#[0-9a-fA-F]{3,8})\]/g)]
+    .map((match) => match[1])
+    .filter(Boolean);
+
+  if (colors.length >= 2) {
+    return {
+      className: "",
+      style: {
+        backgroundImage: `linear-gradient(135deg, ${colors.join(", ")})`,
+      },
+    };
+  }
+
   return {
     className: value.includes("bg-gradient-")
       ? value

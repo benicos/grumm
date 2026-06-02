@@ -13,9 +13,8 @@ type NavbarProps = {
 };
 
 const desktopLinks = [
-  { label: "Découvrir", href: "/decouvrir" },
-  { label: "Explorer", href: "/explorer" },
-  { label: "Thèmes", href: "/theme" },
+  { label: "D\u00e9couvrir", href: "/decouvrir" },
+  { label: "Explorer", href: "/theme" },
 ];
 
 const mobileLinks = [
@@ -117,8 +116,8 @@ export default function Navbar({ fixed = false }: NavbarProps) {
       <button
         type="button"
         onClick={handleSignOut}
-        aria-label="Déconnexion"
-        title="Déconnexion"
+        aria-label="D\u00e9connexion"
+        title="D\u00e9connexion"
         className="grid h-10 w-10 place-items-center rounded-md border border-white/10 text-white/72 transition hover:border-white/20 hover:text-white"
       >
         <LogoutIcon />
@@ -231,12 +230,12 @@ export default function Navbar({ fixed = false }: NavbarProps) {
                       <button
                         type="button"
                         onClick={handleSignOut}
-                        aria-label="Déconnexion"
-                        title="Déconnexion"
+                        aria-label="D\u00e9connexion"
+                        title="D\u00e9connexion"
                         className="-mx-3 flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-base/7 font-semibold text-white/72 hover:bg-white/5 hover:text-white"
                       >
                         <LogoutIcon />
-                        <span>Déconnexion</span>
+                        <span>{"D\u00e9connexion"}</span>
                       </button>
                     </div>
                   ) : (

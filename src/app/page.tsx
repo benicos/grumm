@@ -41,8 +41,8 @@ export default function GrummLanding() {
             </h1>
 
             <p className="mt-7 max-w-[720px] text-[1.05rem] font-semibold leading-8 text-white/72 sm:text-xl sm:leading-9">
-              <span className="text-white">Grumm. transforme la curiosité en réflexe.</span>{" "}<br />
-              Une plateforme pensée pour apprendre sans contraintes.
+              <span className="text-white">{"Grumm. transforme la curiosit\u00e9 en r\u00e9flexe."}</span>{" "}<br />
+              {"Une plateforme pens\u00e9e pour apprendre sans contraintes."}
             </p>
 
             <div className="mt-10 flex flex-wrap items-center justify-center gap-6">
@@ -50,7 +50,7 @@ export default function GrummLanding() {
                 href="/decouvrir"
                 className={`${premiumPrimaryCtaClassName} min-h-[58px] px-10 text-base shadow-2xl`}
               >
-                Découvrir le flux
+                {"D\u00e9couvrir le flux"}
               </Link>
             </div>
 
@@ -58,7 +58,7 @@ export default function GrummLanding() {
               <span className="grid h-10 w-6 place-items-start rounded-full border border-white/18 bg-white/[0.045] p-1.5 shadow-[0_14px_45px_rgba(0,0,0,0.18)] backdrop-blur-xl">
                 <span className="grumm-scroll-float block h-2.5 w-full rounded-full bg-gradient-to-b from-[#ffd166] to-[#6ae3c0]" />
               </span>
-              <span>Un fait après l&apos;autre</span>
+              <span>{"Un fait apr\u00e8s l'autre"}</span>
             </div>
 
           </div>
@@ -74,7 +74,7 @@ export default function GrummLanding() {
               </span>
 
               <h2 className="mb-[18px] text-[clamp(2rem,5vw,4rem)] font-bold leading-none tracking-[-0.05em]">
-                Une plateforme pensée pour la curiosité moderne.
+                {"Une plateforme pens\u00e9e pour la curiosit\u00e9 moderne."}
               </h2>
 
               <p className="max-w-[720px] text-[#94a6c7]">
@@ -86,22 +86,22 @@ export default function GrummLanding() {
               {[
                 {
                   icon: "01",
-                  title: "Découvrir",
-                  text: "Un flux de découvertes courtes et surprenantes. Une idée à la fois, sans distraction.",
+                  title: "D\u00e9couvrir",
+                  text: "Un flux de d\u00e9couvertes courtes et surprenantes. Une id\u00e9e \u00e0 la fois, sans distraction.",
                   href: "/decouvrir",
-                  alt: "Découvrir",
+                  alt: "D\u00e9couvrir",
                 },
                 {
                   icon: "02",
                   title: "Explorer",
-                  text: "Science, histoire, psychologie, espace, nature... Explorez les sujets qui vous intéressent vraiment.",
-                  href: "/explorer",
+                  text: "Science, histoire, psychologie, espace, nature... Explorez les sujets qui vous int\u00e9ressent vraiment.",
+                  href: "/theme",
                   alt: "Explorer",
                 },
                 {
                   icon: "03",
                   title: "Aller plus loin",
-                  text: "Certaines découvertes méritent plus qu'un swipe. Approfondissez avec des contenus plus immersifs.",
+                  text: "Certaines d\u00e9couvertes m\u00e9ritent plus qu'un swipe. Approfondissez avec des contenus plus immersifs.",
                   href: "/#",
                   alt: "En savoir plus",
                 },

@@ -113,7 +113,9 @@ function ChallengeContent() {
   }
 
   useEffect(() => {
-    void startSession();
+    queueMicrotask(() => {
+      void startSession();
+    });
   }, []);
 
   async function chooseAnswer(answer: string) {

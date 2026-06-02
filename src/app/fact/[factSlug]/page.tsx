@@ -98,7 +98,7 @@ export default function FactDetailPage() {
           setError(
             loadError instanceof Error
               ? loadError.message
-              : "Ce fait ne peut pas être chargé.",
+              : "Ce fait ne peut pas Ãªtre chargÃ©.",
           );
         }
       } finally {
@@ -119,7 +119,11 @@ export default function FactDetailPage() {
     let mounted = true;
 
     if (!fact?.id || isCommercialCollaborationFact(fact)) {
-      setRelatedFacts([]);
+      queueMicrotask(() => {
+        if (mounted) {
+          setRelatedFacts([]);
+        }
+      });
       return () => {
         mounted = false;
       };
@@ -259,7 +263,7 @@ export default function FactDetailPage() {
       }
     } catch {
       setter(isActive);
-      showNotice("Cette action n’a pas pu être synchronisée.");
+      showNotice("Cette action nâa pas pu Ãªtre synchronisÃ©e.");
     }
   };
 
@@ -288,8 +292,8 @@ export default function FactDetailPage() {
         title="Impossible de charger ce fait."
         description={error}
         primaryHref="/decouvrir"
-        primaryLabel="Retour à Découvrir"
-        secondaryHref="/explorer"
+        primaryLabel="Retour Ã  DÃ©couvrir"
+        secondaryHref="/theme"
         secondaryLabel="Explorer"
       />
     );
@@ -300,10 +304,10 @@ export default function FactDetailPage() {
       <AppState
         eyebrow="404"
         title="Ce fait n'existe pas."
-        description="Le slug demandé ne correspond à aucun fait visible."
+        description="Le slug demandÃ© ne correspond Ã  aucun fait visible."
         primaryHref="/decouvrir"
-        primaryLabel="Retour à Découvrir"
-        secondaryHref="/explorer"
+        primaryLabel="Retour Ã  DÃ©couvrir"
+        secondaryHref="/theme"
         secondaryLabel="Explorer"
       />
     );
@@ -372,7 +376,7 @@ export default function FactDetailPage() {
           {fact.hook ? (
             <div className="mt-8 max-w-3xl border-l-2 border-[#ffd166]/70 pl-5 text-base font-semibold leading-8 text-white/78 sm:text-lg">
               <span className="block text-xs font-black uppercase tracking-[0.18em] text-[#ffd166]">
-                À retenir
+                Ã retenir
               </span>
               <span className="mt-2 block">{fact.hook}</span>
             </div>
@@ -442,7 +446,7 @@ export default function FactDetailPage() {
               href="/profil/defi-memoire"
               className="rounded-full border border-white/15 bg-black/20 px-5 py-3 text-sm font-bold text-white/72 backdrop-blur-xl transition hover:scale-[1.02] hover:text-white"
             >
-              Réviser plus tard
+              RÃ©viser plus tard
             </Link>
           </div>
 
@@ -475,7 +479,7 @@ export default function FactDetailPage() {
             Continuer
           </p>
           <h2 className="mt-3 text-2xl font-extrabold tracking-[-0.04em]">
-            Explore ce thème ou retourne au flux principal.
+            Explore ce thÃ¨me ou retourne au flux principal.
           </h2>
           <div className="mt-6 grid gap-3">
             {!isSponsored ? (
@@ -483,7 +487,7 @@ export default function FactDetailPage() {
                 href={`/theme/${fact.categorySlug}`}
                 className={premiumPrimaryCtaClassName}
               >
-                Explorer ce thème
+                Explorer ce thÃ¨me
               </Link>
             ) : null}
             <Link
@@ -496,7 +500,7 @@ export default function FactDetailPage() {
               href="/profil/defi-memoire"
               className="rounded-[14px] border border-white/10 px-4 py-3 text-center text-sm font-bold text-white/72 transition hover:border-white/20 hover:text-white"
             >
-              Quiz mémoire
+              Quiz mÃ©moire
             </Link>
           </div>
         </aside>
@@ -506,7 +510,7 @@ export default function FactDetailPage() {
         <section className="relative z-10 mx-auto w-full max-w-7xl px-6 pb-20">
           <div className="pt-10">
             <p className="text-xs font-black uppercase tracking-[0.2em] text-[#ffd166]">
-              À découvrir aussi
+              Ã dÃ©couvrir aussi
             </p>
             <div className="mt-5 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {relatedFacts.slice(0, 5).map((related) => (

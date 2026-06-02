@@ -16,11 +16,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     "/a-propos",
     "/decouvrir",
     "/theme",
-    "/explorer",
     "/quiz",
     "/aujourdhui",
     "/contact",
     "/politique-confidentialite",
+    "/mentions-legales",
   ];
 
   return [

@@ -159,6 +159,14 @@ export type AdminAnalyticsSearchStat = {
   value: number;
 };
 
+export type AdminFeedDebugRow = {
+  categoryName: string;
+  id: string;
+  score: number;
+  scoreDebug: Record<string, unknown>;
+  title: string;
+};
+
 type AdminMutationResult =
   | { id?: string; ok: true; message: string }
   | { ok: false; message: string };
@@ -1217,6 +1225,42 @@ export async function getAdminAnalyticsData(): Promise<AdminAnalyticsData> {
       d7ReturnRate: getReturnRate(sessions, 7),
     },
   };
+}
+
+export async function getAdminFeedDebugRows(): Promise<AdminFeedDebugRow[]> {
+  const auth = await getAuthenticatedAdminClient();
+
+  if (!auth.ok) {
+    throw new Error(auth.message);
+  }
+
+  requirePermission(auth, "admin.access");
+
+  const { data, error } = await auth.supabase.rpc("get_personalized_feed", {
+    p_debug: true,
+    p_limit: 5,
+    p_session_id: null,
+    p_theme_slug: null,
+    p_user_id: auth.user.id,
+  });
+
+  if (error) {
+    throwAdminError(error, "load feed score debug", "get_personalized_feed");
+  }
+
+  return ((data ?? []) as {
+    category_name: string;
+    id: string;
+    recommendation_score: number;
+    score_debug: Record<string, unknown> | null;
+    title: string;
+  }[]).map((row) => ({
+    categoryName: row.category_name,
+    id: row.id,
+    score: row.recommendation_score,
+    scoreDebug: row.score_debug ?? {},
+    title: row.title,
+  }));
 }
 
 export async function getAdminCategories({

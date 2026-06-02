@@ -117,6 +117,41 @@ function getFeedStorageKey(scope: string) {
   return `grumm:recentFeedFacts:${scope}`;
 }
 
+function getFeedSessionStorageKey(scope: string) {
+  return `grumm:feedSession:${scope}`;
+}
+
+function createFeedSessionId() {
+  if (typeof window !== "undefined" && window.crypto?.randomUUID) {
+    return window.crypto.randomUUID();
+  }
+
+  return "10000000-1000-4000-8000-100000000000".replace(/[018]/g, (value) =>
+    (
+      Number(value) ^
+      (Math.random() * 16) >> (Number(value) / 4)
+    ).toString(16),
+  );
+}
+
+function getFeedSessionId(scope: string) {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  const key = getFeedSessionStorageKey(scope);
+  const existing = window.sessionStorage.getItem(key);
+
+  if (existing) {
+    return existing;
+  }
+
+  const sessionId = createFeedSessionId();
+  window.sessionStorage.setItem(key, sessionId);
+
+  return sessionId;
+}
+
 function getRememberedFactIds(scope: string) {
   if (typeof window === "undefined") {
     return [] as string[];
@@ -321,7 +356,7 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
       }
     } catch {
       toggleAction(factId, setter);
-      showTemporaryNotice("Cette action n’a pas pu être synchronisée.");
+      showTemporaryNotice("Cette action nâa pas pu Ãªtre synchronisÃ©e.");
     }
   };
 
@@ -375,10 +410,15 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
         : loadedFactIdsRef.current;
 
       try {
+        const sessionId = getFeedSessionId(scope);
         let result = await getFeedFacts({
           excludeIds,
           learningGoal: currentLearningGoal,
           limit: DISCOVER_FEED_BATCH_SIZE,
+          recentCategorySlugs: facts
+            .slice(Math.max(currentStep - 5, 0), currentStep + 1)
+            .map((fact) => fact.categorySlug),
+          sessionId,
           themeSlug,
         });
         let recycledCycle = false;
@@ -389,6 +429,8 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
             excludeIds: [],
             learningGoal: currentLearningGoal,
             limit: DISCOVER_FEED_BATCH_SIZE,
+            recentCategorySlugs: [],
+            sessionId,
             themeSlug,
           });
         }
@@ -400,6 +442,10 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
             excludeIds: [],
             learningGoal: currentLearningGoal,
             limit: DISCOVER_FEED_BATCH_SIZE,
+            recentCategorySlugs: facts
+              .slice(Math.max(currentStep - 5, 0), currentStep + 1)
+              .map((fact) => fact.categorySlug),
+            sessionId,
             themeSlug,
           });
         }
@@ -459,7 +505,7 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
           setFeedError(
             error instanceof Error
               ? error.message
-              : "Découvrir est indisponible pour le moment.",
+              : "DÃ©couvrir est indisponible pour le moment.",
           );
         }
       } finally {
@@ -472,7 +518,7 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
         }
       }
     },
-    [currentLearningGoal, themeSlug],
+    [currentLearningGoal, currentStep, facts, themeSlug],
   );
 
   useEffect(() => {
@@ -782,13 +828,13 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
   if (isUnknownTheme) {
     return (
       <AppState
-        eyebrow="Thème introuvable"
-        title="Ce thème n’existe pas encore."
-        description="Ce lien ne correspond à aucun thème visible."
-        primaryHref="/explorer"
-        primaryLabel="Explorer les thèmes"
+        eyebrow="ThÃ¨me introuvable"
+        title="Ce thÃ¨me nâexiste pas encore."
+        description="Ce lien ne correspond Ã  aucun thÃ¨me visible."
+        primaryHref="/theme"
+        primaryLabel="Explorer les thÃ¨mes"
         secondaryHref="/decouvrir"
-        secondaryLabel="Découvrir"
+        secondaryLabel="DÃ©couvrir"
       />
     );
   }
@@ -796,12 +842,12 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
   if (feedError && !isLoadingFacts) {
     return (
       <AppState
-        eyebrow="Découvrir indisponible"
-        title="Les faits ne peuvent pas être chargés."
+        eyebrow="DÃ©couvrir indisponible"
+        title="Les faits ne peuvent pas Ãªtre chargÃ©s."
         description={feedError}
         primaryHref="/decouvrir"
-        primaryLabel="Recharger Découvrir"
-        secondaryHref="/explorer"
+        primaryLabel="Recharger DÃ©couvrir"
+        secondaryHref="/theme"
         secondaryLabel="Explorer"
       />
     );
@@ -920,7 +966,7 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
                   )}
                   {theme && (
                     <div className="w-fit rounded-full border border-white/10 bg-black/16 px-4 py-2 text-xs font-bold uppercase tracking-[0.18em] text-white/62 backdrop-blur-xl">
-                      Thème
+                      ThÃ¨me
                     </div>
                   )}
                 </div>
@@ -1158,7 +1204,7 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
           <div className="absolute inset-0 grid place-items-center bg-[#132338] px-6 text-center">
             <div className="max-w-sm">
               <p className="text-xs font-bold uppercase tracking-[0.22em] text-[#ffd166]">
-                Découvrir est vide
+                DÃ©couvrir est vide
               </p>
               <h1 className="mt-4 text-3xl font-extrabold tracking-[-0.04em]">
                 Aucun fait disponible pour le moment.

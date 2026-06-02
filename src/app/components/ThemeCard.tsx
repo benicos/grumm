@@ -59,10 +59,10 @@ export default function ThemeCard({
         </div>
 
         <div className={compact ? "mt-auto pt-12" : "mt-auto pt-18"}>
-          <h3 className="text-center text-[clamp(1.85rem,4.5vw,3.2rem)] font-extrabold leading-[0.98] tracking-[-0.04em] text-white [text-wrap:balance]">
+          <h3 className="text-center text-[clamp(1.7rem,3.8vw,2.75rem)] font-extrabold leading-[1.02] tracking-[-0.028em] text-white [text-wrap:balance]">
             {theme.name}
           </h3>
-          <p className="mx-auto mt-5 line-clamp-3 max-w-[34ch] text-center text-sm font-semibold leading-7 text-white/76">
+          <p className="mx-auto mt-4 line-clamp-3 max-w-[34ch] text-center text-sm font-semibold leading-6 text-white/76">
             {getThemeShortDescription(theme)}
           </p>
 

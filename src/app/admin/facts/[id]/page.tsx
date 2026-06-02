@@ -401,7 +401,7 @@ export default function AdminFactDetailPage() {
                   </Link>
                 ) : (
                   <p className="text-gray-500">
-                    Aucune question quiz n'est encore associée à ce fait.
+                    Aucune question quiz n&apos;est encore associée à ce fait.
                   </p>
                 )}
               </div>

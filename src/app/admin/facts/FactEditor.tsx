@@ -277,7 +277,7 @@ export default function FactEditor({ factId }: { factId?: string }) {
                 Date éditoriale
               </h2>
               <p className="mt-1 text-sm text-gray-500">
-                Permet d'associer ce fait à une date importante comme le 14 juillet ou le 20 juillet.
+                Permet d&apos;associer ce fait à une date importante comme le 14 juillet ou le 20 juillet.
               </p>
               <div className="mt-5 grid gap-5 sm:grid-cols-3">
                 <AdminField

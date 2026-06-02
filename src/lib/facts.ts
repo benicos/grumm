@@ -40,6 +40,11 @@ export type FeedFact = {
   accent: string;
 };
 
+type FeedFactWithScore = FeedFact & {
+  recommendationScore?: number;
+  recommendationScoreBreakdown?: Record<string, unknown> | null;
+};
+
 export type RelatedFactSuggestion = FeedFact & {
   relationReason: "manual" | "same_theme" | "same_period" | "recent";
 };
@@ -157,6 +162,8 @@ type FeedRpcRow = {
   category_slug: string;
   category_tone: string;
   category_accent_color: string;
+  recommendation_score?: number | null;
+  score_debug?: Record<string, unknown> | null;
 };
 
 type ExplorerThemeRpcRow = FactCategory & {
@@ -450,9 +457,12 @@ export async function getCurrentUserId() {
 }
 
 export async function getFeedFacts(options?: {
+  debug?: boolean;
   excludeIds?: string[];
   learningGoal?: LearningGoal | null;
   limit?: number;
+  recentCategorySlugs?: string[];
+  sessionId?: string | null;
   themeSlug?: string;
 }) {
   const supabase = createSupabaseBrowserClient();
@@ -490,24 +500,75 @@ export async function getFeedFacts(options?: {
     theme = mapCategory(categoryData);
   }
 
-  const { data, error } = await supabase.rpc("get_discover_feed", {
-    p_exclude_ids: options?.excludeIds ?? [],
-    p_learning_goal: options?.learningGoal ?? null,
-    p_limit: options?.limit ?? DISCOVER_FEED_BATCH_SIZE,
+  const limit = options?.limit ?? DISCOVER_FEED_BATCH_SIZE;
+  const { userId } = await getCurrentUserId();
+  const personalizedResult = await supabase.rpc("get_personalized_feed", {
+    p_debug: options?.debug ?? false,
+    p_limit: limit,
+    p_session_id: options?.sessionId ?? null,
     p_theme_slug: options?.themeSlug ?? null,
+    p_user_id: userId,
   });
 
-  if (error) {
+  let feedRows: FeedRpcRow[] = [];
+
+  if (!personalizedResult.error) {
+    feedRows = (personalizedResult.data ?? []) as FeedRpcRow[];
+  } else if (
+    personalizedResult.error.code === "42883" ||
+    personalizedResult.error.message.toLowerCase().includes("get_personalized_feed")
+  ) {
+    logAppError(personalizedResult.error, {
+      operation: "read personalized feed fallback",
+      source: "Supabase",
+      table: "get_personalized_feed",
+    });
+
+    const fallbackResult = await supabase.rpc("get_discover_feed", {
+      p_exclude_ids: options?.excludeIds ?? [],
+      p_learning_goal: options?.learningGoal ?? null,
+      p_limit: limit,
+      p_theme_slug: options?.themeSlug ?? null,
+    });
+
+    if (fallbackResult.error) {
+      throw new FeedError(
+        getSupabaseDataErrorMessage(fallbackResult.error, {
+          operation: "read discover facts fallback",
+          table: "facts",
+        }),
+      );
+    }
+
+    feedRows = (fallbackResult.data ?? []) as FeedRpcRow[];
+  } else {
     throw new FeedError(
-      getSupabaseDataErrorMessage(error, {
-        operation: "read discover facts",
+      getSupabaseDataErrorMessage(personalizedResult.error, {
+        operation: "read personalized feed",
         table: "facts",
       }),
     );
   }
 
+  const excludedIds = new Set(options?.excludeIds ?? []);
+  const rankedFeedFacts = uniqueFactsById(feedRows.map(mapFeedRpcFact))
+    .filter((fact) => !excludedIds.has(fact.id))
+    .slice(0, limit)
+    .map((fact) => {
+      const row = feedRows.find((item) => item.id === fact.id);
+      const scoredFact = fact as FeedFactWithScore;
+
+      if (typeof row?.recommendation_score === "number") {
+        scoredFact.recommendationScore = row.recommendation_score;
+      }
+
+      scoredFact.recommendationScoreBreakdown = row?.score_debug ?? null;
+
+      return scoredFact;
+    });
+
   return {
-    facts: uniqueFactsById(((data ?? []) as FeedRpcRow[]).map(mapFeedRpcFact)),
+    facts: rankedFeedFacts,
     source: "supabase" as const,
     theme,
   };

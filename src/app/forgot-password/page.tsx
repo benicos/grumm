@@ -10,6 +10,10 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
+  robots: {
+    follow: false,
+    index: false,
+  },
   title: "Mot de passe oublié",
 };
 

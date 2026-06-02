@@ -40,6 +40,11 @@ const nextConfig: NextConfig = {
         permanent: true,
       },
       {
+        source: "/explorer",
+        destination: "/theme",
+        permanent: true,
+      },
+      {
         source: "/discover",
         destination: "/decouvrir",
         permanent: true,

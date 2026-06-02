@@ -14,14 +14,14 @@ import {
 } from "@/lib/facts";
 import { getToneBackground } from "@/lib/gradients";
 import { getUserProfileSummary } from "@/lib/profile";
-import { AppState } from "../components/AppState";
+import { AppState } from "./AppState";
 import {
   premiumTitleGradientClassName,
-} from "../components/buttonStyles";
-import Footer from "../components/Footer";
-import HeroBackground from "../components/HeroBackground";
-import Navbar from "../components/Navbar";
-import ThemeCard from "../components/ThemeCard";
+} from "./buttonStyles";
+import Footer from "./Footer";
+import HeroBackground from "./HeroBackground";
+import Navbar from "./Navbar";
+import ThemeCard from "./ThemeCard";
 import { useAuth } from "../auth/AuthProvider";
 
 const inter = Inter({
@@ -88,15 +88,15 @@ function SearchResultCard({ fact }: { fact: FeedFact }) {
   );
 }
 
-export default function ExplorerPage() {
+export default function ExplorerExperience() {
   const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
   const [query, setQuery] = useState("");
   const [submittedQuery, setSubmittedQuery] = useState("");
   const [allThemes, setAllThemes] = useState<ThemeDiscoverySummary[]>([]);
-  const [continueThemes, setContinueThemes] = useState<ThemeDiscoverySummary[]>([]);
   const [facts, setFacts] = useState<FeedFact[]>([]);
   const [popularSearches, setPopularSearches] = useState<string[]>([]);
   const [themeProgress, setThemeProgress] = useState<Record<string, number>>({});
+  const [themePage, setThemePage] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const hasActiveSearch = submittedQuery.trim().length > 0;
@@ -106,8 +106,21 @@ export default function ExplorerPage() {
       return null;
     }
 
-    return allThemes[Math.floor(Math.random() * allThemes.length)];
+    const signature = allThemes.map((theme) => theme.slug).join("|");
+    const index = [...signature].reduce(
+      (sum, character) => sum + character.charCodeAt(0),
+      0,
+    ) % allThemes.length;
+
+    return allThemes[index];
   }, [allThemes]);
+  const pageSize = 6;
+  const themePageCount = Math.max(1, Math.ceil(allThemes.length / pageSize));
+  const safeThemePage = Math.min(themePage, themePageCount);
+  const visibleThemes = allThemes.slice(
+    (safeThemePage - 1) * pageSize,
+    safeThemePage * pageSize,
+  );
 
   const loadExplorer = useCallback(
     async (searchValue?: string) => {
@@ -148,28 +161,18 @@ export default function ExplorerPage() {
           if (isAuthenticated) {
             try {
               const profile = await getUserProfileSummary();
-              const topSlugs = new Set(
-                profile.topThemes.map((theme) => theme.slug),
-              );
               setThemeProgress(
                 Object.fromEntries(
                   profile.topThemes.map((theme) => [theme.slug, theme.count]),
                 ),
               );
-              const personalized = themes.filter((theme) =>
-                topSlugs.has(theme.slug),
-              );
-              setContinueThemes(
-                (personalized.length > 0 ? personalized : themes).slice(0, 4),
-              );
             } catch {
               setThemeProgress({});
-              setContinueThemes(themes.slice(0, 4));
             }
           } else {
             setThemeProgress({});
-            setContinueThemes(themes.slice(0, 4));
           }
+          setThemePage(1);
         }
       } catch (loadError) {
         setError(
@@ -240,7 +243,7 @@ export default function ExplorerPage() {
             Explorer
           </p>
           <h1
-            className={`${premiumTitleGradientClassName} mt-5 max-w-3xl text-[clamp(2.45rem,7vw,5.2rem)] font-black leading-[0.95] tracking-[-0.055em]`}
+            className={`${premiumTitleGradientClassName} mt-5 max-w-3xl text-[clamp(2.25rem,5.8vw,4.35rem)] font-black leading-[0.98] tracking-[-0.045em]`}
           >
             Que veux-tu apprendre aujourd&apos;hui ?
           </h1>
@@ -352,22 +355,18 @@ export default function ExplorerPage() {
             <section>
               <div className="mb-6 flex flex-wrap items-end justify-between gap-5">
                 <SectionTitle
-                  eyebrow={isAuthenticated ? "Continuer à explorer" : "Pour commencer"}
-                  title={
-                    isAuthenticated
-                      ? "Reprendre le fil."
-                      : "Quelques portes d'entrée."
-                  }
+                  eyebrow="Thèmes"
+                  title="Tous les thèmes."
                 />
               </div>
               {isLoading ? (
-                <ExplorerSkeleton cards={4} />
+                <ExplorerSkeleton cards={6} />
               ) : (
-                <div className="grid gap-5 md:grid-cols-2">
-                  {continueThemes.map((theme) => (
+                <>
+                  <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+                    {visibleThemes.map((theme) => (
                     <ThemeCard
-                      compact
-                      key={`continue-${theme.id}:${theme.slug}`}
+                      key={`${theme.id}:${theme.slug}`}
                       progress={
                         isAuthenticated
                           ? {
@@ -379,7 +378,33 @@ export default function ExplorerPage() {
                       theme={theme}
                     />
                   ))}
-                </div>
+                  </div>
+                  {themePageCount > 1 ? (
+                    <div className="mt-7 flex items-center justify-center gap-3">
+                      <button
+                        type="button"
+                        disabled={safeThemePage <= 1}
+                        onClick={() => setThemePage((page) => Math.max(1, page - 1))}
+                        className="rounded-full border border-white/12 px-4 py-2 text-sm font-bold text-white/68 transition hover:border-white/24 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        Précédent
+                      </button>
+                      <span className="text-sm font-bold text-white/48">
+                        {safeThemePage} / {themePageCount}
+                      </span>
+                      <button
+                        type="button"
+                        disabled={safeThemePage >= themePageCount}
+                        onClick={() =>
+                          setThemePage((page) => Math.min(themePageCount, page + 1))
+                        }
+                        className="rounded-full border border-white/12 px-4 py-2 text-sm font-bold text-white/68 transition hover:border-white/24 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        Suivant
+                      </button>
+                    </div>
+                  ) : null}
+                </>
               )}
             </section>
           </div>

@@ -84,7 +84,7 @@ export default async function ThemeLandingPage({ params }: ThemePageProps) {
             Thème culturel
           </p>
           <h1
-            className={`${premiumTitleGradientClassName} mt-5 max-w-3xl text-[clamp(3rem,7vw,6rem)] font-extrabold leading-[0.95]`}
+            className={`${premiumTitleGradientClassName} mt-5 max-w-3xl text-[clamp(2.5rem,5.8vw,4.8rem)] font-extrabold leading-[0.98]`}
           >
             {theme.name}
           </h1>

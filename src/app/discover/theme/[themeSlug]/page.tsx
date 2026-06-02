@@ -37,7 +37,7 @@ export default function DiscoverThemePage() {
         description="Les collaborations commerciales sont gerees dans les espaces editoriaux de Grumm."
         primaryHref="/decouvrir"
         primaryLabel="Retour a Decouvrir"
-        secondaryHref="/explorer"
+        secondaryHref="/theme"
         secondaryLabel="Explorer"
       />
     );

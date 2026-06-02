@@ -743,6 +743,43 @@ export type Database = {
           seen_by_user: boolean;
         }[];
       };
+      get_personalized_feed: {
+        Args: {
+          p_user_id?: string | null;
+          p_limit?: number;
+          p_session_id?: string | null;
+          p_debug?: boolean;
+          p_theme_slug?: string | null;
+        };
+        Returns: {
+          id: string;
+          slug: string;
+          title: string;
+          hook: string | null;
+          content: string;
+          source: string | null;
+          source_url: string | null;
+          difficulty_level: "basic" | "intermediate" | "advanced";
+          long_content: string | null;
+          seo_title: string | null;
+          seo_description: string | null;
+          event_day: number | null;
+          event_month: number | null;
+          event_year: number | null;
+          published_at: string | null;
+          updated_at: string | null;
+          tone: string | null;
+          accent_color: string | null;
+          category_id: string;
+          category_name: string;
+          category_slug: string;
+          category_tone: string;
+          category_accent_color: string;
+          seen_by_user: boolean;
+          recommendation_score: number;
+          score_debug: Json | null;
+        }[];
+      };
       get_admin_fact_authors: {
         Args: {
           p_fact_ids?: string[];

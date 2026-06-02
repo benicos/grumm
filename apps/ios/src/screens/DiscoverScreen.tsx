@@ -49,6 +49,7 @@ export function DiscoverScreen({ initialFact, onRequireAuth }: DiscoverScreenPro
   const cardHeight = Math.max(560, screenHeight);
   const initialFactId = initialFact?.id ?? null;
   const activeFactId = facts[currentIndex]?.id ?? null;
+  const learningGoal = profile?.learningGoal;
 
   const viewabilityConfig = useMemo(() => ({ itemVisiblePercentThreshold: 72 }), []);
   const onViewableItemsChanged = useCallback(({ viewableItems }: { viewableItems: ViewToken[] }) => {
@@ -85,7 +86,7 @@ export function DiscoverScreen({ initialFact, onRequireAuth }: DiscoverScreenPro
     try {
       const nextFacts = await getFeedFacts({
         excludeIds: initialFact ? [initialFact.id] : [],
-        learningGoal: profile?.learningGoal,
+        learningGoal,
         limit: mobileConfig.feedBatchSize,
       });
       const mergedFacts = initialFact
@@ -102,7 +103,7 @@ export function DiscoverScreen({ initialFact, onRequireAuth }: DiscoverScreenPro
     } finally {
       setIsLoading(false);
     }
-  }, [initialFact, mergeActions, profile?.learningGoal]);
+  }, [initialFact, learningGoal, mergeActions]);
 
   const loadMore = useCallback(async () => {
     if (isLoadingMore || facts.length === 0) {
@@ -114,7 +115,7 @@ export function DiscoverScreen({ initialFact, onRequireAuth }: DiscoverScreenPro
     try {
       const nextFacts = await getFeedFacts({
         excludeIds: facts.map((fact) => fact.id),
-        learningGoal: profile?.learningGoal,
+        learningGoal,
         limit: mobileConfig.feedBatchSize,
       });
       const recycledFacts =
@@ -122,7 +123,7 @@ export function DiscoverScreen({ initialFact, onRequireAuth }: DiscoverScreenPro
           ? nextFacts
           : await getFeedFacts({
               excludeIds: [],
-              learningGoal: profile?.learningGoal,
+              learningGoal,
               limit: mobileConfig.feedBatchSize,
             });
       const uniqueFacts = recycledFacts.filter((fact) => !facts.some((current) => current.id === fact.id));
@@ -135,7 +136,7 @@ export function DiscoverScreen({ initialFact, onRequireAuth }: DiscoverScreenPro
     } finally {
       setIsLoadingMore(false);
     }
-  }, [facts, isLoadingMore, mergeActions, profile?.learningGoal]);
+  }, [facts, isLoadingMore, learningGoal, mergeActions]);
 
   useEffect(() => {
     const frame = requestAnimationFrame(() => {

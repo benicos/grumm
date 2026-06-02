@@ -121,6 +121,24 @@ const feedCache = new Map<string, CacheEntry<FeedFact[]>>();
 const explorerCache = new Map<string, CacheEntry<ExplorerData>>();
 const profileSummaryCache = new Map<string, CacheEntry<ProfileSummary>>();
 const savedFactsCache = new Map<string, CacheEntry<FeedFact[]>>();
+let feedSessionId: string | null = null;
+
+function createFeedSessionId() {
+  return "10000000-1000-4000-8000-100000000000".replace(/[018]/g, (value) =>
+    (
+      Number(value) ^
+      (Math.random() * 16) >> (Number(value) / 4)
+    ).toString(16),
+  );
+}
+
+function getFeedSessionId() {
+  if (!feedSessionId) {
+    feedSessionId = createFeedSessionId();
+  }
+
+  return feedSessionId;
+}
 
 function getCached<T>(cache: Map<string, CacheEntry<T>>, key: string) {
   const entry = cache.get(key);
@@ -306,20 +324,44 @@ export async function getFeedFacts(options?: {
   }
 
   const supabase = getSupabaseClient();
-  const { data, error } = await withSupabaseTimeout(
-    supabase.rpc("get_discover_feed", {
-      p_exclude_ids: options?.excludeIds ?? [],
-      p_learning_goal: options?.learningGoal ?? null,
+  const personalizedResult = await withSupabaseTimeout(
+    supabase.rpc("get_personalized_feed", {
+      p_debug: false,
       p_limit: options?.limit ?? mobileConfig.feedBatchSize,
+      p_session_id: getFeedSessionId(),
       p_theme_slug: null,
+      p_user_id: null,
     }),
   );
+  let rows = personalizedResult.data as FeedRpcRow[] | null;
+  let error = personalizedResult.error;
+
+  if (
+    error &&
+    (error.code === "42883" ||
+      error.message.toLowerCase().includes("get_personalized_feed"))
+  ) {
+    const fallbackResult = await withSupabaseTimeout(
+      supabase.rpc("get_discover_feed", {
+        p_exclude_ids: options?.excludeIds ?? [],
+        p_learning_goal: options?.learningGoal ?? null,
+        p_limit: options?.limit ?? mobileConfig.feedBatchSize,
+        p_theme_slug: null,
+      }),
+    );
+
+    rows = fallbackResult.data as FeedRpcRow[] | null;
+    error = fallbackResult.error;
+  }
 
   if (error) {
     throw new Error(userMessages.genericLoadError);
   }
 
-  const facts = ((data ?? []) as FeedRpcRow[]).map(mapFeedFact);
+  const excludedIds = new Set(options?.excludeIds ?? []);
+  const facts = ((rows ?? []) as FeedRpcRow[])
+    .map(mapFeedFact)
+    .filter((fact) => !excludedIds.has(fact.id));
 
   if (canUseCache) {
     setCached(feedCache, cacheKey, facts);

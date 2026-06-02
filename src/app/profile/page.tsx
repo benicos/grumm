@@ -1,8 +1,8 @@
-﻿"use client";
+"use client";
 
 import { Inter } from "next/font/google";
 import Link from "next/link";
-import { Bookmark, Brain, CalendarDays, Eye, Flag, Heart, Layers3, Mail, Pencil, ShieldCheck, Target, Trophy } from "lucide-react";
+import { Brain, CalendarDays, Flag, Layers3, Mail, Pencil, ShieldCheck, Target, Trophy } from "lucide-react";
 import { useEffect, useState } from "react";
 import { trackAnalyticsEvent } from "@/lib/analytics/web";
 import { getBadgeInfo } from "@/lib/badges";
@@ -14,7 +14,6 @@ import { getRoleLabel } from "@/lib/roles";
 import { useAuth } from "../auth/AuthProvider";
 import RequireAuth from "../auth/RequireAuth";
 import { AppState } from "../components/AppState";
-import FactSource from "../components/FactSource";
 import Footer from "../components/Footer";
 import { premiumPrimaryCtaClassName } from "../components/buttonStyles";
 import GradeIcon from "../components/GradeIcon";
@@ -25,14 +24,6 @@ const inter = Inter({
   subsets: ["latin"],
   weight: ["400", "500", "600", "700", "800"],
 });
-
-const FACTS_PER_PAGE = 5;
-const profileStatIcons = {
-  completedGoals: Target,
-  liked: Heart,
-  saved: Bookmark,
-  viewed: Eye,
-};
 
 function formatProfileDate(value: string | null) {
   if (!value) {
@@ -256,11 +247,11 @@ function MemoryChallengePanel({ profile }: { profile: UserProfileSummary }) {
   const lastScore =
     stats.lastScore !== null && stats.lastTotal !== null
       ? `${stats.lastScore}/${stats.lastTotal}`
-      : "—";
+      : "";
   const average =
-    stats.averageScorePercent !== null ? `${stats.averageScorePercent}%` : "—";
+    stats.averageScorePercent !== null ? `${stats.averageScorePercent}%` : "";
   const currentStreak =
-    stats.currentStreakDays > 0 ? `${stats.currentStreakDays} jours` : "—";
+    stats.currentStreakDays > 0 ? `${stats.currentStreakDays} jours` : "";
 
   return (
     <section className="mt-6 overflow-hidden rounded-[30px] border border-white/10 bg-[radial-gradient(circle_at_82%_18%,rgba(106,227,192,0.14),transparent_28%),linear-gradient(145deg,rgba(255,255,255,0.078),rgba(255,255,255,0.028))] p-5 shadow-[0_30px_100px_rgba(0,0,0,0.26)] backdrop-blur-xl sm:p-6">
@@ -358,7 +349,7 @@ function QuickAccessPanel() {
         </h2>
       </Link>
       <Link
-        href="/explorer"
+        href="/theme"
         className="rounded-[24px] border border-white/10 bg-white/[0.055] p-5 transition hover:-translate-y-1 hover:border-white/20 hover:bg-white/[0.08]"
       >
         <p className="text-xs font-black uppercase tracking-[0.18em] text-white/45">
@@ -415,129 +406,6 @@ function SuccessPanel({ profile }: { profile: UserProfileSummary }) {
           </div>
         ))}
       </div>
-    </section>
-  );
-}
-
-function ProfileStatCard({
-  label,
-  type,
-  value,
-}: {
-  label: string;
-  type: keyof typeof profileStatIcons;
-  value: number;
-}) {
-  const Icon = profileStatIcons[type];
-
-  return (
-    <div className="group relative overflow-hidden rounded-[24px] border border-white/10 bg-[linear-gradient(145deg,rgba(255,255,255,0.082),rgba(255,255,255,0.032))] p-5 shadow-[0_24px_90px_rgba(0,0,0,0.22)] backdrop-blur-xl">
-      <div className="absolute -right-8 -top-10 h-24 w-24 rounded-full bg-[#ffd166]/10 blur-2xl transition group-hover:bg-[#6ae3c0]/12" />
-      <div className="relative flex items-start justify-between gap-4">
-        <div className="grid h-11 w-11 place-items-center rounded-[16px] border border-[#ffd166]/20 bg-[#ffd166]/10 text-[#ffd166]">
-          <Icon className="h-5 w-5" aria-hidden="true" />
-        </div>
-        <p className="text-4xl font-extrabold tracking-[-0.05em]">
-          {value}
-        </p>
-      </div>
-      <p className="relative mt-5 text-xs font-bold uppercase tracking-[0.18em] text-white/52">
-        {label}
-      </p>
-    </div>
-  );
-}
-
-function FactList({
-  empty,
-  facts,
-  title,
-}: {
-  empty: string;
-  facts: UserProfileSummary["likedFacts"];
-  title: string;
-}) {
-  const [page, setPage] = useState(1);
-  const pageCount = Math.max(1, Math.ceil(facts.length / FACTS_PER_PAGE));
-  const safePage = Math.min(page, pageCount);
-  const visibleFacts = facts.slice(
-    (safePage - 1) * FACTS_PER_PAGE,
-    safePage * FACTS_PER_PAGE,
-  );
-
-  return (
-    <section className="relative overflow-hidden rounded-[28px] border border-white/10 bg-[linear-gradient(145deg,rgba(255,255,255,0.07),rgba(255,255,255,0.025))] p-5 shadow-[0_24px_90px_rgba(0,0,0,0.22)] backdrop-blur-xl">
-      <div className="absolute -right-12 -top-14 h-32 w-32 rounded-full bg-[#6ae3c0]/10 blur-2xl" />
-      <div className="relative flex items-center justify-between gap-4">
-        <h2 className="text-2xl font-extrabold tracking-[-0.04em]">{title}</h2>
-        <span className="rounded-full bg-white/[0.07] px-3 py-1 text-xs font-bold text-white/48">
-          {facts.length} total
-        </span>
-      </div>
-      <div className="relative mt-5 divide-y divide-white/10">
-        {visibleFacts.length > 0 ? (
-          visibleFacts.map((fact) => (
-            <article
-              key={fact.id}
-              className="group py-4 transition hover:translate-x-1"
-            >
-              <div className="mb-3 flex items-center justify-between gap-3">
-                <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.16em] text-[#ffd166]">
-                  {fact.category}
-                </span>
-                <FactSource
-                  className="max-w-[48%] text-xs text-white/42"
-                  label=""
-                  source={fact.source}
-                  sourceUrl={fact.sourceUrl}
-                />
-              </div>
-              <Link href={`/fait/${fact.slug}`} className="block">
-                <p className="text-base font-bold leading-snug tracking-[-0.03em] transition group-hover:text-[#ffe2a3]">
-                  {fact.title}
-                </p>
-                {fact.hook ? (
-                  <p className="mt-2 line-clamp-2 text-sm leading-6 text-white/52">
-                    {fact.hook}
-                  </p>
-                ) : null}
-              </Link>
-            </article>
-          ))
-        ) : (
-          <div className="rounded-[20px] border border-dashed border-white/12 bg-black/14 p-5 text-sm leading-6 text-white/62">
-            {empty}
-          </div>
-        )}
-      </div>
-
-      {facts.length > FACTS_PER_PAGE && (
-        <div className="mt-4 flex items-center justify-between gap-3 text-sm text-white/58">
-          <span>
-            Page {safePage}/{pageCount}
-          </span>
-          <div className="flex gap-2">
-            <button
-              type="button"
-              disabled={safePage <= 1}
-              onClick={() => setPage((current) => Math.max(current - 1, 1))}
-              className="rounded-md border border-white/10 px-3 py-2 font-bold transition hover:border-white/20 disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              Précédent
-            </button>
-            <button
-              type="button"
-              disabled={safePage >= pageCount}
-              onClick={() =>
-                setPage((current) => Math.min(current + 1, pageCount))
-              }
-              className="rounded-md border border-white/10 px-3 py-2 font-bold transition hover:border-white/20 disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              Suivant
-            </button>
-          </div>
-        </div>
-      )}
     </section>
   );
 }
