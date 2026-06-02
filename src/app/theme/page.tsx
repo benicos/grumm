@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { buildThemeMetadata, getPublicThemesForSeo } from "@/lib/serverMetadata";
+import ThemeCard from "../components/ThemeCard";
 import Footer from "../components/Footer";
 import HeroBackground from "../components/HeroBackground";
 import Navbar from "../components/Navbar";
 import {
-  premiumPrimaryCtaClassName,
   premiumTitleGradientClassName,
 } from "../components/buttonStyles";
 
@@ -23,40 +23,27 @@ export default async function ThemeHubPage() {
           <p className="text-sm font-bold uppercase tracking-[0.18em] text-[#ffe4a1]/80">
             Thèmes
           </p>
-          <h1 className={`${premiumTitleGradientClassName} mt-5 text-[clamp(3rem,7vw,5.8rem)] font-extrabold leading-[0.95]`}>
-            Explorer par univers.
+          <h1
+            className={`${premiumTitleGradientClassName} mt-5 text-[clamp(2.5rem,6vw,4.8rem)] font-extrabold leading-[0.98]`}
+          >
+            Explore les grands{" "}
+            <span className="text-[#ffd166]">thèmes</span> de la culture.
           </h1>
           <p className="mt-6 max-w-2xl text-lg leading-8 text-white/68">
-            Chaque thème ouvre une porte éditoriale : des repères courts,
-            lisibles, et assez riches pour nourrir la curiosité sans alourdir
-            l’expérience.
+            Chaque thème rassemble des faits courts, mémorables et reliés entre
+            eux pour apprendre sans se perdre.
           </p>
-          <Link href="/decouvrir" className={`${premiumPrimaryCtaClassName} mt-8 inline-flex`}>
-            Ouvrir le flux
+          <Link
+            href="/decouvrir"
+            className="mt-8 inline-flex h-12 items-center justify-center rounded-full bg-gradient-to-r from-[#ffd166] to-[#f4ead5] px-5 text-sm font-black text-[#07111f] shadow-[0_18px_55px_rgba(255,209,102,0.20)] transition hover:scale-[1.02]"
+          >
+            Commencer par un fait au hasard
           </Link>
         </section>
 
-        <section className="mt-16 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        <section className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {themes.map((theme) => (
-            <Link
-              key={theme.id}
-              href={`/theme/${theme.slug}`}
-              className={`group min-h-[230px] rounded-[28px] border border-white/10 bg-gradient-to-br ${theme.tone ?? "from-[#111827] via-[#1f2937] to-[#334155]"} p-7 shadow-[0_28px_80px_rgba(0,0,0,0.28)] transition duration-300 hover:-translate-y-1 hover:border-white/20`}
-            >
-              <div className="flex h-full flex-col justify-between">
-                <div>
-                  <p className="text-sm font-bold uppercase tracking-[0.18em] text-white/55">
-                    {theme.factsCount ?? 0} faits
-                  </p>
-                  <h2 className="mt-5 text-3xl font-black tracking-[-0.04em]">
-                    {theme.name}
-                  </h2>
-                </div>
-                <p className="mt-8 max-w-[24ch] text-sm leading-6 text-white/70">
-                  Entrer dans ce thème et retrouver les faits associés.
-                </p>
-              </div>
-            </Link>
+            <ThemeCard key={theme.id} theme={theme} />
           ))}
         </section>
       </main>

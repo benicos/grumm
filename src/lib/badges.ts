@@ -1,3 +1,5 @@
+import { dailyGoalConfig } from "@/config/app";
+
 export type BadgeInfo = {
   badge: string | null;
   currentThreshold: number;
@@ -18,11 +20,76 @@ export type GradeDefinition = {
 };
 
 export const DEFAULT_GRADES: GradeDefinition[] = [
-  { slug: "curieux-debutant", requiredGoals: 0, name: "Curieux débutant", badge: "sparkles" },
-  { slug: "explorateur-regulier", requiredGoals: 2, name: "Explorateur régulier", badge: "compass" },
-  { slug: "esprit-assidu", requiredGoals: 10, name: "Esprit assidu" },
-  { slug: "maitre-curiosite", requiredGoals: 50, name: "Maître de la curiosité", badge: "trophy" },
-  { slug: "legende-savoir", requiredGoals: 100, name: "Légende du savoir", badge: "crown" },
+  {
+    slug: "curieux",
+    requiredGoals: 0,
+    name: "Curieux",
+    description: "Tu viens d'ouvrir la porte.",
+    badge: "sparkles",
+  },
+  {
+    slug: "explorateur",
+    requiredGoals: 25,
+    name: "Explorateur",
+    description: "Tu commences à parcourir les grands repères.",
+    badge: "compass",
+  },
+  {
+    slug: "collectionneur",
+    requiredGoals: 75,
+    name: "Collectionneur",
+    description: "Ta bibliothèque personnelle prend forme.",
+    badge: "book-open",
+  },
+  {
+    slug: "erudit",
+    requiredGoals: 150,
+    name: "Érudit",
+    description: "Tu relies les faits entre eux.",
+    badge: "brain",
+  },
+  {
+    slug: "chroniqueur",
+    requiredGoals: 300,
+    name: "Chroniqueur",
+    description: "Tu fais de tes découvertes une mémoire structurée.",
+    badge: "book-open",
+  },
+  {
+    slug: "conservateur",
+    requiredGoals: 500,
+    name: "Conservateur",
+    description: "Tu gardes les repères qui comptent.",
+    badge: "shield-check",
+  },
+  {
+    slug: "archiviste",
+    requiredGoals: 750,
+    name: "Archiviste",
+    description: "Tu conserves une mémoire rare.",
+    badge: "shield-check",
+  },
+  {
+    slug: "gardien-du-savoir",
+    requiredGoals: 1000,
+    name: "Gardien du savoir",
+    description: "Tu fais vivre ce que beaucoup oublient.",
+    badge: "crown",
+  },
+  {
+    slug: "sage-de-grumm",
+    requiredGoals: 1500,
+    name: "Sage de Grumm",
+    description: "Ta culture devient un territoire personnel.",
+    badge: "star",
+  },
+  {
+    slug: "memoire-vivante",
+    requiredGoals: 2500,
+    name: "Mémoire vivante",
+    description: "Tu portes une bibliothèque en mouvement.",
+    badge: "trophy",
+  },
 ];
 
 function normalizeGrades(grades?: GradeDefinition[] | null) {
@@ -65,7 +132,7 @@ export function getBadgeInfo(
   }
 
   return {
-      badge: current.badge ?? null,
+    badge: current.badge ?? null,
     currentThreshold: current.requiredGoals,
     nextThreshold: next.requiredGoals,
     progress:
@@ -78,21 +145,9 @@ export function getBadgeInfo(
 }
 
 export function getGoalCelebrationMessage(completedDailyGoals: number) {
-  if (completedDailyGoals >= 100) {
-    return "Maîtrise totale.";
-  }
+  const match = dailyGoalConfig.streakMessages.find(
+    (item) => completedDailyGoals >= item.minCompletedGoals,
+  );
 
-  if (completedDailyGoals >= 50) {
-    return "Impressionnant.";
-  }
-
-  if (completedDailyGoals >= 10) {
-    return "Belle régularité.";
-  }
-
-  if (completedDailyGoals >= 2) {
-    return "Tu prends le rythme.";
-  }
-
-  return "Premier pas.";
+  return match?.message ?? "Premier jour lancé.";
 }

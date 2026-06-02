@@ -154,7 +154,7 @@ function SettingsForms({
 
   async function resetViews() {
     const confirmed = window.confirm(
-      "Reinitialiser tes vues uniques ? Tes likes et sauvegardes seront conserves.",
+                "Réinitialiser tes vues uniques ? Tes likes et sauvegardes seront conservés.",
     );
 
     if (!confirmed) {
@@ -252,7 +252,7 @@ function SettingsForms({
           disabled={isSubmitting === "settings"}
           className={`${premiumPrimaryCtaClassName} mt-5 w-full`}
         >
-          {isSubmitting === "settings" ? "Mise ? jour..." : "Mettre ? jour"}
+                  {isSubmitting === "settings" ? "Mise à jour..." : "Mettre à jour"}
         </button>
       </form>
 

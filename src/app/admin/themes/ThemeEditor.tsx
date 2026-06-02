@@ -4,7 +4,14 @@ import type { FormEvent } from "react";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getAdminCategory, saveAdminCategory } from "@/lib/admin";
-import { AdminBackLink, AdminField } from "../forms";
+import {
+  getThemeGradientStyle,
+  themeMotifLabels,
+  themeMotifOptions,
+  type ThemeVisualMotif,
+} from "@/lib/themeDisplay";
+import ThemeMotif from "../../components/ThemeMotif";
+import { AdminBackLink, AdminField, AdminHelpTooltip } from "../forms";
 import {
   AdminButton,
   AdminCard,
@@ -14,10 +21,17 @@ import {
 
 type ThemeFormState = {
   accent_color: string;
+  description_courte: string;
+  description_longue: string;
+  gradient_end: string;
+  gradient_middle: string;
+  gradient_start: string;
   id: string;
+  keywords: string;
   name: string;
-  slug: string;
-  tone: string;
+  seo_description: string;
+  seo_title: string;
+  visual_motif: ThemeVisualMotif;
 };
 
 type GradientPreset = {
@@ -26,80 +40,50 @@ type GradientPreset = {
 };
 
 const emptyTheme: ThemeFormState = {
-  accent_color: "#465fff",
+  accent_color: "#ffd166",
+  description_courte: "",
+  description_longue: "",
+  gradient_end: "#f0a95a",
+  gradient_middle: "#132744",
+  gradient_start: "#0b1424",
   id: "",
+  keywords: "",
   name: "",
-  slug: "",
-  tone: "from-[#465fff] to-[#7592ff]",
+  seo_description: "",
+  seo_title: "",
+  visual_motif: "constellation",
 };
 
-const defaultGradientStops: [string, string, string] = [
-  "#07111f",
-  "#465fff",
-  "#7592ff",
-];
-
 const gradientPresets: GradientPreset[] = [
-  {
-    colors: ["#07111f", "#1f2937", "#465fff"],
-    label: "TailAdmin bleu",
-  },
-  {
-    colors: ["#0f172a", "#334155", "#f4ead5"],
-    label: "Ardoise premium",
-  },
-  {
-    colors: ["#111827", "#5b5f68", "#d8c7a1"],
-    label: "Champagne discret",
-  },
-  {
-    colors: ["#0b1424", "#27445f", "#88a2b6"],
-    label: "Bleu-gris",
-  },
+  { colors: ["#07111f", "#1f2937", "#465fff"], label: "Bleu profond" },
+  { colors: ["#0f172a", "#334155", "#f4ead5"], label: "Ardoise premium" },
+  { colors: ["#111827", "#5b5f68", "#d8c7a1"], label: "Champagne discret" },
+  { colors: ["#0b1424", "#27445f", "#88a2b6"], label: "Bleu-gris" },
+  { colors: ["#120f24", "#3d2b5f", "#c4a7e7"], label: "Nocturne" },
+  { colors: ["#0c1f1b", "#1f4d45", "#6ae3c0"], label: "Vert culturel" },
 ];
 
-function getTonePreviewBackground(tone: string) {
-  const colors = [...tone.matchAll(/\[(#[^\]]+)\]/g)]
+function toneFromStops(form: ThemeFormState) {
+  return `from-[${form.gradient_start}] via-[${form.gradient_middle}] to-[${form.gradient_end}]`;
+}
+
+function extractToneStops(tone?: string | null) {
+  const colors = [...(tone ?? "").matchAll(/\[(#[0-9a-fA-F]{3,8})\]/g)]
     .map((match) => match[1])
     .filter(Boolean);
 
-  if (colors.length > 0) {
-    return `linear-gradient(135deg, ${colors.join(", ")})`;
-  }
-
-  const trimmedTone = tone.trim();
-
-  return trimmedTone || "linear-gradient(135deg, #465fff, #7592ff)";
+  return {
+    gradient_end: colors[2] ?? colors[1] ?? emptyTheme.gradient_end,
+    gradient_middle: colors[1] ?? colors[0] ?? emptyTheme.gradient_middle,
+    gradient_start: colors[0] ?? emptyTheme.gradient_start,
+  };
 }
 
-function getToneStops(tone: string): [string, string, string] {
-  const colors = [...tone.matchAll(/\[(#[0-9a-fA-F]{3,8})\]/g)]
-    .map((match) => match[1])
+function parseKeywords(value: string) {
+  return value
+    .split(",")
+    .map((keyword) => keyword.trim())
     .filter(Boolean);
-
-  return [
-    colors[0] ?? defaultGradientStops[0],
-    colors[1] ?? colors[0] ?? defaultGradientStops[1],
-    colors[2] ?? colors[1] ?? colors[0] ?? defaultGradientStops[2],
-  ];
-}
-
-function toneFromStops(stops: [string, string, string]) {
-  return `from-[${stops[0]}] via-[${stops[1]}] to-[${stops[2]}]`;
-}
-
-function isCssColor(value: string) {
-  const trimmedValue = value.trim();
-
-  if (!trimmedValue) {
-    return false;
-  }
-
-  if (typeof CSS !== "undefined" && CSS.supports) {
-    return CSS.supports("color", trimmedValue);
-  }
-
-  return /^#([0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i.test(trimmedValue);
 }
 
 export default function ThemeEditor({ themeId }: { themeId?: string }) {
@@ -110,25 +94,24 @@ export default function ThemeEditor({ themeId }: { themeId?: string }) {
   const [loading, setLoading] = useState(Boolean(themeId));
   const [busy, setBusy] = useState(false);
   const editing = Boolean(themeId);
-  const accentColorIsValid = isCssColor(form.accent_color);
-  const previewAccentColor = accentColorIsValid ? form.accent_color : "#465fff";
-  const previewBackground = getTonePreviewBackground(form.tone);
-  const gradientStops = getToneStops(form.tone);
+  const previewTheme = {
+    ...form,
+    keywords: parseKeywords(form.keywords),
+    slug: "preview",
+    tone: toneFromStops(form),
+  };
 
-  function updateGradientStop(index: number, color: string) {
-    const nextStops = [...gradientStops] as [string, string, string];
-    nextStops[index] = color;
-    setForm((current) => ({
-      ...current,
-      tone: toneFromStops(nextStops),
-    }));
+  function updateColor(field: keyof Pick<ThemeFormState, "accent_color" | "gradient_start" | "gradient_middle" | "gradient_end">, value: string) {
+    setForm((current) => ({ ...current, [field]: value }));
   }
 
   function applyGradientPreset(preset: GradientPreset) {
     setForm((current) => ({
       ...current,
       accent_color: preset.colors[2],
-      tone: toneFromStops(preset.colors),
+      gradient_end: preset.colors[2],
+      gradient_middle: preset.colors[1],
+      gradient_start: preset.colors[0],
     }));
   }
 
@@ -153,12 +136,23 @@ export default function ThemeEditor({ themeId }: { themeId?: string }) {
           return;
         }
 
+        const toneStops = extractToneStops(theme.tone);
+
         setForm({
-          accent_color: theme.accent_color,
+          accent_color: theme.accent_color || emptyTheme.accent_color,
+          description_courte: theme.description_courte ?? "",
+          description_longue: theme.description_longue ?? "",
+          gradient_end: theme.gradient_end ?? toneStops.gradient_end,
+          gradient_middle: theme.gradient_middle ?? toneStops.gradient_middle,
+          gradient_start: theme.gradient_start ?? toneStops.gradient_start,
           id: theme.id,
+          keywords: (theme.keywords ?? []).join(", "),
           name: theme.name,
-          slug: theme.slug,
-          tone: theme.tone,
+          seo_description: theme.seo_description ?? "",
+          seo_title: theme.seo_title ?? "",
+          visual_motif:
+            (theme.visual_motif as ThemeVisualMotif | null) ??
+            emptyTheme.visual_motif,
         });
       } catch (loadError) {
         if (mounted) {
@@ -190,10 +184,18 @@ export default function ThemeEditor({ themeId }: { themeId?: string }) {
 
     const result = await saveAdminCategory({
       accent_color: form.accent_color,
+      description_courte: form.description_courte || null,
+      description_longue: form.description_longue || null,
+      gradient_end: form.gradient_end,
+      gradient_middle: form.gradient_middle,
+      gradient_start: form.gradient_start,
       id: form.id || undefined,
+      keywords: parseKeywords(form.keywords),
       name: form.name,
-      slug: form.slug || undefined,
-      tone: form.tone,
+      seo_description: form.seo_description || null,
+      seo_title: form.seo_title || null,
+      tone: toneFromStops(form),
+      visual_motif: form.visual_motif,
     });
 
     setBusy(false);
@@ -216,7 +218,7 @@ export default function ThemeEditor({ themeId }: { themeId?: string }) {
       <AdminPageHeading
         current={editing ? "Modifier un thème" : "Créer un thème"}
         title={editing ? "Modifier un thème" : "Créer un thème"}
-        description="Nom, identifiant et couleur de la catégorie."
+        description="Personnalisation éditoriale et visuelle du thème."
         action={<AdminBackLink href="/admin/themes">Retour aux thèmes</AdminBackLink>}
       />
       <AdminNotice message={message} />
@@ -226,51 +228,23 @@ export default function ThemeEditor({ themeId }: { themeId?: string }) {
         {loading ? (
           <div className="h-72 animate-pulse rounded-2xl bg-gray-100" />
         ) : (
-          <form onSubmit={submitTheme} className="grid gap-5">
-            <div className="grid gap-5 lg:grid-cols-2">
+          <form onSubmit={submitTheme} className="grid gap-6">
+            <section className="grid gap-5">
               <AdminField
                 label="Nom"
+                required
                 value={form.name}
                 onChange={(name) =>
                   setForm((current) => ({ ...current, name }))
                 }
               />
-              <AdminField
-                label="Slug"
-                value={form.slug}
-                onChange={(slug) =>
-                  setForm((current) => ({ ...current, slug }))
-                }
-              />
-            </div>
+            </section>
 
-            <div className="grid gap-5 lg:grid-cols-2">
-              <AdminField
-                label="Couleur d’accent"
-                type="color"
-                value={previewAccentColor}
-                onChange={(accent_color) =>
-                  setForm((current) => ({ ...current, accent_color }))
-                }
-              />
-              <AdminField
-                label="Ton du thème"
-                value={form.tone}
-                onChange={(tone) =>
-                  setForm((current) => ({ ...current, tone }))
-                }
-              />
-            </div>
-
-            <div className="rounded-2xl border border-gray-200 bg-white p-4">
+            <section className="rounded-2xl border border-gray-200 bg-white p-4">
               <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-800">
-                    Fond / gradient
-                  </p>
-                  <p className="mt-1 text-xs leading-5 text-gray-500">
-                    Choisis trois couleurs ou applique un preset. Le champ
-                    manuel reste disponible pour les cas avancés.
+                    Couleurs du thème
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -293,106 +267,152 @@ export default function ThemeEditor({ themeId }: { themeId?: string }) {
                 </div>
               </div>
 
-              <div className="mt-4 grid gap-4 md:grid-cols-3">
-                {gradientStops.map((color, index) => (
+              <div className="mt-5 grid gap-4 md:grid-cols-3">
+                {[
+                  ["gradient_start", "Couleur principale"],
+                  ["gradient_end", "Couleur secondaire"],
+                  ["accent_color", "Couleur d'accent"],
+                ].map(([field, label]) => (
                   <label
-                    key={`${index}:${color}`}
+                    key={field}
                     className="block text-xs font-medium text-gray-600"
                   >
-                    {index === 0
-                      ? "Départ"
-                      : index === 1
-                        ? "Milieu"
-                        : "Arrivée"}
-                    <div className="mt-2 flex gap-3">
-                      <input
-                        type="color"
-                        value={isCssColor(color) ? color : defaultGradientStops[index]}
-                        onChange={(event) =>
-                          updateGradientStop(index, event.target.value)
-                        }
-                        className="h-10 w-12 shrink-0 cursor-pointer rounded-lg border border-gray-200 bg-white p-1"
-                        aria-label={`Choisir la couleur ${
-                          index === 0
-                            ? "de départ"
-                            : index === 1
-                              ? "du milieu"
-                              : "d'arrivée"
-                        } du gradient`}
-                      />
-                      <input
-                        value={color}
-                        onChange={(event) =>
-                          updateGradientStop(index, event.target.value)
-                        }
-                        className="min-w-0 flex-1 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-800 outline-none transition focus:border-[#465fff]"
-                      />
-                    </div>
+                    {label}
+                    <input
+                      type="color"
+                      value={form[field as "gradient_start" | "gradient_end" | "accent_color"]}
+                      onChange={(event) =>
+                        updateColor(
+                          field as "gradient_start" | "gradient_end" | "accent_color",
+                          event.target.value,
+                        )
+                      }
+                      className="mt-2 h-11 w-full cursor-pointer rounded-lg border border-gray-200 bg-white p-1"
+                    />
                   </label>
                 ))}
               </div>
-            </div>
+            </section>
 
-            <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
+            <section className="rounded-2xl border border-gray-200 bg-white p-4">
+              <div className="flex items-center gap-2 text-sm font-medium text-gray-800">
+                Motif graphique
+                <AdminHelpTooltip text="Motif décoratif utilisé dans les cards publiques du thème." />
+              </div>
+              <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {themeMotifOptions.map((motif) => {
+                  const selected = form.visual_motif === motif;
+
+                  return (
+                    <button
+                      key={motif}
+                      type="button"
+                      onClick={() =>
+                        setForm((current) => ({
+                          ...current,
+                          visual_motif: motif,
+                        }))
+                      }
+                      className={`flex items-center gap-3 rounded-xl border px-3 py-3 text-left text-sm transition ${
+                        selected
+                          ? "border-[#465fff] bg-[#f5f7ff] text-[#1d2adf]"
+                          : "border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50"
+                      }`}
+                    >
+                      <ThemeMotif motif={motif} className="h-8 w-8 shrink-0" />
+                      <span className="font-medium">
+                        {themeMotifLabels[motif]}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </section>
+
+            <section className="grid gap-5">
               <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">
                 <p className="font-medium text-gray-800">
                   Prévisualisation du thème
                 </p>
-                <p className="mt-1 text-xs leading-5">
-                  Aperçu du fond, du texte et de la couleur d&apos;accent avant
-                  enregistrement.
-                </p>
                 <div className="mt-4 overflow-hidden rounded-2xl border border-white/40 shadow-sm">
                   <div
-                    className="min-h-40 p-5 text-white"
-                    style={{ background: previewBackground }}
+                    className="min-h-44 p-5 text-white"
+                    style={getThemeGradientStyle(previewTheme)}
                   >
                     <span
                       className="inline-flex rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em]"
                       style={{
-                        backgroundColor: `${previewAccentColor}22`,
-                        border: `1px solid ${previewAccentColor}55`,
-                        color: "#ffffff",
+                        backgroundColor: `${form.accent_color}22`,
+                        border: `1px solid ${form.accent_color}55`,
                       }}
                     >
                       {form.name || "Thème"}
                     </span>
+                    <ThemeMotif
+                      motif={form.visual_motif}
+                      className="mt-6 h-14 w-14 text-white/35"
+                    />
                     <h3 className="mt-7 max-w-xs text-2xl font-semibold leading-tight">
-                      Exemple de carte Grumm.
+                      {form.name || "Exemple de carte Grumm."}
                     </h3>
                     <p className="mt-3 max-w-sm text-sm leading-6 text-white/72">
-                      Le contraste doit rester lisible sur le fond choisi.
+                      {form.description_courte ||
+                        "Le contraste doit rester lisible sur le fond choisi."}
                     </p>
                   </div>
                 </div>
               </div>
+            </section>
 
-              <div className="rounded-2xl border border-gray-200 bg-white p-4 text-sm text-gray-600">
-                <p className="font-medium text-gray-800">Validation rapide</p>
-                <div className="mt-4 space-y-3">
-                  <div className="flex items-center justify-between gap-3">
-                    <span>Accent</span>
-                    <span
-                      className="h-7 w-12 rounded-lg border border-gray-200"
-                      style={{ backgroundColor: previewAccentColor }}
-                    />
-                  </div>
-                  <p
-                    className={
-                      accentColorIsValid ? "text-green-600" : "text-red-600"
-                    }
-                  >
-                    {accentColorIsValid
-                      ? "Couleur d'accent valide."
-                      : "Couleur d'accent invalide."}
-                  </p>
-                  <p className="text-xs leading-5 text-gray-500">
-                    Pour le ton, utilise les formats TailAdmin/Tailwind
-                    existants comme from-[#111827] via-[#1f2937] to-[#465fff].
-                  </p>
-                </div>
-              </div>
-            </div>
+            <section className="grid gap-5 lg:grid-cols-2">
+              <AdminField
+                help="Titre affiché dans Google et dans les aperçus de partage."
+                label="Titre SEO"
+                value={form.seo_title}
+                onChange={(seo_title) =>
+                  setForm((current) => ({ ...current, seo_title }))
+                }
+              />
+              <AdminField
+                help="Résumé affiché dans les résultats de recherche."
+                label="Description SEO"
+                textarea
+                rows={3}
+                value={form.seo_description}
+                onChange={(seo_description) =>
+                  setForm((current) => ({ ...current, seo_description }))
+                }
+              />
+              <AdminField
+                help="Liste de mots-clés séparés par des virgules. Utilisés pour améliorer le référencement."
+                label="Mots-clés"
+                value={form.keywords}
+                onChange={(keywords) =>
+                  setForm((current) => ({ ...current, keywords }))
+                }
+              />
+            </section>
+
+            <section className="grid gap-5">
+              <AdminField
+                help="Texte affiché dans les cards de thème et certaines présentations publiques."
+                label="Description courte"
+                value={form.description_courte}
+                onChange={(description_courte) =>
+                  setForm((current) => ({ ...current, description_courte }))
+                }
+              />
+              <AdminField
+                help="Texte utilisé dans la page du thème et dans son contenu éditorial."
+                label="Description longue"
+                textarea
+                rows={4}
+                value={form.description_longue}
+                onChange={(description_longue) =>
+                  setForm((current) => ({ ...current, description_longue }))
+                }
+              />
+            </section>
 
             <div className="flex flex-wrap gap-3">
               <AdminButton type="submit" disabled={busy}>

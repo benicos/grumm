@@ -2,7 +2,7 @@
 
 import { Inter } from "next/font/google";
 import Link from "next/link";
-import { ArrowUpRight, Compass, Search, Shuffle } from "lucide-react";
+import { Compass, Search, Shuffle } from "lucide-react";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { trackAnalyticsEvent } from "@/lib/analytics/web";
 import {
@@ -16,12 +16,12 @@ import { getToneBackground } from "@/lib/gradients";
 import { getUserProfileSummary } from "@/lib/profile";
 import { AppState } from "../components/AppState";
 import {
-  premiumPrimaryCtaClassName,
   premiumTitleGradientClassName,
 } from "../components/buttonStyles";
 import Footer from "../components/Footer";
 import HeroBackground from "../components/HeroBackground";
 import Navbar from "../components/Navbar";
+import ThemeCard from "../components/ThemeCard";
 import { useAuth } from "../auth/AuthProvider";
 
 const inter = Inter({
@@ -88,55 +88,6 @@ function SearchResultCard({ fact }: { fact: FeedFact }) {
   );
 }
 
-function ThemeCard({ compact = false, theme }: { compact?: boolean; theme: ThemeDiscoverySummary }) {
-  const toneBackground = getToneBackground(theme.tone);
-  const count = theme.count ?? 0;
-
-  return (
-    <Link
-      href={`/theme/${theme.slug}`}
-      onClick={() =>
-        void trackAnalyticsEvent({
-          entityId: theme.id,
-          entityType: "category",
-          eventName: "category_opened",
-          metadata: { name: theme.name, slug: theme.slug },
-        })
-      }
-      className={`group relative overflow-hidden rounded-[32px] border border-white/10 ${toneBackground.className} p-6 shadow-[0_30px_100px_rgba(0,0,0,0.28)] transition duration-500 hover:-translate-y-1 hover:border-white/24 hover:shadow-[0_42px_130px_rgba(0,0,0,0.42)] ${
-        compact ? "min-h-[250px]" : "min-h-[300px]"
-      }`}
-      style={toneBackground.style}
-    >
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_82%_16%,rgba(255,255,255,0.24),transparent_24%),radial-gradient(circle_at_16%_88%,rgba(244,234,213,0.14),transparent_30%),linear-gradient(180deg,rgba(255,255,255,0.02),rgba(0,0,0,0.66))]" />
-      <div className="relative flex h-full flex-col">
-        <div className="flex items-center justify-between gap-4">
-          <span
-            className="h-2 w-14 rounded-full"
-            style={{ backgroundColor: theme.accent }}
-          />
-          <span className="rounded-full border border-white/12 bg-black/24 px-3 py-1.5 text-xs font-extrabold uppercase tracking-[0.14em] text-white/72 backdrop-blur-xl">
-            {count} {count > 1 ? "faits" : "fait"}
-          </span>
-        </div>
-
-        <div className={compact ? "mt-auto pt-14" : "mt-auto pt-20"}>
-          <h3 className="max-w-[13ch] text-[clamp(2rem,6vw,4rem)] font-black leading-[0.92] tracking-[-0.06em] text-white">
-            {theme.name}
-          </h3>
-          <p className="mt-5 line-clamp-3 max-w-xl text-sm font-semibold leading-7 text-white/76">
-            {theme.description}
-          </p>
-          <span className="mt-7 inline-flex items-center gap-2 text-sm font-black text-white transition group-hover:translate-x-1">
-            Explorer le thème
-            <ArrowUpRight className="h-4 w-4" />
-          </span>
-        </div>
-      </div>
-    </Link>
-  );
-}
-
 export default function ExplorerPage() {
   const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
   const [query, setQuery] = useState("");
@@ -145,6 +96,7 @@ export default function ExplorerPage() {
   const [continueThemes, setContinueThemes] = useState<ThemeDiscoverySummary[]>([]);
   const [facts, setFacts] = useState<FeedFact[]>([]);
   const [popularSearches, setPopularSearches] = useState<string[]>([]);
+  const [themeProgress, setThemeProgress] = useState<Record<string, number>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const hasActiveSearch = submittedQuery.trim().length > 0;
@@ -199,6 +151,11 @@ export default function ExplorerPage() {
               const topSlugs = new Set(
                 profile.topThemes.map((theme) => theme.slug),
               );
+              setThemeProgress(
+                Object.fromEntries(
+                  profile.topThemes.map((theme) => [theme.slug, theme.count]),
+                ),
+              );
               const personalized = themes.filter((theme) =>
                 topSlugs.has(theme.slug),
               );
@@ -206,9 +163,11 @@ export default function ExplorerPage() {
                 (personalized.length > 0 ? personalized : themes).slice(0, 4),
               );
             } catch {
+              setThemeProgress({});
               setContinueThemes(themes.slice(0, 4));
             }
           } else {
+            setThemeProgress({});
             setContinueThemes(themes.slice(0, 4));
           }
         }
@@ -275,13 +234,13 @@ export default function ExplorerPage() {
       <Navbar />
 
       <main className="relative z-10 mx-auto w-full max-w-[1180px] px-5 py-8 sm:px-6 sm:py-10 lg:px-8">
-        <section className="mx-auto flex min-h-[56vh] max-w-4xl flex-col items-center justify-center pb-12 pt-8 text-center">
+        <section className="mx-auto flex max-w-4xl flex-col items-center pb-10 pt-8 text-center">
           <p className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.055] px-3 py-1 text-sm/6 font-semibold text-white/62 backdrop-blur-xl">
             <Compass className="h-4 w-4" />
             Explorer
           </p>
           <h1
-            className={`${premiumTitleGradientClassName} mt-5 max-w-4xl text-[clamp(2.9rem,9vw,6.8rem)] font-black leading-[0.9] tracking-[-0.065em]`}
+            className={`${premiumTitleGradientClassName} mt-5 max-w-3xl text-[clamp(2.45rem,7vw,5.2rem)] font-black leading-[0.95] tracking-[-0.055em]`}
           >
             Que veux-tu apprendre aujourd&apos;hui ?
           </h1>
@@ -317,7 +276,7 @@ export default function ExplorerPage() {
             ) : null}
             <button
               type="submit"
-              className={`${premiumPrimaryCtaClassName} rounded-[15px] px-5 py-3`}
+              className="rounded-[15px] bg-gradient-to-r from-[#ffd166] to-[#f4ead5] px-5 py-3 text-sm font-black text-[#07111f] shadow-[0_16px_45px_rgba(255,209,102,0.22)] transition hover:scale-[1.02]"
             >
               Rechercher
             </button>
@@ -347,7 +306,7 @@ export default function ExplorerPage() {
             </div>
           </section>
         ) : (
-          <div className="space-y-16 pb-20">
+          <div className="space-y-14 pb-20">
             <section className="grid gap-5 rounded-[34px] border border-white/10 bg-white/[0.055] p-6 shadow-[0_28px_100px_rgba(0,0,0,0.24)] backdrop-blur-2xl md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
               <div>
                 <p className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-[0.22em] text-[#6ae3c0]">
@@ -363,38 +322,11 @@ export default function ExplorerPage() {
               </div>
               <Link
                 href={randomTheme ? `/theme/${randomTheme.slug}` : "/decouvrir"}
-                className={`${premiumPrimaryCtaClassName} justify-center`}
+                className="inline-flex h-12 items-center justify-center rounded-full bg-gradient-to-r from-[#6ae3c0] to-[#9ff5df] px-5 text-sm font-black text-[#06111d] shadow-[0_18px_55px_rgba(106,227,192,0.20)] transition hover:scale-[1.02]"
               >
                 Découvrir un thème au hasard
               </Link>
             </section>
-
-            <section>
-              <div className="mb-6 flex flex-wrap items-end justify-between gap-5">
-                <SectionTitle
-                  eyebrow={isAuthenticated ? "Continuer à explorer" : "Pour commencer"}
-                  title={
-                    isAuthenticated
-                      ? "Reprendre le fil."
-                      : "Quelques portes d'entrée."
-                  }
-                />
-              </div>
-              {isLoading ? (
-                <ExplorerSkeleton cards={4} />
-              ) : (
-                <div className="grid gap-5 md:grid-cols-2">
-                  {continueThemes.map((theme) => (
-                    <ThemeCard
-                      compact
-                      key={`continue-${theme.id}:${theme.slug}`}
-                      theme={theme}
-                    />
-                  ))}
-                </div>
-              )}
-            </section>
-
 
             {popularSearches.length > 0 ? (
               <section>
@@ -419,22 +351,33 @@ export default function ExplorerPage() {
 
             <section>
               <div className="mb-6 flex flex-wrap items-end justify-between gap-5">
-                <SectionTitle eyebrow="Tous les thèmes" title="Le catalogue Grumm." />
-                <Link
-                  href="/theme"
-                  className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/[0.07] px-5 py-3 text-sm font-black text-white transition hover:border-white/24 hover:bg-white/[0.11]"
-                >
-                  Vue dédiée
-                  <ArrowUpRight className="h-4 w-4" />
-                </Link>
+                <SectionTitle
+                  eyebrow={isAuthenticated ? "Continuer à explorer" : "Pour commencer"}
+                  title={
+                    isAuthenticated
+                      ? "Reprendre le fil."
+                      : "Quelques portes d'entrée."
+                  }
+                />
               </div>
-
               {isLoading ? (
-                <ExplorerSkeleton cards={9} />
+                <ExplorerSkeleton cards={4} />
               ) : (
-                <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-                  {allThemes.map((theme) => (
-                    <ThemeCard key={`${theme.id}:${theme.slug}`} theme={theme} />
+                <div className="grid gap-5 md:grid-cols-2">
+                  {continueThemes.map((theme) => (
+                    <ThemeCard
+                      compact
+                      key={`continue-${theme.id}:${theme.slug}`}
+                      progress={
+                        isAuthenticated
+                          ? {
+                              discovered: themeProgress[theme.slug] ?? 0,
+                              total: theme.count ?? 0,
+                            }
+                          : null
+                      }
+                      theme={theme}
+                    />
                   ))}
                 </div>
               )}

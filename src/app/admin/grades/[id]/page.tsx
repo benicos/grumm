@@ -84,7 +84,7 @@ export default function AdminGradeDetailPage() {
     <>
       <AdminPageHeading
         current="Grade"
-        title={grade?.name ? "D?tail du grade" : "Grade"}
+        title={grade?.name ? "Détail du grade" : "Grade"}
         description="Consultation du palier de progression."
         action={
           <div className="flex flex-wrap gap-3">
@@ -113,7 +113,7 @@ export default function AdminGradeDetailPage() {
         <AdminCard className="p-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <p className="max-w-3xl text-sm text-gray-500">
-                  {grade.description ?? "Aucune description renseign?e."}
+                  {grade.description ?? "Aucune description renseignée."}
             </p>
             <button
               type="button"

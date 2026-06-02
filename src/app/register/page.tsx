@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import HeroBackground from "../components/HeroBackground";
 import Navbar from "../components/Navbar";
+import Footer from "../components/Footer";
 import AuthForm from "../auth/AuthForm";
 import { premiumTitleGradientClassName } from "../components/buttonStyles";
 
@@ -34,6 +35,7 @@ export default function RegisterPage() {
           <AuthForm mode="signup" />
         </div>
       </section>
+      <Footer />
     </main>
   );
 }

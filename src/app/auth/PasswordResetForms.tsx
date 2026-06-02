@@ -122,7 +122,7 @@ export function PasswordUpdateForm() {
       return;
     }
 
-    setMessage(result.message ?? "Mot de passe mis ? jour.");
+      setMessage(result.message ?? "Mot de passe mis à jour.");
     setMessageTone("success");
     await refreshUser();
     window.setTimeout(() => router.replace(appRoutes.profile), 900);

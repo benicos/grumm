@@ -221,7 +221,7 @@ function getTopViewedThemes(rows: ViewedFactRow[]): ThemeViewStat[] {
 
   const themes = [...themesBySlug.values()]
     .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, "fr"))
-    .slice(0, 4);
+    .slice(0, 6);
   const maxCount = Math.max(...themes.map((theme) => theme.count), 1);
 
   return themes.map((theme) => ({

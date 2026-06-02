@@ -12,6 +12,7 @@ import {
   normalizeDifficultyLevel,
 } from "@/lib/learning";
 import { slugify } from "@/lib/slug";
+import { getThemeTone } from "@/lib/themeDisplay";
 
 export const DEFAULT_DAILY_GOAL: number = dailyGoalConfig.defaultGoal;
 export const DISCOVER_FEED_BATCH_SIZE: number = discoverConfig.feedBatchSize;
@@ -39,6 +40,10 @@ export type FeedFact = {
   accent: string;
 };
 
+export type RelatedFactSuggestion = FeedFact & {
+  relationReason: "manual" | "same_theme" | "same_period" | "recent";
+};
+
 export type CategorySummary = {
   id: string;
   name: string;
@@ -46,6 +51,15 @@ export type CategorySummary = {
   tone: string;
   accent: string;
   count?: number;
+  description_courte?: string | null;
+  description_longue?: string | null;
+  seo_title?: string | null;
+  seo_description?: string | null;
+  keywords?: string[] | null;
+  visual_motif?: string | null;
+  gradient_start?: string | null;
+  gradient_middle?: string | null;
+  gradient_end?: string | null;
 };
 
 export type ThemeDiscoverySummary = CategorySummary & {
@@ -84,8 +98,17 @@ type FactCategory = {
   id: string;
   name: string;
   slug: string;
-  tone: string;
-  accent_color: string;
+  tone: string | null;
+  accent_color: string | null;
+  description_courte?: string | null;
+  description_longue?: string | null;
+  seo_title?: string | null;
+  seo_description?: string | null;
+  keywords?: string[] | null;
+  visual_motif?: string | null;
+  gradient_start?: string | null;
+  gradient_middle?: string | null;
+  gradient_end?: string | null;
 };
 
 type FactRow = {
@@ -166,7 +189,7 @@ type RawDailyProgressRow = {
 };
 
 const FACT_SELECT =
-  "id,slug,title,hook,content,difficulty_level,long_content,seo_title,seo_description,event_day,event_month,event_year,published_at,updated_at,source,source_url,tone,accent_color,categories(id,name,slug,tone,accent_color)";
+  "id,slug,title,hook,content,difficulty_level,long_content,seo_title,seo_description,event_day,event_month,event_year,published_at,updated_at,source,source_url,tone,accent_color,categories(id,name,slug,tone,accent_color,description_courte,description_longue,seo_title,seo_description,keywords,visual_motif,gradient_start,gradient_middle,gradient_end)";
 
 function isMissingSourceLabel(value: string) {
   const normalized = value
@@ -225,7 +248,7 @@ function mapFact(fact: FactRow): FeedFact {
     updatedAt: fact.updated_at ?? null,
     tone:
       fact.tone ??
-      category?.tone ??
+      (category ? getThemeTone(category) : null) ??
       "from-[#0b1424] via-[#132744] to-[#f0a95a]",
     accent: fact.accent_color ?? category?.accent_color ?? "#ffd166",
   };
@@ -270,11 +293,22 @@ function mapExplorerTheme(category: ExplorerThemeRpcRow): CategorySummary {
 
 function mapCategory(category: FactCategory): CategorySummary {
   return {
+    accent: category.accent_color || "#ffd166",
+    description_courte: category.description_courte ?? null,
+    description_longue: category.description_longue ?? null,
+    gradient_end: category.gradient_end ?? null,
+    gradient_middle: category.gradient_middle ?? null,
+    gradient_start: category.gradient_start ?? null,
     id: category.id,
+    keywords: category.keywords ?? null,
     name: category.name,
+    seo_description: category.seo_description ?? null,
+    seo_title: category.seo_title ?? null,
     slug: category.slug,
-    tone: category.tone,
-    accent: category.accent_color,
+    tone:
+      category.tone ||
+      "from-[#0b1424] via-[#132744] to-[#f0a95a]",
+    visual_motif: category.visual_motif ?? null,
   };
 }
 
@@ -292,6 +326,10 @@ const themeDescriptionBySlug: Record<string, string> = {
 };
 
 function getThemeDescription(theme: CategorySummary) {
+  if (theme.description_courte?.trim() || theme.description_longue?.trim()) {
+    return theme.description_courte?.trim() || theme.description_longue?.trim() || "";
+  }
+
   const normalizedSlug = theme.slug
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
@@ -432,7 +470,7 @@ export async function getFeedFacts(options?: {
   if (options?.themeSlug) {
     const { data: categoryData, error: categoryError } = await supabase
       .from("categories")
-      .select("id,name,slug,tone,accent_color")
+      .select("id,name,slug,tone,accent_color,description_courte,description_longue,seo_title,seo_description,keywords,visual_motif,gradient_start,gradient_middle,gradient_end")
       .eq("slug", options.themeSlug)
       .maybeSingle();
 
@@ -497,7 +535,7 @@ async function getExplorerThemesWithCounts(
 
   const categoriesQuery = supabase
     .from("categories")
-    .select("id,name,slug,tone,accent_color")
+    .select("id,name,slug,tone,accent_color,description_courte,description_longue,seo_title,seo_description,keywords,visual_motif,gradient_start,gradient_middle,gradient_end")
     .order("name", { ascending: true });
 
   const categoriesResult = searchTerm
@@ -561,7 +599,7 @@ async function searchExplorerFacts(
 
   const matchingCategoriesResult = await supabase
     .from("categories")
-    .select("id,name,slug,tone,accent_color")
+    .select("id,name,slug,tone,accent_color,description_courte,description_longue,seo_title,seo_description,keywords,visual_motif,gradient_start,gradient_middle,gradient_end")
     .or(`name.ilike.%${searchTerm}%,slug.ilike.%${searchTerm}%`);
 
   if (matchingCategoriesResult.error) {
@@ -879,6 +917,124 @@ export async function getFactBySlug(slug: string) {
   }
 
   return data ? mapFact(data as FactRow) : null;
+}
+
+function uniqueRelatedFacts(facts: RelatedFactSuggestion[], currentFactId: string) {
+  const seen = new Set<string>([currentFactId]);
+
+  return facts.filter((fact) => {
+    if (seen.has(fact.id)) {
+      return false;
+    }
+
+    seen.add(fact.id);
+    return true;
+  });
+}
+
+export async function getRelatedFactsForFact(
+  factId: string,
+  limit = 5,
+): Promise<RelatedFactSuggestion[]> {
+  const supabase = createSupabaseBrowserClient();
+
+  if (!supabase) {
+    return [];
+  }
+
+  const { data: currentFact } = await supabase
+    .from("facts")
+    .select("id,category_id,event_year")
+    .eq("id", factId)
+    .maybeSingle();
+
+  if (!currentFact) {
+    return [];
+  }
+
+  let manualIds: string[] = [];
+
+  try {
+    const { data: relations } = await supabase
+      .from("fact_relations")
+      .select("related_fact_id,position")
+      .eq("source_fact_id", factId)
+      .order("position", { ascending: true })
+      .limit(limit);
+
+    manualIds = ((relations ?? []) as { related_fact_id: string }[]).map(
+      (relation) => relation.related_fact_id,
+    );
+  } catch {
+    manualIds = [];
+  }
+
+  const manualResult =
+    manualIds.length > 0
+      ? await supabase
+          .from("facts")
+          .select(FACT_SELECT)
+          .in("id", manualIds)
+          .eq("status", "published")
+      : { data: [] as FactRow[] };
+  const manualFacts = manualIds
+    .map((id) => ((manualResult.data ?? []) as FactRow[]).find((fact) => fact.id === id))
+    .filter(Boolean)
+    .map((fact) => ({
+      ...mapFact(fact as FactRow),
+      relationReason: "manual" as const,
+    }));
+  const needed = Math.max(limit - manualFacts.length, 0);
+
+  if (needed <= 0) {
+    return uniqueRelatedFacts(manualFacts, factId).slice(0, limit);
+  }
+
+  const sameThemeResult = await supabase
+    .from("facts")
+    .select(FACT_SELECT)
+    .eq("status", "published")
+    .eq("category_id", currentFact.category_id)
+    .neq("id", factId)
+    .order("published_at", { ascending: false, nullsFirst: false })
+    .order("updated_at", { ascending: false })
+    .limit(needed + 4);
+  const sameThemeFacts = ((sameThemeResult.data ?? []) as FactRow[]).map((fact) => ({
+    ...mapFact(fact),
+    relationReason: "same_theme" as const,
+  }));
+  const samePeriodResult = currentFact.event_year
+    ? await supabase
+        .from("facts")
+        .select(FACT_SELECT)
+        .eq("status", "published")
+        .gte("event_year", currentFact.event_year - 25)
+        .lte("event_year", currentFact.event_year + 25)
+        .neq("id", factId)
+        .order("event_year", { ascending: true, nullsFirst: false })
+        .limit(needed + 2)
+    : { data: [] as FactRow[] };
+  const samePeriodFacts = ((samePeriodResult.data ?? []) as FactRow[]).map((fact) => ({
+    ...mapFact(fact),
+    relationReason: "same_period" as const,
+  }));
+  const recentResult = await supabase
+    .from("facts")
+    .select(FACT_SELECT)
+    .eq("status", "published")
+    .neq("id", factId)
+    .order("published_at", { ascending: false, nullsFirst: false })
+    .order("updated_at", { ascending: false })
+    .limit(needed + 4);
+  const recentFacts = ((recentResult.data ?? []) as FactRow[]).map((fact) => ({
+    ...mapFact(fact),
+    relationReason: "recent" as const,
+  }));
+
+  return uniqueRelatedFacts(
+    [...manualFacts, ...sameThemeFacts, ...samePeriodFacts, ...recentFacts],
+    factId,
+  ).slice(0, limit);
 }
 
 export async function getTodayDailyProgress(dailyGoal = DEFAULT_DAILY_GOAL) {

@@ -654,7 +654,7 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
             getGoalCelebrationMessage(result.completedDailyGoals),
           );
           setShowGoalAnimation(true);
-          window.setTimeout(() => setShowGoalAnimation(false), 1700);
+          window.setTimeout(() => setShowGoalAnimation(false), 3600);
         }
       })
       .catch(() => undefined);
@@ -1174,7 +1174,12 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
       </section>
 
       {showGoalAnimation && (
-        <div className="pointer-events-none fixed inset-0 z-50 grid place-items-center overflow-hidden bg-black/20 backdrop-blur-[2px]">
+        <button
+          type="button"
+          aria-label="Fermer l'animation d'objectif"
+          onClick={() => setShowGoalAnimation(false)}
+          className="fixed inset-0 z-50 grid cursor-default place-items-center overflow-hidden bg-black/20 backdrop-blur-[2px]"
+        >
           {confettiPieces.map((piece, index) => (
             <span
               key={`${piece.left}-${piece.top}`}
@@ -1230,7 +1235,7 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
               </div>
             </div>
           </div>
-        </div>
+        </button>
       )}
 
       {(showSwipeHint || isLoadingMoreFacts) && (

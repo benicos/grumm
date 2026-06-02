@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { createClient } from "@supabase/supabase-js";
 import { siteConfig } from "@/config/app";
 import { isCommercialCollaborationSlug } from "@/lib/commercial";
+import { getThemeLongDescription } from "@/lib/themeDisplay";
 import type { Database } from "@/types/database";
 
 type CategoryRelation =
@@ -29,6 +30,7 @@ export type SeoFact = Pick<
   | "event_year"
   | "hook"
   | "id"
+  | "category_id"
   | "long_content"
   | "published_at"
   | "seo_description"
@@ -44,13 +46,32 @@ export type SeoFact = Pick<
 
 export type SeoTheme = Pick<
   Database["public"]["Tables"]["categories"]["Row"],
-  "accent_color" | "id" | "name" | "slug" | "tone" | "updated_at"
-> & {
+  | "accent_color"
+  | "id"
+  | "name"
+  | "slug"
+  | "tone"
+  | "updated_at"
+> &
+  Partial<
+    Pick<
+      Database["public"]["Tables"]["categories"]["Row"],
+      | "description_courte"
+      | "description_longue"
+      | "gradient_end"
+      | "gradient_middle"
+      | "gradient_start"
+      | "keywords"
+      | "seo_description"
+      | "seo_title"
+      | "visual_motif"
+    >
+  > & {
   factsCount?: number;
 };
 
 const PUBLISHED_FACT_SELECT =
-  "id,slug,title,hook,content,long_content,source,source_url,seo_title,seo_description,event_day,event_month,event_year,published_at,updated_at,categories(id,name,slug,tone,accent_color)";
+  "id,category_id,slug,title,hook,content,long_content,source,source_url,seo_title,seo_description,event_day,event_month,event_year,published_at,updated_at,categories(id,name,slug,tone,accent_color,description_courte,description_longue,keywords,visual_motif,gradient_start,gradient_middle,gradient_end)";
 
 export function createSupabaseMetadataClient() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -77,14 +98,10 @@ function firstCategory(categories: CategoryRelation) {
 }
 
 export function getSiteUrl() {
-  const configuredUrl =
-    process.env.NEXT_PUBLIC_SITE_URL ??
-    (process.env.VERCEL_PROJECT_PRODUCTION_URL
-      ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
-      : null);
+  const configuredUrl = process.env.NEXT_PUBLIC_SITE_URL ?? siteConfig.publicUrl;
 
   try {
-    return new URL(configuredUrl ?? siteConfig.fallbackUrl).origin;
+    return new URL(configuredUrl).origin;
   } catch {
     return siteConfig.fallbackUrl;
   }
@@ -158,14 +175,19 @@ export function buildFactMetadata(fact: SeoFact | null, slug: string): Metadata 
 export function buildThemeMetadata(theme: SeoTheme | null, slug?: string): Metadata {
   const themeName = theme?.name ?? (slug ? titleizeSlug(slug) : "Thèmes");
   const path = slug ? `/theme/${theme?.slug ?? slug}` : "/theme";
+  const themeDescription =
+    theme?.seo_description ||
+    (theme ? getThemeLongDescription(theme) : `Explore ${themeName} sur Grumm.`);
 
   return buildDefaultMetadata({
     canonicalPath: path,
     description:
-      theme?.factsCount && theme.factsCount > 0
-        ? `${themeName} sur Grumm : ${theme.factsCount} faits courts pour explorer ce sujet avec clarté.`
-        : `${themeName} sur Grumm : une porte d’entrée claire pour explorer la culture par thèmes.`,
-    title: slug ? `${themeName} : faits et repères culturels` : "Tous les thèmes culturels",
+      slug
+        ? `${themeDescription} ${theme?.factsCount ? `${theme.factsCount} faits disponibles.` : ""}`.trim()
+        : "Explore les grands territoires de la culture sur Grumm : faits courts, mémorables et reliés entre eux.",
+    title: theme?.seo_title || (slug
+      ? `${themeName} : faits et repères essentiels`
+      : "Thèmes culturels et univers de savoir"),
   });
 }
 
@@ -294,7 +316,7 @@ export async function getPublicThemesForSeo() {
 
   const { data } = await supabase
     .from("categories")
-    .select("id,name,slug,tone,accent_color,updated_at")
+    .select("id,name,slug,tone,accent_color,description_courte,description_longue,seo_title,seo_description,keywords,visual_motif,gradient_start,gradient_middle,gradient_end,updated_at")
     .order("name", { ascending: true });
 
   const themes = ((data ?? []) as SeoTheme[]).filter(

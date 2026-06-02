@@ -42,7 +42,7 @@ export function normalizeGradeIcon(value?: string | null): GradeIconKey {
 export function getGradeIconLabel(value?: string | null) {
   const key = normalizeGradeIcon(value);
 
-  return gradeIconOptions.find((item) => item.value === key)?.label ?? "?tincelle";
+  return gradeIconOptions.find((item) => item.value === key)?.label ?? "Étincelle";
 }
 
 export default function GradeIcon({

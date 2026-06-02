@@ -185,6 +185,7 @@ export default function QuizEditor({ questionId }: { questionId?: string }) {
           <form onSubmit={submitQuestion} className="grid gap-5">
             <AdminField
               label="Question"
+              required
               textarea
               rows={3}
               value={form.question}
@@ -268,6 +269,7 @@ export default function QuizEditor({ questionId }: { questionId?: string }) {
             <div className="grid gap-5 lg:grid-cols-2">
               <AdminField
                 label="Réponse correcte"
+                required
                 value={form.correct_answer}
                 onChange={(correct_answer) =>
                   setForm((current) => ({ ...current, correct_answer }))
@@ -275,6 +277,7 @@ export default function QuizEditor({ questionId }: { questionId?: string }) {
               />
               <AdminField
                 label="Réponse incorrecte 1"
+                required
                 value={form.wrong_answer_1}
                 onChange={(wrong_answer_1) =>
                   setForm((current) => ({ ...current, wrong_answer_1 }))
@@ -282,6 +285,7 @@ export default function QuizEditor({ questionId }: { questionId?: string }) {
               />
               <AdminField
                 label="Réponse incorrecte 2"
+                required
                 value={form.wrong_answer_2}
                 onChange={(wrong_answer_2) =>
                   setForm((current) => ({ ...current, wrong_answer_2 }))
@@ -289,6 +293,7 @@ export default function QuizEditor({ questionId }: { questionId?: string }) {
               />
               <AdminField
                 label="Réponse incorrecte 3"
+                required
                 value={form.wrong_answer_3}
                 onChange={(wrong_answer_3) =>
                   setForm((current) => ({ ...current, wrong_answer_3 }))

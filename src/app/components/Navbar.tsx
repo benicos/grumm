@@ -12,9 +12,14 @@ type NavbarProps = {
   fixed?: boolean;
 };
 
-const links = [
+const desktopLinks = [
   { label: "Découvrir", href: "/decouvrir" },
   { label: "Explorer", href: "/explorer" },
+  { label: "Thèmes", href: "/theme" },
+];
+
+const mobileLinks = [
+  ...desktopLinks,
   { label: "Contact", href: "/contact" },
 ];
 
@@ -81,9 +86,13 @@ export default function Navbar({ fixed = false }: NavbarProps) {
     useAuth();
   const router = useRouter();
   const loginHref = "/login";
-  const visibleLinks = canAccessAdmin(profile)
-    ? [...links, { label: "Admin", href: "/admin" }]
-    : links;
+  const adminLink = { label: "Admin", href: "/admin" };
+  const visibleDesktopLinks = canAccessAdmin(profile)
+    ? [...desktopLinks, adminLink]
+    : desktopLinks;
+  const visibleMobileLinks = canAccessAdmin(profile)
+    ? [...mobileLinks, adminLink]
+    : mobileLinks;
 
   const handleSignOut = async () => {
     await signOut();
@@ -141,7 +150,7 @@ export default function Navbar({ fixed = false }: NavbarProps) {
           </Link>
 
           <nav className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-12 font-bold uppercase lg:flex">
-            {visibleLinks.map((item) => (
+            {visibleDesktopLinks.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
@@ -194,7 +203,7 @@ export default function Navbar({ fixed = false }: NavbarProps) {
             <div className="mt-6 flow-root">
               <div className="-my-6 divide-y divide-white/10">
                 <div className="space-y-2 py-6">
-                  {visibleLinks.map((item) => (
+                  {visibleMobileLinks.map((item) => (
                     <Link
                       key={item.href}
                       href={item.href}

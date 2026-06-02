@@ -15,6 +15,7 @@ import { useAuth } from "../auth/AuthProvider";
 import RequireAuth from "../auth/RequireAuth";
 import { AppState } from "../components/AppState";
 import FactSource from "../components/FactSource";
+import Footer from "../components/Footer";
 import { premiumPrimaryCtaClassName } from "../components/buttonStyles";
 import GradeIcon from "../components/GradeIcon";
 import HeroBackground from "../components/HeroBackground";
@@ -133,10 +134,19 @@ function ProgressPanel({ profile }: { profile: UserProfileSummary }) {
 }
 
 function ThemeInsightsPanel({ profile }: { profile: UserProfileSummary }) {
-  const maxBubbleSize = 104;
+  const themes = profile.topThemes.slice(0, 6);
+  const maxCount = Math.max(...themes.map((theme) => theme.count), 1);
+  const positions = [
+    { x: 50, y: 18, size: 72 },
+    { x: 23, y: 38, size: 58 },
+    { x: 74, y: 42, size: 60 },
+    { x: 37, y: 73, size: 50 },
+    { x: 63, y: 76, size: 46 },
+    { x: 50, y: 50, size: 64 },
+  ];
 
   return (
-    <section className="mt-6 rounded-[26px] border border-white/10 bg-white/[0.045] p-5 shadow-[0_28px_90px_rgba(0,0,0,0.22)] backdrop-blur-xl">
+    <section className="mt-6 overflow-hidden rounded-[30px] border border-white/10 bg-[linear-gradient(145deg,rgba(255,255,255,0.06),rgba(255,255,255,0.022))] p-5 shadow-[0_28px_90px_rgba(0,0,0,0.22)] backdrop-blur-xl">
       <div className="flex items-center justify-between gap-4">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#ffd166]">
@@ -146,43 +156,90 @@ function ThemeInsightsPanel({ profile }: { profile: UserProfileSummary }) {
             </span>
           </p>
           <h2 className="mt-2 text-xl font-extrabold tracking-[-0.04em]">
-            Tes thèmes les plus explorés
+            Tes territoires les plus explorés
           </h2>
           <p className="mt-2 max-w-2xl text-sm font-semibold leading-6 text-white/56">
-            Ta carte du savoir se construit à mesure que tu découvres et retiens de nouveaux faits.
+            Une constellation de sujets se dessine à partir des faits que tu lis le plus.
           </p>
         </div>
         <span className="rounded-full border border-white/10 bg-black/18 px-3 py-1 text-xs font-bold text-white/50">
-          Top {Math.max(profile.topThemes.length, 0)}
+          Top {themes.length}
         </span>
       </div>
 
-      {profile.topThemes.length > 0 ? (
-        <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {profile.topThemes.map((theme) => (
-            <Link
-              key={theme.slug}
-              href={`/theme/${theme.slug}`}
-              className="group flex min-h-[150px] flex-col justify-between rounded-[22px] border border-white/10 bg-black/16 p-4 transition hover:-translate-y-0.5 hover:border-white/20 hover:bg-white/[0.045]"
-            >
-              <span
-                className="grid rounded-full border border-white/10 bg-white/8 text-center text-xs font-black text-white shadow-[0_16px_50px_rgba(0,0,0,0.24)]"
-                style={{
-                  background: `radial-gradient(circle at 32% 24%, ${theme.accent}55, rgba(255,255,255,0.08))`,
-                  height: Math.max(62, (theme.percent / 100) * maxBubbleSize),
-                  width: Math.max(62, (theme.percent / 100) * maxBubbleSize),
-                }}
+      {themes.length > 0 ? (
+        <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-center">
+          <div className="relative mx-auto h-[360px] w-full max-w-[620px] rounded-[28px] border border-white/10 bg-[radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.08),rgba(255,255,255,0.018)_56%,transparent_72%)]">
+            <svg className="absolute inset-0 h-full w-full" aria-hidden="true">
+              {themes.slice(0, -1).map((theme, index) => {
+                const current = positions[index];
+                const next = positions[(index + 1) % themes.length];
+
+                return (
+                  <line
+                    key={`${theme.slug}-line`}
+                    x1={`${current.x}%`}
+                    y1={`${current.y}%`}
+                    x2={`${next.x}%`}
+                    y2={`${next.y}%`}
+                    stroke="rgba(255,255,255,0.12)"
+                    strokeWidth="1"
+                  />
+                );
+              })}
+            </svg>
+            {themes.map((theme, index) => {
+              const position = positions[index];
+              const size = Math.max(
+                42,
+                Math.round((theme.count / maxCount) * position.size),
+              );
+
+              return (
+                <Link
+                  key={theme.slug}
+                  href={`/theme/${theme.slug}`}
+                  className="absolute grid place-items-center rounded-full border border-white/15 text-center shadow-[0_18px_55px_rgba(0,0,0,0.30)] transition hover:scale-105"
+                  style={{
+                    background: `radial-gradient(circle, ${theme.accent} 0%, rgba(255,255,255,0.10) 72%)`,
+                    height: size,
+                    left: `${position.x}%`,
+                    top: `${position.y}%`,
+                    transform: "translate(-50%, -50%)",
+                    width: size,
+                  }}
+                  title={`${theme.name} - ${theme.count} faits lus`}
+                >
+                  <span className="sr-only">
+                    {theme.name}, {theme.count} faits lus
+                  </span>
+                </Link>
+              );
+            })}
+          </div>
+
+          <div className="grid gap-3">
+            {themes.map((theme) => (
+              <Link
+                key={theme.slug}
+                href={`/theme/${theme.slug}`}
+                className="group flex items-center gap-3 rounded-[18px] border border-white/10 bg-black/16 px-4 py-3 transition hover:-translate-y-0.5 hover:border-white/20 hover:bg-white/[0.045]"
               >
-                <span className="m-auto">{theme.count}</span>
-              </span>
-              <div>
-                <p className="font-extrabold text-white">{theme.name}</p>
-                <span className="mt-1 block text-xs font-semibold text-white/48">
-                  {theme.count} {theme.count > 1 ? "faits" : "fait"}
+                <span
+                  className="h-3 w-3 shrink-0 rounded-full shadow-[0_0_24px_currentColor]"
+                  style={{ backgroundColor: theme.accent, color: theme.accent }}
+                />
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate font-extrabold text-white">
+                    {theme.name}
+                  </span>
+                  <span className="text-xs font-semibold text-white/45">
+                    {theme.count} {theme.count > 1 ? "faits" : "fait"} lus
+                  </span>
                 </span>
-              </div>
-            </Link>
-          ))}
+              </Link>
+            ))}
+          </div>
         </div>
       ) : (
         <div className="mt-5 rounded-lg border border-white/10 bg-black/16 p-4 text-sm leading-6 text-white/62">
@@ -199,9 +256,9 @@ function MemoryChallengePanel({ profile }: { profile: UserProfileSummary }) {
   const lastScore =
     stats.lastScore !== null && stats.lastTotal !== null
       ? `${stats.lastScore}/${stats.lastTotal}`
-      : "?";
+      : "—";
   const average =
-    stats.averageScorePercent !== null ? `${stats.averageScorePercent}%` : "?";
+    stats.averageScorePercent !== null ? `${stats.averageScorePercent}%` : "—";
   const currentStreak =
     stats.currentStreakDays > 0 ? `${stats.currentStreakDays} jours` : "—";
 
@@ -261,7 +318,7 @@ function MemoryChallengePanel({ profile }: { profile: UserProfileSummary }) {
         )}
 
         <Link
-          href={isUnlocked ? "/profil/memory-challenge" : "/decouvrir"}
+          href={isUnlocked ? "/profil/defi-memoire" : "/decouvrir"}
           className={
             isUnlocked
               ? `${premiumPrimaryCtaClassName} justify-center`
@@ -270,6 +327,93 @@ function MemoryChallengePanel({ profile }: { profile: UserProfileSummary }) {
         >
           {isUnlocked ? "Lancer le défi" : "Lire quelques faits"}
         </Link>
+      </div>
+    </section>
+  );
+}
+
+function QuickAccessPanel() {
+  return (
+    <section className="mt-6 grid gap-3 md:grid-cols-3">
+      <Link
+        href="/decouvrir"
+        className="rounded-[24px] border border-white/10 bg-white/[0.055] p-5 transition hover:-translate-y-1 hover:border-white/20 hover:bg-white/[0.08]"
+      >
+        <p className="text-xs font-black uppercase tracking-[0.18em] text-[#ffd166]">
+          Découvrir
+        </p>
+        <h2 className="mt-3 text-xl font-extrabold tracking-[-0.04em]">
+          Continuer le flux
+        </h2>
+      </Link>
+      <Link
+        href="/profil/defi-memoire"
+        className="rounded-[24px] border border-white/10 bg-white/[0.055] p-5 transition hover:-translate-y-1 hover:border-white/20 hover:bg-white/[0.08]"
+      >
+        <p className="text-xs font-black uppercase tracking-[0.18em] text-[#6ae3c0]">
+          Mémoire
+        </p>
+        <h2 className="mt-3 text-xl font-extrabold tracking-[-0.04em]">
+          Réviser mes faits
+        </h2>
+      </Link>
+      <Link
+        href="/explorer"
+        className="rounded-[24px] border border-white/10 bg-white/[0.055] p-5 transition hover:-translate-y-1 hover:border-white/20 hover:bg-white/[0.08]"
+      >
+        <p className="text-xs font-black uppercase tracking-[0.18em] text-white/45">
+          Explorer
+        </p>
+        <h2 className="mt-3 text-xl font-extrabold tracking-[-0.04em]">
+          Chercher un sujet
+        </h2>
+      </Link>
+    </section>
+  );
+}
+
+function SuccessPanel({ profile }: { profile: UserProfileSummary }) {
+  const successes = [
+    {
+      label: "Mémoire",
+      value:
+        profile.memoryStats.bestStreakDays > 0
+          ? `${profile.memoryStats.bestStreakDays} jours de série`
+          : "Premier défi à lancer",
+    },
+    {
+      label: "Bibliothèque",
+      value: `${profile.savedCount} fait${profile.savedCount > 1 ? "s" : ""} enregistré${
+        profile.savedCount > 1 ? "s" : ""
+      }`,
+    },
+    {
+      label: "Découverte",
+      value: `${profile.uniqueViewsCount} fait${profile.uniqueViewsCount > 1 ? "s" : ""} découvert${
+        profile.uniqueViewsCount > 1 ? "s" : ""
+      }`,
+    },
+  ];
+
+  return (
+    <section className="mt-6 rounded-[28px] border border-white/10 bg-black/18 p-5">
+      <p className="text-xs font-black uppercase tracking-[0.2em] text-white/45">
+        Réussites récentes
+      </p>
+      <div className="mt-4 grid gap-3 md:grid-cols-3">
+        {successes.map((success) => (
+          <div
+            key={success.label}
+            className="rounded-[20px] border border-white/10 bg-white/[0.045] p-4"
+          >
+            <p className="text-xs font-bold uppercase tracking-[0.16em] text-white/38">
+              {success.label}
+            </p>
+            <p className="mt-2 text-lg font-extrabold tracking-[-0.03em] text-white">
+              {success.value}
+            </p>
+          </div>
+        ))}
       </div>
     </section>
   );
@@ -498,6 +642,12 @@ function ProfileContent() {
                       {profile.email}
                     </p>
                   )}
+                  <p className="mt-5 max-w-2xl text-lg font-semibold leading-8 text-white/66">
+                    {profile.uniqueViewsCount} connaissance
+                    {profile.uniqueViewsCount > 1 ? "s" : ""} découverte
+                    {profile.uniqueViewsCount > 1 ? "s" : ""}. Ta bibliothèque
+                    commence à prendre forme.
+                  </p>
                 </div>
 
                 <div className="flex shrink-0 items-center justify-between gap-4 rounded-[22px] border border-[#ffd166]/18 bg-[#ffd166]/10 px-4 py-3 text-[#ffe2a3] lg:min-w-[240px]">
@@ -567,32 +717,15 @@ function ProfileContent() {
 
             </section>
 
-            <section className="grid gap-4 lg:grid-cols-4">
-              <ProfileStatCard label="Faits aimés" type="liked" value={profile.likedCount} />
-              <ProfileStatCard label="Faits enregistrés" type="saved" value={profile.savedCount} />
-              <ProfileStatCard label="Faits vus" type="viewed" value={profile.uniqueViewsCount} />
-              <ProfileStatCard label="Objectifs atteints" type="completedGoals" value={profile.completedDailyGoals} />
-            </section>
-
             <ProgressPanel profile={profile} />
             <MemoryChallengePanel profile={profile} />
             <ThemeInsightsPanel profile={profile} />
-
-            <div className="mt-6 grid gap-6 lg:grid-cols-2">
-              <FactList
-                title="Faits aimes"
-                empty="Tu n'as pas encore aime de fait."
-                facts={profile.likedFacts}
-              />
-              <FactList
-                title="Faits enregistrés"
-                empty="Tu n'as pas encore enregistré de fait."
-                facts={profile.savedFacts}
-              />
-            </div>
+            <QuickAccessPanel />
+            <SuccessPanel profile={profile} />
           </>
         )}
       </main>
+      <Footer />
     </div>
   );
 }

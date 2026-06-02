@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
+import { buildDefaultMetadata } from "@/lib/serverMetadata";
 import InfoPageShell from "../components/InfoPageShell";
 
-export const metadata: Metadata = {
-  title: "Politique de confidentialité",
+export const metadata: Metadata = buildDefaultMetadata({
+  canonicalPath: "/politique-confidentialite",
   description:
     "Politique de confidentialité Grumm, données de compte, analytics internes et droits RGPD.",
-};
+  title: "Politique de confidentialité",
+});
 
 const sections = [
   {

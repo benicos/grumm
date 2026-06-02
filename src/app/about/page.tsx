@@ -1,9 +1,13 @@
 import type { Metadata } from "next";
+import { buildDefaultMetadata } from "@/lib/serverMetadata";
 import InfoPageShell from "../components/InfoPageShell";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = buildDefaultMetadata({
+  canonicalPath: "/a-propos",
+  description:
+    "À propos de Grumm, une expérience culturelle courte, dense et mémorable.",
   title: "À propos",
-};
+});
 
 export default function AboutPage() {
   return (

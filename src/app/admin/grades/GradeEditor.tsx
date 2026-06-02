@@ -142,6 +142,7 @@ export default function GradeEditor({ gradeId }: { gradeId?: string }) {
             <div className="grid gap-5 lg:grid-cols-2">
               <AdminField
                 label="Nom"
+                required
                 value={form.name}
                 onChange={(name) =>
                   setForm((current) => ({ ...current, name }))
@@ -158,6 +159,7 @@ export default function GradeEditor({ gradeId }: { gradeId?: string }) {
             <div className="grid gap-5 lg:grid-cols-2">
               <AdminField
                 label="Objectifs requis"
+                required
                 min={0}
                 type="number"
                 value={form.required_goals}
@@ -170,6 +172,7 @@ export default function GradeEditor({ gradeId }: { gradeId?: string }) {
               />
               <AdminField
                 label="Ordre"
+                required
                 type="number"
                 value={form.display_order}
                 onChange={(display_order) =>
@@ -182,7 +185,11 @@ export default function GradeEditor({ gradeId }: { gradeId?: string }) {
             </div>
             <label className="block text-sm font-medium text-gray-700">
               Icône
+              <span className="ml-1 text-red-500" aria-label="obligatoire">
+                *
+              </span>
               <select
+                required
                 value={form.badge}
                 onChange={(event) =>
                   setForm((current) => ({

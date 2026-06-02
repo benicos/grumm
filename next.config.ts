@@ -5,6 +5,36 @@ const nextConfig: NextConfig = {
   async redirects() {
     return [
       {
+        source: "/about",
+        destination: "/a-propos",
+        permanent: true,
+      },
+      {
+        source: "/privacy-policy",
+        destination: "/politique-confidentialite",
+        permanent: true,
+      },
+      {
+        source: "/memory-challenge",
+        destination: "/profil/defi-memoire",
+        permanent: true,
+      },
+      {
+        source: "/defi-memoire",
+        destination: "/profil/defi-memoire",
+        permanent: true,
+      },
+      {
+        source: "/profile/memory-challenge",
+        destination: "/profil/defi-memoire",
+        permanent: true,
+      },
+      {
+        source: "/profil/memory-challenge",
+        destination: "/profil/defi-memoire",
+        permanent: true,
+      },
+      {
         source: "/discover/theme/:themeSlug",
         destination: "/decouvrir?theme=:themeSlug",
         permanent: true,

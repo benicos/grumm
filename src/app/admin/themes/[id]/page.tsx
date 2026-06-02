@@ -96,7 +96,7 @@ export default function AdminThemeDetailPage() {
     <>
       <AdminPageHeading
         current="Thème"
-        title={theme?.name ? "D?tail du th?me" : "Th?me"}
+        title={theme?.name ? "Détail du thème" : "Thème"}
         description="Consultation de la catégorie dans l'espace d'administration."
         action={
           <div className="flex flex-wrap gap-3">
@@ -154,11 +154,48 @@ export default function AdminThemeDetailPage() {
             <DetailItem label="Nom" technicalName="name" value={theme.name} />
             <DetailItem label="Slug" value={theme.slug} />
             <DetailItem
+              label="Description courte"
+              technicalName="description_courte"
+              value={theme.description_courte ?? "-"}
+            />
+            <DetailItem
+              label="Description longue"
+              technicalName="description_longue"
+              value={theme.description_longue ?? "-"}
+            />
+            <DetailItem
+              label="Titre SEO"
+              technicalName="seo_title"
+              value={theme.seo_title ?? "-"}
+            />
+            <DetailItem
+              label="Description SEO"
+              technicalName="seo_description"
+              value={theme.seo_description ?? "-"}
+            />
+            <DetailItem
+              label="Mots-clés"
+              technicalName="keywords"
+              value={theme.keywords?.join(", ") || "-"}
+            />
+            <DetailItem
+              label="Motif"
+              technicalName="visual_motif"
+              value={theme.visual_motif ?? "-"}
+            />
+            <DetailItem
               label="Couleur d'accent"
               technicalName="accent_color"
               value={theme.accent_color}
             />
-            <DetailItem label="Ton" technicalName="tone" value={theme.tone} />
+            <DetailItem
+              label="Couleurs du gradient"
+              value={[
+                theme.gradient_start,
+                theme.gradient_middle,
+                theme.gradient_end,
+              ].filter(Boolean).join(" -> ") || theme.tone}
+            />
             <DetailItem
               label="Créé le"
               technicalName="created_at"

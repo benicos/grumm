@@ -27,6 +27,12 @@ export type AdminFact = Database["public"]["Tables"]["facts"]["Row"] & {
   authorProfile?: AdminFactAuthor | null;
   categories: Pick<AdminCategory, "name" | "slug"> | null;
   quizQuestion?: Pick<AdminQuizQuestion, "id" | "question" | "is_active"> | null;
+  relatedFacts?: AdminRelatedFact[];
+};
+export type AdminRelatedFact = Pick<AdminFact, "id" | "slug" | "title"> & {
+  categoryName: string | null;
+  position: number;
+  relationId: string;
 };
 export type AdminQuizQuestion =
   Database["public"]["Tables"]["quiz_questions"]["Row"] & {
@@ -68,11 +74,11 @@ export type AdminUserDetail = {
 };
 
 export const FACT_STATUS_LABELS: Record<FactStatus, string> = {
-  archived: "Archiv?",
+  archived: "Archivé",
   draft: "Brouillon",
   pending_review: "En attente",
-  published: "Publi?",
-  rejected: "Rejet?",
+  published: "Publié",
+  rejected: "Rejeté",
 };
 
 export type AdminListResult<T> = {
@@ -238,7 +244,7 @@ async function getAuthenticatedAdminClient() {
   }
 
   if (!hasPermission({ permissions, role }, "admin.access")) {
-    return { ok: false as const, message: "Acc?s r?serv?." };
+    return { ok: false as const, message: "Accès réservé." };
   }
 
   return { ok: true as const, permissions, role, supabase, user };
@@ -251,7 +257,7 @@ function adminError(error: unknown, operation: string, table: string) {
       source: "Supabase",
       table,
     },
-    prodMessage: "Cette action n?a pas pu ?tre effectu?e.",
+    prodMessage: "Cette action n’a pas pu être effectuée.",
   });
 }
 
@@ -335,8 +341,8 @@ function formatAdminActivity(
   type: AdminUserActivity["type"],
 ): AdminUserActivity[] {
   const labels = {
-    like: "A aim?",
-    save: "A enregistr?",
+    like: "A aimé",
+    save: "A enregistré",
     view: "A lu",
   } satisfies Record<AdminUserActivity["type"], string>;
 
@@ -573,7 +579,7 @@ export async function getAdminDashboardData(): Promise<AdminDashboardData> {
     stats: [
       { label: "Faits", value: factsCount.count ?? 0 },
       { label: "En attente", value: pendingFactsCount.count ?? 0 },
-      { label: "Th?mes", value: categoriesCount.count ?? 0 },
+      { label: "Thèmes", value: categoriesCount.count ?? 0 },
       { label: "Vues uniques", value: viewsCount.count ?? 0 },
       { label: "Objectifs aujourd'hui", value: goalsTodayCount.count ?? 0 },
       ...(adminRole
@@ -899,7 +905,7 @@ function toFactStats(
       return {
         id,
         slug: fact?.slug ?? id,
-        title: fact?.title ?? "Fait supprim? ou indisponible",
+    title: fact?.title ?? "Fait supprimé ou indisponible",
         value,
       };
     });
@@ -970,7 +976,7 @@ export async function getAdminAnalyticsData(): Promise<AdminAnalyticsData> {
   }
 
   if (auth.role !== "administrateur") {
-    throw new Error("Acc?s r?serv? aux administrateurs.");
+    throw new Error("Accès réservé aux administrateurs.");
   }
 
   const dashboardWindow = getDashboardWindow();
@@ -1714,9 +1720,11 @@ export async function getAdminFact(id: string): Promise<
   const hydrated = factResult.data
     ? (await attachFactAuthors(auth, [factResult.data as AdminFact]))[0]
     : null;
+  const relatedFacts = await getAdminFactRelations(auth, id);
   const fact = hydrated
     ? {
         ...hydrated,
+        relatedFacts,
         quizQuestion: quizResult.data
           ? {
               id: quizResult.data.id,
@@ -1732,6 +1740,134 @@ export async function getAdminFact(id: string): Promise<
     fact,
     role: auth.role,
   };
+}
+
+async function getAdminFactRelations(
+  auth: Extract<AdminAuth, { ok: true }>,
+  factId: string,
+): Promise<AdminRelatedFact[]> {
+  try {
+    const { data, error } = await auth.supabase
+      .from("fact_relations")
+      .select("id,position,related_fact_id")
+      .eq("source_fact_id", factId)
+      .order("position", { ascending: true })
+      .limit(10);
+
+    if (error || !data?.length) {
+      return [];
+    }
+
+    const relationRows = data as {
+      id: string;
+      position: number;
+      related_fact_id: string;
+    }[];
+    const factIds = relationRows.map((row) => row.related_fact_id);
+    const { data: facts } = await auth.supabase
+      .from("facts")
+      .select("id,slug,title,categories(name)")
+      .in("id", factIds);
+    const factsById = new Map(
+      ((facts ?? []) as {
+        categories: { name: string } | { name: string }[] | null;
+        id: string;
+        slug: string;
+        title: string;
+      }[]).map((fact) => [fact.id, fact]),
+    );
+
+    return relationRows
+      .map((relation) => {
+        const fact = factsById.get(relation.related_fact_id);
+        const category = Array.isArray(fact?.categories)
+          ? fact?.categories[0]
+          : fact?.categories;
+
+        return fact
+          ? {
+              categoryName: category?.name ?? null,
+              id: fact.id,
+              position: relation.position,
+              relationId: relation.id,
+              slug: fact.slug,
+              title: fact.title,
+            }
+          : null;
+      })
+      .filter((fact): fact is AdminRelatedFact => fact !== null);
+  } catch {
+    return [];
+  }
+}
+
+export async function addAdminFactRelation({
+  relatedFactId,
+  sourceFactId,
+}: {
+  relatedFactId: string;
+  sourceFactId: string;
+}): Promise<AdminMutationResult> {
+  const auth = await getAuthenticatedAdminClient();
+
+  if (!auth.ok) {
+    return { ok: false, message: auth.message };
+  }
+
+  if (!hasPermission(auth, "facts.create")) {
+    return { ok: false, message: "Permission insuffisante." };
+  }
+
+  if (sourceFactId === relatedFactId) {
+    return { ok: false, message: "Un fait ne peut pas être lié à lui-même." };
+  }
+
+  const { count } = await auth.supabase
+    .from("fact_relations")
+    .select("id", { count: "exact", head: true })
+    .eq("source_fact_id", sourceFactId);
+  const { error } = await auth.supabase.from("fact_relations").insert({
+    position: count ?? 0,
+    related_fact_id: relatedFactId,
+    source_fact_id: sourceFactId,
+  });
+
+  if (error) {
+    return {
+      ok: false,
+      message: adminError(error, "create fact relation", "fact_relations"),
+    };
+  }
+
+  return { ok: true, message: "Fait associé ajouté." };
+}
+
+export async function deleteAdminFactRelation(
+  relationId: string,
+): Promise<AdminMutationResult> {
+  const auth = await getAuthenticatedAdminClient();
+
+  if (!auth.ok) {
+    return { ok: false, message: auth.message };
+  }
+
+  if (!hasPermission(auth, "facts.create")) {
+    return { ok: false, message: "Permission insuffisante." };
+  }
+
+  const { error } = await auth.supabase
+    .from("fact_relations")
+    .delete()
+    .eq("id", relationId);
+
+  if (error) {
+    return {
+      ok: false,
+      message: adminError(error, "delete fact relation", "fact_relations"),
+    };
+  }
+
+  return { ok: true, message: "Fait associé retiré." };
 }
 
 export async function searchAdminFactOptions(query: string): Promise<
@@ -1759,6 +1895,7 @@ export async function searchAdminFactOptions(query: string): Promise<
     .from("facts")
     .select("id,title,categories(name)")
     .or(`title.ilike.%${searchTerm}%,slug.ilike.%${searchTerm}%`)
+    .eq("status", "published")
     .order("updated_at", { ascending: false })
     .limit(12);
 
@@ -1989,10 +2126,18 @@ export async function getAdminGrade(id: string): Promise<AdminGrade | null> {
 
 export async function saveAdminCategory(input: {
   accent_color: string;
+  description_courte?: string | null;
+  description_longue?: string | null;
+  gradient_end?: string | null;
+  gradient_middle?: string | null;
+  gradient_start?: string | null;
   id?: string;
+  keywords?: string[] | null;
   name: string;
-  slug?: string;
+  seo_description?: string | null;
+  seo_title?: string | null;
   tone: string;
+  visual_motif?: string | null;
 }): Promise<AdminMutationResult> {
   const auth = await getAuthenticatedAdminClient();
 
@@ -2007,16 +2152,43 @@ export async function saveAdminCategory(input: {
   const name = input.name.trim();
 
   if (!name) {
-    return { ok: false, message: "Le nom du th?me est requis." };
+    return { ok: false, message: "Le nom du thème est requis." };
+  }
+
+  const baseSlug = slugify(name);
+  const { data: existingSlugs } = await auth.supabase
+    .from("categories")
+    .select("id,slug")
+    .ilike("slug", `${baseSlug}%`);
+  const usedSlugs = new Set(
+    ((existingSlugs ?? []) as Pick<AdminCategory, "id" | "slug">[])
+      .filter((category) => category.id !== input.id)
+      .map((category) => category.slug),
+  );
+  let slug = baseSlug;
+  let suffix = 2;
+
+  while (usedSlugs.has(slug)) {
+    slug = `${baseSlug}-${suffix}`;
+    suffix += 1;
   }
 
   const payload = {
     accent_color: input.accent_color || "#ffd166",
+    description_courte: input.description_courte?.trim() || null,
+    description_longue: input.description_longue?.trim() || null,
+    gradient_end: input.gradient_end?.trim() || null,
+    gradient_middle: input.gradient_middle?.trim() || null,
+    gradient_start: input.gradient_start?.trim() || null,
+    keywords: input.keywords?.map((keyword) => keyword.trim()).filter(Boolean) ?? null,
     name,
-    slug: slugify(input.slug || name),
+    seo_description: input.seo_description?.trim() || null,
+    seo_title: input.seo_title?.trim() || null,
+    slug,
     tone:
       input.tone.trim() ||
       "from-[#0b1424] via-[#132744] to-[#f0a95a]",
+    visual_motif: input.visual_motif || null,
   };
 
   const result = input.id
@@ -2030,7 +2202,7 @@ export async function saveAdminCategory(input: {
     };
   }
 
-  return { ok: true, message: "Th?me enregistr?." };
+  return { ok: true, message: "Thème enregistré." };
 }
 
 export async function deleteAdminCategory(
@@ -2055,7 +2227,7 @@ export async function deleteAdminCategory(
     };
   }
 
-  return { ok: true, message: "Th?me supprim?." };
+  return { ok: true, message: "Thème supprimé." };
 }
 
 export async function saveAdminQuizQuestion(input: {
@@ -2097,7 +2269,7 @@ export async function saveAdminQuizQuestion(input: {
   ) {
     return {
       ok: false,
-      message: "Les quatre r?ponses et la question sont requises.",
+      message: "Les quatre réponses et la question sont requises.",
     };
   }
 
@@ -2112,7 +2284,7 @@ export async function saveAdminQuizQuestion(input: {
     };
   }
 
-  return { ok: true, message: "Question quiz enregistr?e." };
+  return { ok: true, message: "Question quiz enregistrée." };
 }
 
 export async function deleteAdminQuizQuestion(
@@ -2140,7 +2312,7 @@ export async function deleteAdminQuizQuestion(
     };
   }
 
-  return { ok: true, message: "Question quiz supprim?e." };
+  return { ok: true, message: "Question quiz supprimée." };
 }
 
 export async function saveAdminFact(input: {
@@ -2181,7 +2353,7 @@ export async function saveAdminFact(input: {
   if (!input.category_id || !title || !input.content.trim()) {
     return {
       ok: false,
-      message: "Titre, contenu et thème sont requis.",
+      message: "Titre, contexte et thème sont requis.",
     };
   }
 
@@ -2380,7 +2552,7 @@ export async function updateAdminFactStatus(
   const messages: Record<typeof status, string> = {
     draft: "Fait repasse en brouillon.",
     pending_review: "Fait renvoye en validation.",
-    published: "Fait publi?.",
+    published: "Fait publié.",
     rejected: "Fait rejete.",
   };
 
@@ -2413,7 +2585,7 @@ export async function updateProfileRole(
     };
   }
 
-  return { ok: true, message: "R?le mis ? jour." };
+  return { ok: true, message: "Rôle mis à jour." };
 }
 
 export async function deleteAdminUser(id: string): Promise<AdminMutationResult> {
@@ -2461,7 +2633,7 @@ export async function saveAdminRole(input: {
   const name = input.name.trim();
 
   if (!slug || !name) {
-    return { ok: false, message: "Nom et identifiant du r?le sont requis." };
+    return { ok: false, message: "Nom et identifiant du rôle sont requis." };
   }
 
   const permissions = [...new Set(input.permissions)];
@@ -2483,7 +2655,7 @@ export async function saveAdminRole(input: {
     };
   }
 
-  return { ok: true, message: "R?le enregistr?." };
+  return { ok: true, message: "Rôle enregistré." };
 }
 
 export async function deleteAdminRole(slug: string): Promise<AdminMutationResult> {
@@ -2506,7 +2678,7 @@ export async function deleteAdminRole(slug: string): Promise<AdminMutationResult
     };
   }
 
-  return { ok: true, message: "R?le supprim?." };
+  return { ok: true, message: "Rôle supprimé." };
 }
 
 export async function saveAdminGrade(input: {
@@ -2559,7 +2731,7 @@ export async function saveAdminGrade(input: {
     };
   }
 
-  return { ok: true, message: "Grade enregistr?." };
+  return { ok: true, message: "Grade enregistré." };
 }
 
 export async function deleteAdminGrade(id: string): Promise<AdminMutationResult> {

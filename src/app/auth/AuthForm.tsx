@@ -510,7 +510,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
       </div>
 
       <p className="relative mt-5 text-center text-sm text-white/62">
-        {isLogin ? "Pas encore de compte ?" : "Deja un compte ?"}{" "}
+            {isLogin ? "Pas encore de compte ?" : "Déjà un compte ?"}{" "}
         <button
           type="button"
           onClick={() => router.push(isLogin ? "/register" : "/login")}

@@ -155,6 +155,7 @@ export default function RoleEditor({ roleSlug }: { roleSlug?: string }) {
             <div className="grid gap-5 lg:grid-cols-2">
               <AdminField
                 label="Nom"
+                required
                 value={form.name}
                 onChange={(name) =>
                   setForm((current) => ({ ...current, name }))
@@ -162,6 +163,7 @@ export default function RoleEditor({ roleSlug }: { roleSlug?: string }) {
               />
               <AdminField
                 label="Identifiant"
+                required
                 value={form.slug}
                 onChange={(slug) =>
                   setForm((current) => ({ ...current, slug }))
@@ -181,6 +183,9 @@ export default function RoleEditor({ roleSlug }: { roleSlug?: string }) {
             <section>
               <h2 className="text-sm font-medium text-gray-700">
                 Permissions
+                <span className="ml-1 text-red-500" aria-label="obligatoire">
+                  *
+                </span>
               </h2>
               <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
                 {PERMISSIONS.map((permission) => (

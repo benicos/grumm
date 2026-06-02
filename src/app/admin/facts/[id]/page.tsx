@@ -5,9 +5,12 @@ import { Pencil, Trash2 } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import {
+  addAdminFactRelation,
   deleteAdminFact,
+  deleteAdminFactRelation,
   FACT_STATUS_LABELS,
   getAdminFact,
+  searchAdminFactOptions,
   type AdminFact,
 } from "@/lib/admin";
 import { getDifficultyLevelLabel } from "@/lib/learning";
@@ -51,6 +54,11 @@ export default function AdminFactDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState(false);
+  const [relationQuery, setRelationQuery] = useState("");
+  const [relationOptions, setRelationOptions] = useState<
+    { categoryName: string | null; id: string; title: string }[]
+  >([]);
+  const [relationBusy, setRelationBusy] = useState(false);
 
   const loadFact = useCallback(async () => {
     setLoading(true);
@@ -69,6 +77,31 @@ export default function AdminFactDetailPage() {
       setLoading(false);
     }
   }, [params.id]);
+
+  useEffect(() => {
+    let mounted = true;
+    const timeout = window.setTimeout(() => {
+      if (relationQuery.trim().length < 2) {
+        setRelationOptions([]);
+        return;
+      }
+
+      void searchAdminFactOptions(relationQuery).then((options) => {
+        if (mounted) {
+          const existingIds = new Set([
+            params.id,
+            ...(fact?.relatedFacts ?? []).map((related) => related.id),
+          ]);
+          setRelationOptions(options.filter((option) => !existingIds.has(option.id)));
+        }
+      });
+    }, 250);
+
+    return () => {
+      mounted = false;
+      window.clearTimeout(timeout);
+    };
+  }, [fact?.relatedFacts, params.id, relationQuery]);
 
   useEffect(() => {
     const frame = requestAnimationFrame(() => {
@@ -97,6 +130,43 @@ export default function AdminFactDetailPage() {
 
     router.push("/admin/facts?deleted=1");
     router.refresh();
+  }
+
+  async function addRelation(relatedFactId: string) {
+    setRelationBusy(true);
+    setError(null);
+
+    const result = await addAdminFactRelation({
+      relatedFactId,
+      sourceFactId: params.id,
+    });
+
+    setRelationBusy(false);
+
+    if (!result.ok) {
+      setError(result.message);
+      return;
+    }
+
+    setRelationQuery("");
+    setRelationOptions([]);
+    await loadFact();
+  }
+
+  async function removeRelation(relationId: string) {
+    setRelationBusy(true);
+    setError(null);
+
+    const result = await deleteAdminFactRelation(relationId);
+
+    setRelationBusy(false);
+
+    if (!result.ok) {
+      setError(result.message);
+      return;
+    }
+
+    await loadFact();
   }
 
   return (
@@ -178,7 +248,18 @@ export default function AdminFactDetailPage() {
               <DetailItem
                 label="Thème"
                 technicalName="category_id"
-                value={`${fact.categories?.name ?? "Sans thème"} (${fact.category_id})`}
+                value={
+                  fact.categories?.slug ? (
+                    <Link
+                      href={`/admin/themes/${fact.category_id}`}
+                      className="text-[#465fff] hover:underline"
+                    >
+                      {fact.categories.name}
+                    </Link>
+                  ) : (
+                    "Sans thème"
+                  )
+                }
               />
               <DetailItem
                 label="Ordre d'affichage"
@@ -221,12 +302,13 @@ export default function AdminFactDetailPage() {
             </AdminAttributeList>
           </AdminCard>
 
-          <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
+          <div className="mt-6 grid gap-6">
             <AdminCard className="p-6">
               <h2 className="text-lg font-semibold text-gray-800">Contenu</h2>
               <AdminAttributeList className="mt-5">
                 <DetailItem
-                  label="Contenu"
+                  label="Contexte"
+                  technicalName="content"
                   value={
                     <span className="block whitespace-pre-wrap font-normal leading-7 text-gray-700">
                       {fact.content}
@@ -234,7 +316,7 @@ export default function AdminFactDetailPage() {
                   }
                 />
                 <DetailItem
-                  label="Contenu long"
+                  label="En savoir plus"
                   technicalName="long_content"
                   value={
                     fact.long_content ? (
@@ -281,7 +363,18 @@ export default function AdminFactDetailPage() {
                 <DetailItem
                   label="Auteur"
                   technicalName="author_id"
-                  value={fact.authorProfile?.username ?? "-"}
+                  value={
+                    fact.authorProfile ? (
+                      <Link
+                        href={`/admin/users/${fact.authorProfile.id}`}
+                        className="text-[#465fff] hover:underline"
+                      >
+                        {fact.authorProfile.username ?? fact.authorProfile.id}
+                      </Link>
+                    ) : (
+                      "-"
+                    )
+                  }
                 />
                 <DetailItem
                   label="Ton"
@@ -311,6 +404,82 @@ export default function AdminFactDetailPage() {
                     Aucune question quiz n'est encore associée à ce fait.
                   </p>
                 )}
+              </div>
+            </AdminCard>
+
+            <AdminCard className="p-6">
+              <h2 className="text-lg font-semibold text-gray-800">
+                Faits associés
+              </h2>
+              <p className="mt-1 text-sm text-gray-500">
+                Ces liens sont prioritaires sur les suggestions automatiques affichées sur la page publique.
+              </p>
+              <div className="mt-5 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(260px,360px)]">
+                <div className="space-y-2">
+                  {(fact.relatedFacts ?? []).length > 0 ? (
+                    fact.relatedFacts?.map((related) => (
+                      <div
+                        key={related.relationId}
+                        className="flex items-center justify-between gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm"
+                      >
+                        <div className="min-w-0">
+                          <Link
+                            href={`/admin/facts/${related.id}`}
+                            className="block truncate font-medium text-[#465fff] hover:underline"
+                          >
+                            {related.title}
+                          </Link>
+                          <p className="mt-1 text-xs text-gray-500">
+                            {related.categoryName ?? "Sans thème"}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          disabled={relationBusy}
+                          onClick={() => void removeRelation(related.relationId)}
+                          className="shrink-0 rounded-lg border border-red-100 px-3 py-2 text-xs font-medium text-red-600 transition hover:bg-red-50 disabled:opacity-50"
+                        >
+                          Retirer
+                        </button>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="rounded-xl border border-dashed border-gray-200 bg-gray-50 px-4 py-5 text-sm text-gray-500">
+                      Aucun fait associé manuellement.
+                    </p>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Rechercher un fait publié
+                    <input
+                      value={relationQuery}
+                      onChange={(event) => setRelationQuery(event.target.value)}
+                      placeholder="Titre ou slug..."
+                      className="mt-2 w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-800 outline-none transition placeholder:text-gray-400 focus:border-[#465fff]"
+                    />
+                  </label>
+                  {relationOptions.length > 0 ? (
+                    <div className="mt-3 overflow-hidden rounded-xl border border-gray-200 bg-white">
+                      {relationOptions.map((option) => (
+                        <button
+                          key={option.id}
+                          type="button"
+                          disabled={relationBusy}
+                          onClick={() => void addRelation(option.id)}
+                          className="flex w-full items-center justify-between gap-3 border-b border-gray-100 px-4 py-3 text-left text-sm last:border-b-0 hover:bg-gray-50 disabled:opacity-50"
+                        >
+                          <span className="font-medium text-gray-800">
+                            {option.title}
+                          </span>
+                          <span className="shrink-0 text-xs text-gray-500">
+                            Ajouter
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
               </div>
             </AdminCard>
           </div>

@@ -100,7 +100,7 @@ export default function AdminRoleDetailPage() {
     <>
       <AdminPageHeading
         current="Rôle"
-        title={role?.name ? "D?tail du r?le" : "R?le"}
+        title={role?.name ? "Détail du rôle" : "Rôle"}
         description="Consultation du rôle et de ses permissions."
         action={
           <div className="flex flex-wrap gap-3">
@@ -129,7 +129,7 @@ export default function AdminRoleDetailPage() {
         <AdminCard className="p-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <p className="max-w-3xl text-sm text-gray-500">
-                  {role.description ?? "Aucune description renseign?e."}
+                  {role.description ?? "Aucune description renseignée."}
             </p>
             {!role.is_system ? (
               <button

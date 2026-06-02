@@ -16,6 +16,7 @@ import {
   DEFAULT_DAILY_GOAL,
   cleanFactSource,
   getFactBySlug,
+  getRelatedFactsForFact,
   getUserFactActions,
   likeFact,
   recordFactView,
@@ -24,6 +25,7 @@ import {
   unsaveFact,
 } from "@/lib/facts";
 import type { FeedFact } from "@/lib/facts";
+import type { RelatedFactSuggestion } from "@/lib/facts";
 import { rememberAuthRedirect } from "@/lib/authRedirect";
 import { isCommercialCollaborationFact } from "@/lib/commercial";
 import { getToneBackground } from "@/lib/gradients";
@@ -31,6 +33,7 @@ import { useAuth } from "../../auth/AuthProvider";
 import { AppState } from "../../components/AppState";
 import FactShareModal from "../../components/share/FactShareModal";
 import FactSource from "../../components/FactSource";
+import Footer from "../../components/Footer";
 import Navbar from "../../components/Navbar";
 import { premiumPrimaryCtaClassName } from "../../components/buttonStyles";
 
@@ -61,6 +64,7 @@ export default function FactDetailPage() {
   const params = useParams<{ factSlug: string }>();
   const { isAuthenticated, isLoading, profile } = useAuth();
   const [fact, setFact] = useState<FeedFact | null>(null);
+  const [relatedFacts, setRelatedFacts] = useState<RelatedFactSuggestion[]>([]);
   const [isFactLoading, setIsFactLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [liked, setLiked] = useState(false);
@@ -110,6 +114,33 @@ export default function FactDetailPage() {
       isMounted = false;
     };
   }, [params.factSlug]);
+
+  useEffect(() => {
+    let mounted = true;
+
+    if (!fact?.id || isCommercialCollaborationFact(fact)) {
+      setRelatedFacts([]);
+      return () => {
+        mounted = false;
+      };
+    }
+
+    getRelatedFactsForFact(fact.id)
+      .then((facts) => {
+        if (mounted) {
+          setRelatedFacts(facts);
+        }
+      })
+      .catch(() => {
+        if (mounted) {
+          setRelatedFacts([]);
+        }
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, [fact]);
 
   useEffect(() => {
     if (
@@ -317,8 +348,8 @@ export default function FactDetailPage() {
         </div>
       )}
 
-      <section className="relative z-10 mx-auto grid min-h-[calc(100vh-100px)] w-full max-w-6xl items-center gap-8 px-6 py-14 lg:grid-cols-[minmax(0,1fr)_320px]">
-        <article className="w-full rounded-[28px] border border-white/10 bg-black/18 p-6 shadow-[0_34px_130px_rgba(0,0,0,0.42)] backdrop-blur-xl sm:p-8 lg:p-10">
+      <section className="relative z-10 mx-auto grid min-h-[calc(100vh-100px)] w-full max-w-7xl items-center gap-10 px-6 py-14 lg:grid-cols-[minmax(0,1fr)_300px]">
+        <article className="w-full py-8 shadow-[0_34px_130px_rgba(0,0,0,0.22)] sm:px-2 lg:py-12">
           <div className="flex flex-wrap items-center gap-3">
             {isSponsored ? (
               <span className="rounded-full border border-[#ffd166]/20 bg-[#ffd166]/12 px-4 py-2 text-xs font-bold uppercase tracking-[0.22em] text-[#ffe3a4] backdrop-blur-xl">
@@ -338,12 +369,21 @@ export default function FactDetailPage() {
             {fact.title}
           </h1>
 
+          {fact.hook ? (
+            <div className="mt-8 max-w-3xl border-l-2 border-[#ffd166]/70 pl-5 text-base font-semibold leading-8 text-white/78 sm:text-lg">
+              <span className="block text-xs font-black uppercase tracking-[0.18em] text-[#ffd166]">
+                À retenir
+              </span>
+              <span className="mt-2 block">{fact.hook}</span>
+            </div>
+          ) : null}
+
           <p className="mt-8 max-w-3xl text-base leading-8 text-white/72 sm:text-lg">
             {fact.detail}
           </p>
 
           {fact.longContent ? (
-            <section className="mt-8 max-w-3xl rounded-[22px] border border-white/10 bg-black/18 p-5 text-white/78 sm:p-6">
+            <section className="mt-10 max-w-4xl text-white/78">
               <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#ffd166]">
                 En savoir plus
               </p>
@@ -351,12 +391,6 @@ export default function FactDetailPage() {
                 {fact.longContent}
               </div>
             </section>
-          ) : null}
-
-          {fact.hook ? (
-            <div className="mt-8 max-w-3xl rounded-[18px] border border-white/10 bg-white/[0.055] p-5 text-sm font-semibold leading-6 text-white/68">
-              À retenir : {fact.hook}
-            </div>
           ) : null}
 
           <div className="mt-10 flex flex-wrap items-center gap-3">
@@ -405,10 +439,10 @@ export default function FactDetailPage() {
               </>
             )}
             <Link
-              href="/decouvrir"
+              href="/profil/defi-memoire"
               className="rounded-full border border-white/15 bg-black/20 px-5 py-3 text-sm font-bold text-white/72 backdrop-blur-xl transition hover:scale-[1.02] hover:text-white"
             >
-              Découvrir
+              Réviser plus tard
             </Link>
           </div>
 
@@ -458,11 +492,47 @@ export default function FactDetailPage() {
             >
               Lire d&apos;autres faits
             </Link>
+            <Link
+              href="/profil/defi-memoire"
+              className="rounded-[14px] border border-white/10 px-4 py-3 text-center text-sm font-bold text-white/72 transition hover:border-white/20 hover:text-white"
+            >
+              Quiz mémoire
+            </Link>
           </div>
         </aside>
       </section>
 
+      {relatedFacts.length > 0 ? (
+        <section className="relative z-10 mx-auto w-full max-w-7xl px-6 pb-20">
+          <div className="pt-10">
+            <p className="text-xs font-black uppercase tracking-[0.2em] text-[#ffd166]">
+              À découvrir aussi
+            </p>
+            <div className="mt-5 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {relatedFacts.slice(0, 5).map((related) => (
+                <Link
+                  key={related.id}
+                  href={`/fait/${related.slug}`}
+                  className="group rounded-[22px] border border-white/10 bg-black/18 p-5 transition hover:-translate-y-1 hover:border-white/20 hover:bg-white/[0.055]"
+                >
+                  <span className="text-xs font-bold uppercase tracking-[0.16em] text-white/45">
+                    {related.category}
+                  </span>
+                  <h2 className="mt-3 text-lg font-black leading-tight tracking-[-0.035em] text-white group-hover:text-[#ffe4a1]">
+                    {related.title}
+                  </h2>
+                  <p className="mt-3 line-clamp-3 text-sm leading-6 text-white/56">
+                    {related.hook || related.detail}
+                  </p>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </section>
+      ) : null}
+
       <FactShareModal fact={sharedFact} onClose={() => setSharedFact(null)} />
+      <Footer />
     </main>
   );
 }

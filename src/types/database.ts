@@ -16,6 +16,15 @@ export type Database = {
           slug: string;
           accent_color: string;
           tone: string;
+          description_courte: string | null;
+          description_longue: string | null;
+          seo_title: string | null;
+          seo_description: string | null;
+          keywords: string[] | null;
+          visual_motif: string | null;
+          gradient_start: string | null;
+          gradient_middle: string | null;
+          gradient_end: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -25,6 +34,15 @@ export type Database = {
           slug: string;
           accent_color?: string;
           tone?: string;
+          description_courte?: string | null;
+          description_longue?: string | null;
+          seo_title?: string | null;
+          seo_description?: string | null;
+          keywords?: string[] | null;
+          visual_motif?: string | null;
+          gradient_start?: string | null;
+          gradient_middle?: string | null;
+          gradient_end?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -34,6 +52,15 @@ export type Database = {
           slug?: string;
           accent_color?: string;
           tone?: string;
+          description_courte?: string | null;
+          description_longue?: string | null;
+          seo_title?: string | null;
+          seo_description?: string | null;
+          keywords?: string[] | null;
+          visual_motif?: string | null;
+          gradient_start?: string | null;
+          gradient_middle?: string | null;
+          gradient_end?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -121,6 +148,45 @@ export type Database = {
             columns: ["category_id"];
             isOneToOne: false;
             referencedRelation: "categories";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      fact_relations: {
+        Row: {
+          id: string;
+          source_fact_id: string;
+          related_fact_id: string;
+          position: number;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          source_fact_id: string;
+          related_fact_id: string;
+          position?: number;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          source_fact_id?: string;
+          related_fact_id?: string;
+          position?: number;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "fact_relations_source_fact_id_fkey";
+            columns: ["source_fact_id"];
+            isOneToOne: false;
+            referencedRelation: "facts";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "fact_relations_related_fact_id_fkey";
+            columns: ["related_fact_id"];
+            isOneToOne: false;
+            referencedRelation: "facts";
             referencedColumns: ["id"];
           },
         ];

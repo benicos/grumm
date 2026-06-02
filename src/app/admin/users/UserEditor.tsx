@@ -112,7 +112,11 @@ export default function UserEditor({ userId }: { userId: string }) {
           </p>
           <label className="mt-5 block max-w-xl text-sm font-medium text-gray-700">
             Rôle attribué
+            <span className="ml-1 text-red-500" aria-label="obligatoire">
+              *
+            </span>
             <select
+              required
               value={role}
               onChange={(event) => setRole(event.target.value)}
               className={adminFieldClassName}

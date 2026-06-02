@@ -3,12 +3,12 @@ export const siteConfig = {
   name: "Grumm.",
   description:
     "Grumm est une expérience de découverte verticale pour apprendre vite, retenir facilement et raconter ce qui marque.",
-  fallbackUrl: "https://grumm.app",
-  publicUrl: process.env.NEXT_PUBLIC_SITE_URL ?? "https://grumm.app",
+  fallbackUrl: "https://grumm.fr",
+  publicUrl: process.env.NEXT_PUBLIC_SITE_URL ?? "https://grumm.fr",
 } as const;
 
 export const appRoutes = {
-  about: "/about",
+  about: "/a-propos",
   admin: "/admin",
   contact: "/contact",
   discover: "/decouvrir",
@@ -16,7 +16,8 @@ export const appRoutes = {
   forgotPassword: "/forgot-password",
   home: "/",
   login: "/login",
-  privacy: "/privacy-policy",
+  memoryChallenge: "/profil/defi-memoire",
+  privacy: "/politique-confidentialite",
   profile: "/profil",
   profileEdit: "/profil/edit",
   register: "/register",
@@ -27,6 +28,12 @@ export const dailyGoalConfig = {
   defaultGoal: 10,
   maxGoal: 100,
   minGoal: 1,
+  streakMessages: [
+    { minCompletedGoals: 30, message: "30 jours. Grumm fait partie de ton quotidien." },
+    { minCompletedGoals: 7, message: "7 jours consécutifs. Ta culture s’installe." },
+    { minCompletedGoals: 2, message: "Deux jours de suite. Le réflexe commence." },
+    { minCompletedGoals: 1, message: "Premier jour lancé." },
+  ],
 } as const;
 
 export const signupDailyGoalOptions = [5, 10, 20, 40] as const;

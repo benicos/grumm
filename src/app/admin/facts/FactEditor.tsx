@@ -219,7 +219,7 @@ export default function FactEditor({ factId }: { factId?: string }) {
         title={editing ? "Modifier un fait" : "Créer un fait"}
         description={
           canPublish
-            ? "Contenu court, lecture longue et statut de publication."
+            ? "Contexte, lecture longue et publication."
             : "Les nouveaux faits sont envoyés en validation."
         }
         action={<AdminBackLink href="/admin/facts">Retour aux faits</AdminBackLink>}
@@ -235,6 +235,7 @@ export default function FactEditor({ factId }: { factId?: string }) {
             <div className="grid gap-5 lg:grid-cols-2">
               <AdminField
                 label="Titre"
+                required
                 value={form.title}
                 onChange={(title) =>
                   setForm((current) => ({ ...current, title }))
@@ -242,6 +243,7 @@ export default function FactEditor({ factId }: { factId?: string }) {
               />
               <AdminField
                 label="Accroche"
+                help="Phrase courte utilisée pour le quiz mémoire et certains aperçus."
                 value={form.hook}
                 onChange={(hook) =>
                   setForm((current) => ({ ...current, hook }))
@@ -250,7 +252,9 @@ export default function FactEditor({ factId }: { factId?: string }) {
             </div>
 
             <AdminField
-              label="Contenu court"
+              label="Contexte"
+              help="Texte principal affiché dans le flux de découverte."
+              required
               textarea
               value={form.content}
               onChange={(content) =>
@@ -258,7 +262,8 @@ export default function FactEditor({ factId }: { factId?: string }) {
               }
             />
             <AdminField
-              label="Contenu long"
+              label="En savoir plus"
+              help="Version enrichie affichée sur la page détaillée du fait."
               textarea
               rows={8}
               value={form.long_content}
@@ -272,7 +277,7 @@ export default function FactEditor({ factId }: { factId?: string }) {
                 Date éditoriale
               </h2>
               <p className="mt-1 text-sm text-gray-500">
-                Optionnelle. Le jour et le mois permettent une mise en avant annuelle.
+                Permet d'associer ce fait à une date importante comme le 14 juillet ou le 20 juillet.
               </p>
               <div className="mt-5 grid gap-5 sm:grid-cols-3">
                 <AdminField
@@ -330,7 +335,11 @@ export default function FactEditor({ factId }: { factId?: string }) {
             <div className="grid gap-5 lg:grid-cols-2">
               <label className="block text-sm font-medium text-gray-700">
                 Thème
+                <span className="ml-1 text-red-500" aria-label="obligatoire">
+                  *
+                </span>
                 <select
+                  required
                   value={form.category_id}
                   onChange={(event) =>
                     setForm((current) => ({
@@ -347,10 +356,14 @@ export default function FactEditor({ factId }: { factId?: string }) {
                   ))}
                 </select>
               </label>
-              {canPublish ? (
+              {canPublish && editing ? (
                 <label className="block text-sm font-medium text-gray-700">
                   Statut
+                  <span className="ml-1 text-red-500" aria-label="obligatoire">
+                    *
+                  </span>
                   <select
+                    required
                     value={form.status}
                     onChange={(event) =>
                       setForm((current) => ({
@@ -367,17 +380,17 @@ export default function FactEditor({ factId }: { factId?: string }) {
                     ))}
                   </select>
                 </label>
-              ) : (
-                <p className="rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-700">
-                  Statut automatique : en attente de validation.
-                </p>
-              )}
+              ) : null}
             </div>
 
             <div className="grid gap-5 lg:grid-cols-2">
               <label className="block text-sm font-medium text-gray-700">
                 Niveau
+                <span className="ml-1 text-red-500" aria-label="obligatoire">
+                  *
+                </span>
                 <select
+                  required
                   value={form.difficulty_level}
                   onChange={(event) =>
                     setForm((current) => ({
@@ -396,6 +409,7 @@ export default function FactEditor({ factId }: { factId?: string }) {
               </label>
               <AdminField
                 label="Source (optionnelle)"
+                help="Référence utilisée pour vérifier l'information."
                 value={form.source}
                 onChange={(source) =>
                   setForm((current) => ({ ...current, source }))
@@ -406,6 +420,7 @@ export default function FactEditor({ factId }: { factId?: string }) {
             <div className="grid gap-5 lg:grid-cols-2">
               <AdminField
                 label="URL de la source"
+                help="Lien vers la source originale."
                 type="url"
                 value={form.source_url}
                 onChange={(source_url) =>

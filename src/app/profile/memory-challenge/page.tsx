@@ -21,6 +21,7 @@ import { AppState } from "../../components/AppState";
 import { premiumPrimaryCtaClassName } from "../../components/buttonStyles";
 import HeroBackground from "../../components/HeroBackground";
 import Navbar from "../../components/Navbar";
+import Footer from "../../components/Footer";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -270,42 +271,73 @@ function ChallengeContent() {
         </span>
       </div>
 
-      <p className="mt-7 text-sm font-bold uppercase tracking-[0.14em] text-white/44">
-        {currentQuestion.prompt}
-      </p>
-      <h1 className="mt-3 max-w-2xl text-[clamp(1.65rem,4.8vw,3.1rem)] font-black leading-[1.02] tracking-[-0.045em] text-white">
-        {currentQuestion.title}
-      </h1>
+      <div className={`memory-flip mt-7 ${feedback?.isCorrect ? "is-flipped" : ""}`}>
+        <div className="memory-face memory-front">
+          <p className="text-sm font-bold uppercase tracking-[0.14em] text-white/44">
+            {currentQuestion.prompt}
+          </p>
+          <h1 className="mt-3 max-w-2xl text-[clamp(1.65rem,4.8vw,3.1rem)] font-black leading-[1.02] tracking-[-0.045em] text-white">
+            {currentQuestion.title}
+          </h1>
 
-      <div className="mt-8 grid gap-3">
-        {currentQuestion.options.map((option) => {
-          const isSelected = selectedAnswer === option;
-          const isCorrect = feedback && option === currentQuestion.correctAnswer;
-          const isWrongSelected = feedback && isSelected && !isCorrect;
+          <div className="mt-8 grid gap-3">
+            {currentQuestion.options.map((option) => {
+              const isSelected = selectedAnswer === option;
+              const isCorrect = feedback && option === currentQuestion.correctAnswer;
+              const isWrongSelected = feedback && isSelected && !isCorrect;
 
-          return (
-            <button
-              key={option}
-              type="button"
-              disabled={Boolean(feedback) || isSaving}
-              onClick={() => void chooseAnswer(option)}
-              className={`flex items-start justify-between gap-4 rounded-[20px] border px-4 py-4 text-left text-sm font-bold leading-7 transition ${
-                isCorrect
-                  ? "border-emerald-300/35 bg-emerald-400/12 text-emerald-50"
-                  : isWrongSelected
-                    ? "border-amber-200/24 bg-amber-100/8 text-white/82"
-                    : "border-white/10 bg-black/16 text-white/72 hover:border-white/24 hover:bg-white/[0.055]"
-              }`}
-            >
-              <span className="min-w-0 whitespace-normal break-words">{option}</span>
-              {isCorrect ? <Check className="h-4 w-4 shrink-0" /> : null}
-              {isWrongSelected ? <X className="h-4 w-4 shrink-0 text-amber-100/70" /> : null}
-            </button>
-          );
-        })}
+              return (
+                <button
+                  key={option}
+                  type="button"
+                  disabled={Boolean(feedback) || isSaving}
+                  onClick={() => void chooseAnswer(option)}
+                  className={`flex items-start justify-between gap-4 rounded-[20px] border px-4 py-4 text-left text-sm font-bold leading-7 transition ${
+                    isCorrect
+                      ? "border-emerald-300/35 bg-emerald-400/12 text-emerald-50"
+                      : isWrongSelected
+                        ? "border-amber-200/24 bg-amber-100/8 text-white/82"
+                        : "border-white/10 bg-black/16 text-white/72 hover:border-white/24 hover:bg-white/[0.055]"
+                  }`}
+                >
+                  <span className="min-w-0 whitespace-normal break-words">{option}</span>
+                  {isCorrect ? <Check className="h-4 w-4 shrink-0" /> : null}
+                  {isWrongSelected ? <X className="h-4 w-4 shrink-0 text-amber-100/70" /> : null}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="memory-face memory-back">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(106,227,192,0.22),transparent_45%)]" />
+          <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#6ae3c0]/70 to-transparent memory-shine" />
+          <div className="relative grid min-h-[360px] place-items-center rounded-[26px] border border-emerald-200/20 bg-emerald-300/10 p-6 text-center shadow-[0_0_90px_rgba(106,227,192,0.16)]">
+            <div>
+              <div className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-[#6ae3c0] text-[#07111f] shadow-[0_0_48px_rgba(106,227,192,0.36)] memory-success-pulse">
+                <Check className="h-8 w-8" />
+              </div>
+              <p className="mt-6 text-2xl font-black tracking-[-0.04em] text-white">
+                {feedback?.title}
+              </p>
+              <p className="mx-auto mt-3 max-w-md text-sm font-semibold leading-7 text-white/66">
+                {feedback?.detail}
+              </p>
+              <button
+                type="button"
+                onClick={() => void goNext()}
+                className={`${premiumPrimaryCtaClassName} mt-7 justify-center`}
+              >
+                {currentIndex + 1 === session.questions.length
+                  ? quizCopy.buttons.result
+                  : quizCopy.buttons.continue}
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
 
-      {feedback ? (
+      {feedback && !feedback.isCorrect ? (
         <div className="mt-6 rounded-[22px] border border-white/10 bg-black/18 p-4">
           <p className="text-lg font-black text-white">{feedback.title}</p>
           <p className="mt-2 text-sm font-semibold leading-6 text-white/62">
@@ -328,6 +360,79 @@ function ChallengeContent() {
           {error}
         </p>
       ) : null}
+
+      <style jsx>{`
+        .memory-flip {
+          display: grid;
+          min-height: 360px;
+          perspective: 1400px;
+        }
+
+        .memory-face {
+          backface-visibility: hidden;
+          grid-area: 1 / 1;
+          transform-style: preserve-3d;
+          transition:
+            transform 620ms cubic-bezier(0.16, 1, 0.3, 1),
+            opacity 420ms ease,
+            filter 420ms ease;
+        }
+
+        .memory-front {
+          transform: rotateY(0deg);
+        }
+
+        .memory-back {
+          opacity: 0;
+          position: relative;
+          transform: rotateY(180deg) translateY(8px);
+        }
+
+        .memory-flip.is-flipped .memory-front {
+          filter: blur(2px);
+          opacity: 0;
+          transform: rotateY(-180deg) translateY(-8px);
+        }
+
+        .memory-flip.is-flipped .memory-back {
+          opacity: 1;
+          transform: rotateY(0deg) translateY(0);
+        }
+
+        .memory-shine {
+          animation: memoryShine 1.2s ease-out both;
+        }
+
+        .memory-success-pulse {
+          animation: memoryPulse 1.25s ease-out both;
+        }
+
+        @keyframes memoryShine {
+          from {
+            opacity: 0;
+            transform: translateX(-35%);
+          }
+          35% {
+            opacity: 1;
+          }
+          to {
+            opacity: 0;
+            transform: translateX(35%);
+          }
+        }
+
+        @keyframes memoryPulse {
+          0% {
+            transform: scale(0.82);
+          }
+          55% {
+            transform: scale(1.08);
+          }
+          100% {
+            transform: scale(1);
+          }
+        }
+      `}</style>
     </section>
   );
 }
@@ -351,6 +456,7 @@ export default function MemoryChallengePage() {
           </div>
           <ChallengeContent />
         </main>
+        <Footer />
       </div>
     </RequireAuth>
   );

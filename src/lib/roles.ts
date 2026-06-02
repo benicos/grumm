@@ -74,6 +74,8 @@ export const SYSTEM_ROLE_PERMISSIONS: Record<string, PermissionKey[]> = {
     "admin.access",
     "facts.create",
     "facts.manage_own",
+    "themes.manage",
+    "quizzes.manage",
   ],
 };
 
