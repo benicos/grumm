@@ -12,8 +12,7 @@ import {
   type FeedFact,
   type ThemeDiscoverySummary,
 } from "@/lib/facts";
-import { getToneBackground } from "@/lib/gradients";
-import { getUserProfileSummary } from "@/lib/profile";
+import { getUserThemeProgress } from "@/lib/profile";
 import { AppState } from "./AppState";
 import {
   premiumTitleGradientClassName,
@@ -62,15 +61,22 @@ function SectionTitle({
 }
 
 function SearchResultCard({ fact }: { fact: FeedFact }) {
-  const toneBackground = getToneBackground(fact.tone);
+  const accent = fact.accent || "#ffd166";
 
   return (
     <Link
       href={`/fait/${fact.slug}`}
-      className={`group relative min-h-[230px] overflow-hidden rounded-[26px] border border-white/10 ${toneBackground.className} p-5 shadow-[0_24px_80px_rgba(0,0,0,0.22)] transition duration-300 hover:-translate-y-1 hover:border-white/24`}
-      style={toneBackground.style}
+      className="group relative min-h-[230px] overflow-hidden rounded-[26px] border border-white/10 bg-[#0a1728]/88 p-5 shadow-[0_24px_80px_rgba(0,0,0,0.22)] transition duration-300 hover:-translate-y-1 hover:border-white/24"
+      style={{
+        backgroundImage: `radial-gradient(circle at 82% 18%, ${accent}22, transparent 28%), linear-gradient(145deg, rgba(255,255,255,0.055), rgba(255,255,255,0.018))`,
+      }}
     >
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_82%_18%,rgba(255,255,255,0.20),transparent_24%),linear-gradient(180deg,rgba(0,0,0,0.08),rgba(0,0,0,0.66))]" />
+      <div
+        className="absolute inset-x-0 top-0 h-px"
+        style={{
+          backgroundImage: `linear-gradient(90deg, transparent, ${accent}, transparent)`,
+        }}
+      />
       <div className="relative flex h-full flex-col">
         <span className="w-fit rounded-full border border-white/12 bg-white/10 px-3 py-1 text-xs font-black uppercase tracking-[0.16em] text-white/78 backdrop-blur-xl">
           {fact.category}
@@ -160,12 +166,7 @@ export default function ExplorerExperience() {
 
           if (isAuthenticated) {
             try {
-              const profile = await getUserProfileSummary();
-              setThemeProgress(
-                Object.fromEntries(
-                  profile.topThemes.map((theme) => [theme.slug, theme.count]),
-                ),
-              );
+              setThemeProgress(await getUserThemeProgress());
             } catch {
               setThemeProgress({});
             }

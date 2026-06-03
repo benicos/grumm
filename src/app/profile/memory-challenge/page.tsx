@@ -9,6 +9,7 @@ import {
   getRandomQuizResultCopy,
   quizCopy,
 } from "@/config/quizCopy";
+import { publicSiteTexts } from "@/config/site-texts";
 import {
   completeMemoryChallengeSession,
   createMemoryChallengeSession,
@@ -117,6 +118,14 @@ function ChallengeContent() {
       void startSession();
     });
   }, []);
+
+  useEffect(() => {
+    if (!feedback?.isCorrect || typeof navigator === "undefined") {
+      return;
+    }
+
+    navigator.vibrate?.(38);
+  }, [feedback]);
 
   async function chooseAnswer(answer: string) {
     if (!session || !currentQuestion || feedback || isSaving) {
@@ -250,9 +259,23 @@ function ChallengeContent() {
             <Link
               key={`${answer.question.factId}-${index}`}
               href={`/fait/${answer.question.factSlug}`}
-              className="block py-4 text-sm font-semibold text-white/62 transition hover:text-white"
+              className="flex items-start justify-between gap-4 py-4 text-sm font-semibold text-white/62 transition hover:text-white"
             >
-              {quizCopy.buttons.reviewPrefix} {answer.question.factTitle}
+              <span>
+                {quizCopy.buttons.reviewPrefix} {answer.question.factTitle}
+              </span>
+              <span
+                className={`shrink-0 rounded-full border px-3 py-1 text-xs font-black ${
+                  answer.isCorrect
+                    ? "border-emerald-200/20 bg-emerald-300/10 text-emerald-100"
+                    : "border-amber-200/20 bg-amber-300/10 text-amber-100"
+                }`}
+              >
+                {answer.isCorrect ? "✓" : "✕"}{" "}
+                {answer.isCorrect
+                  ? publicSiteTexts.memoryResult.correct
+                  : publicSiteTexts.memoryResult.wrong}
+              </span>
             </Link>
           ))}
         </div>
@@ -263,6 +286,12 @@ function ChallengeContent() {
   return (
     <section className="relative mx-auto max-w-5xl overflow-hidden rounded-[30px] border border-white/10 bg-[radial-gradient(circle_at_82%_12%,rgba(244,234,213,0.105),transparent_30%),linear-gradient(145deg,rgba(255,255,255,0.074),rgba(255,255,255,0.024))] p-5 shadow-[0_26px_88px_rgba(0,0,0,0.28)] backdrop-blur-2xl sm:p-8">
       <SoberConfetti active={Boolean(feedback?.isCorrect)} />
+      {feedback?.isCorrect ? (
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 rounded-[30px] border border-emerald-200/25 shadow-[0_0_90px_rgba(106,227,192,0.18)] memory-correct-halo"
+        />
+      ) : null}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <p className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-[0.22em] text-[#6ae3c0]">
           <Brain className="h-4 w-4" />
@@ -432,6 +461,24 @@ function ChallengeContent() {
           }
           100% {
             transform: scale(1);
+          }
+        }
+
+        .memory-correct-halo {
+          animation: memoryHalo 900ms ease-out both;
+        }
+
+        @keyframes memoryHalo {
+          0% {
+            opacity: 0;
+            transform: scale(0.985);
+          }
+          35% {
+            opacity: 1;
+          }
+          100% {
+            opacity: 0;
+            transform: scale(1.01);
           }
         }
       `}</style>

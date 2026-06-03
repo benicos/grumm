@@ -1,3 +1,5 @@
+import { publicSiteTexts } from "@/config/site-texts";
+
 export type ThemeDisplayData = {
   accent?: string | null;
   accent_color?: string | null;
@@ -48,6 +50,8 @@ export const themeMotifOptions = [
   "star",
 ] as const;
 
+export type ThemeVisualMotif = (typeof themeMotifOptions)[number];
+
 export const themeMotifLabels: Record<ThemeVisualMotif, string> = {
   "antique-column": "Colonne antique",
   architecture: "Architecture",
@@ -71,8 +75,6 @@ export const themeMotifLabels: Record<ThemeVisualMotif, string> = {
   timeline: "Chronologie",
   topography: "Topographie",
 };
-
-export type ThemeVisualMotif = (typeof themeMotifOptions)[number];
 
 export function normalizeThemeMotif(value?: string | null): ThemeVisualMotif {
   return themeMotifOptions.includes(value as ThemeVisualMotif)
@@ -115,7 +117,7 @@ export function getThemeShortDescription(theme: ThemeDisplayData) {
   return (
     theme.description_courte?.trim() ||
     theme.description?.trim() ||
-    "Un thème à explorer à travers des faits courts et mémorables."
+    publicSiteTexts.themeDescriptionFallback
   );
 }
 
@@ -124,7 +126,7 @@ export function getThemeLongDescription(theme: ThemeDisplayData) {
     theme.description_longue?.trim() ||
     theme.description_courte?.trim() ||
     theme.description?.trim() ||
-    `Explore ${theme.name} à travers des repères essentiels, des faits courts et des liens pour mieux comprendre ce sujet.`
+    publicSiteTexts.themeLongDescriptionFallback
   );
 }
 

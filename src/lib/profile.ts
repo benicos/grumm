@@ -121,6 +121,8 @@ export type ProfileMutationResult =
   | { ok: true; message: string }
   | { ok: false; field: ProfileField; message: string };
 
+export type UserThemeProgress = Record<string, number>;
+
 function categoryFromRelation(fact: NonNullable<RelatedFactRow["facts"]>) {
   return Array.isArray(fact.categories)
     ? fact.categories[0]
@@ -228,6 +230,52 @@ function getTopViewedThemes(rows: ViewedFactRow[]): ThemeViewStat[] {
     ...theme,
     percent: Math.round((theme.count / maxCount) * 100),
   }));
+}
+
+export async function getUserThemeProgress(): Promise<UserThemeProgress> {
+  const supabase = createSupabaseBrowserClient();
+
+  if (!supabase) {
+    return {};
+  }
+
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+
+  if (userError || !user) {
+    return {};
+  }
+
+  const { data, error } = await supabase
+    .from("user_fact_views")
+    .select(VIEWED_FACT_SELECT)
+    .eq("user_id", user.id);
+
+  if (error) {
+    logSupabaseError(error, {
+      operation: "read all theme progress",
+      table: "user_fact_views",
+    });
+    return {};
+  }
+
+  const progress: UserThemeProgress = {};
+
+  ((data ?? []) as ViewedFactRow[]).forEach((row) => {
+    const category = Array.isArray(row.facts?.categories)
+      ? row.facts?.categories[0]
+      : row.facts?.categories;
+
+    if (!category?.slug || isCommercialCollaborationSlug(category.slug)) {
+      return;
+    }
+
+    progress[category.slug] = (progress[category.slug] ?? 0) + 1;
+  });
+
+  return progress;
 }
 
 export async function getUserProfileSummary(): Promise<UserProfileSummary> {

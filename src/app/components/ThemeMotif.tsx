@@ -1,11 +1,13 @@
 import { normalizeThemeMotif, type ThemeVisualMotif } from "@/lib/themeDisplay";
+import type { CSSProperties } from "react";
 
 type ThemeMotifProps = {
   className?: string;
   motif?: string | null;
+  style?: CSSProperties;
 };
 
-export default function ThemeMotif({ className = "", motif }: ThemeMotifProps) {
+export default function ThemeMotif({ className = "", motif, style }: ThemeMotifProps) {
   const normalized = normalizeThemeMotif(motif);
 
   return (
@@ -13,6 +15,7 @@ export default function ThemeMotif({ className = "", motif }: ThemeMotifProps) {
       viewBox="0 0 64 64"
       aria-hidden="true"
       className={className}
+      style={style}
       fill="none"
       stroke="currentColor"
       strokeLinecap="round"

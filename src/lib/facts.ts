@@ -1,5 +1,6 @@
-import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+﻿import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { dailyGoalConfig, discoverConfig } from "@/config/app";
+import { publicSiteTexts } from "@/config/site-texts";
 import {
   filterCommercialCollaborationCategories,
   filterCommercialCollaborationFacts,
@@ -38,6 +39,7 @@ export type FeedFact = {
   updatedAt: string | null;
   tone: string;
   accent: string;
+  visualMotif?: string | null;
 };
 
 type FeedFactWithScore = FeedFact & {
@@ -258,6 +260,7 @@ function mapFact(fact: FactRow): FeedFact {
       (category ? getThemeTone(category) : null) ??
       "from-[#0b1424] via-[#132744] to-[#f0a95a]",
     accent: fact.accent_color ?? category?.accent_color ?? "#ffd166",
+    visualMotif: category?.visual_motif ?? null,
   };
 }
 
@@ -288,6 +291,7 @@ function mapFeedRpcFact(fact: FeedRpcRow): FeedFact {
       fact.category_tone ??
       "from-[#0b1424] via-[#132744] to-[#f0a95a]",
     accent: fact.accent_color ?? fact.category_accent_color ?? "#ffd166",
+    visualMotif: null,
   };
 }
 
@@ -319,35 +323,13 @@ function mapCategory(category: FactCategory): CategorySummary {
   };
 }
 
-const themeDescriptionBySlug: Record<string, string> = {
-  art: "Œuvres, gestes et regards qui transforment notre façon de voir le monde.",
-  cinema: "Films, réalisateurs et secrets du septième art qui ont marqué les imaginaires.",
-  histoire: "Événements, personnages et dates qui ont façonné notre civilisation.",
-  litterature: "Livres, auteurs et idées qui traversent les époques.",
-  musique: "Œuvres, artistes et mouvements qui donnent un rythme à leur époque.",
-  nature: "Espèces, phénomènes et équilibres qui révèlent la puissance du vivant.",
-  philosophie: "Concepts, penseurs et questions qui aident à mieux lire le réel.",
-  psychologie: "Biais, comportements et mécanismes qui éclairent nos décisions.",
-  science: "Découvertes, inventions et mystères qui changent notre compréhension du monde.",
-  espace: "Planètes, missions et vertiges cosmiques pour prendre de la hauteur.",
-};
-
 function getThemeDescription(theme: CategorySummary) {
   if (theme.description_courte?.trim() || theme.description_longue?.trim()) {
     return theme.description_courte?.trim() || theme.description_longue?.trim() || "";
   }
 
-  const normalizedSlug = theme.slug
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase();
-
-  return (
-    themeDescriptionBySlug[normalizedSlug] ??
-    `${theme.name} comme univers de découverte, entre repères essentiels et faits inattendus.`
-  );
+  return publicSiteTexts.themeDescriptionFallback;
 }
-
 function getSupabaseDataErrorMessage(
   error: unknown,
   context?: {
@@ -907,8 +889,20 @@ export async function getFactOfTheDay() {
     const row = Array.isArray(data) ? data[0] : null;
 
     if (row) {
+      const fact = mapFeedRpcFact(row as FeedRpcRow);
+      const themeResult = await supabase
+        .from("categories")
+        .select("visual_motif")
+        .eq("slug", fact.categorySlug)
+        .maybeSingle();
+
       return {
-        fact: mapFeedRpcFact(row as FeedRpcRow),
+        fact: {
+          ...fact,
+          visualMotif: themeResult.error
+            ? null
+            : themeResult.data?.visual_motif ?? null,
+        },
         interactionCount:
           typeof row.interaction_count === "number" ? row.interaction_count : 0,
         source: "supabase" as const,

@@ -41,9 +41,9 @@ export class GlobalErrorBoundary extends Component<
         <AppState
           eyebrow="Erreur"
           title="Grumm. n'a pas pu afficher cette vue."
-          description="L'erreur a Ã©tÃ© journalisÃ©e avec son contexte technique. Tu peux relancer la page."
+          description="Erreur technique. Tu peux relancer la page."
           primaryHref="/decouvrir"
-          primaryLabel="Retour Ã  DÃ©couvrir"
+          primaryLabel="Retour à Découvrir"
           secondaryHref="/theme"
           secondaryLabel="Explorer"
         />

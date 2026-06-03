@@ -2,8 +2,9 @@
 
 import { toPng } from "html-to-image";
 import { Download, Link as LinkIcon, Share2, X } from "lucide-react";
-import { type CSSProperties, useMemo, useRef, useState } from "react";
+import { type RefObject, useMemo, useRef, useState } from "react";
 import { siteConfig, socialShareConfig } from "@/config/app";
+import { publicSiteTexts } from "@/config/site-texts";
 import type { FeedFact } from "@/lib/facts";
 import { getToneBackground } from "@/lib/gradients";
 import { logNetworkError, logStructuredError } from "@/lib/logger";
@@ -14,22 +15,26 @@ type FactShareModalProps = {
   onClose: () => void;
 };
 
-function truncateText(value: string | null | undefined, maxLength: number) {
-  const normalized = value?.replace(/\s+/g, " ").trim() ?? "";
-
-  if (normalized.length <= maxLength) {
-    return normalized;
-  }
-
-  return `${normalized.slice(0, maxLength - 1).trim()}…`;
+function normalizeShareText(value: string | null | undefined) {
+  return value?.replace(/\s+/g, " ").trim() ?? "";
 }
 
-function clampStyle(lines: number): CSSProperties {
-  return {
-    display: "-webkit-box",
-    WebkitBoxOrient: "vertical",
-    WebkitLineClamp: lines,
-  };
+function getStoryTypography(title: string, detail: string) {
+  const totalLength = title.length + detail.length;
+
+  if (totalLength > 620) {
+    return { detailSize: 13, gap: 14, paddingX: 24, paddingY: 26, titleSize: 22 };
+  }
+
+  if (totalLength > 460) {
+    return { detailSize: 14, gap: 16, paddingX: 25, paddingY: 28, titleSize: 24 };
+  }
+
+  if (totalLength > 320) {
+    return { detailSize: 15, gap: 18, paddingX: 26, paddingY: 30, titleSize: 27 };
+  }
+
+  return { detailSize: 18, gap: 24, paddingX: 28, paddingY: 32, titleSize: 31 };
 }
 
 async function dataUrlToBlob(dataUrl: string) {
@@ -37,7 +42,9 @@ async function dataUrlToBlob(dataUrl: string) {
 
   if (!response.ok) {
     const responseText = await response.text().catch(() => null);
-    const error = new Error(`Unable to convert generated share image to blob: ${response.status}`);
+    const error = new Error(
+      `Unable to convert generated share image to blob: ${response.status}`,
+    );
     logNetworkError(error, {
       method: "GET",
       operation: "convert share image data URL to blob",
@@ -50,6 +57,79 @@ async function dataUrlToBlob(dataUrl: string) {
   }
 
   return response.blob();
+}
+
+function StoryCard({
+  fact,
+  refProp,
+}: {
+  fact: FeedFact;
+  refProp?: RefObject<HTMLDivElement | null>;
+}) {
+  const title = normalizeShareText(fact.title);
+  const detail = normalizeShareText(fact.detail);
+  const typography = getStoryTypography(title, detail);
+  const shareBackground = getToneBackground(fact.tone);
+
+  return (
+    <div
+      ref={refProp}
+      className={`relative isolate h-[640px] w-[360px] max-w-full overflow-hidden ${shareBackground.className} text-white shadow-2xl`}
+      style={{ ...shareBackground.style, borderRadius: 0 }}
+    >
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_13%,rgba(255,255,255,0.18),transparent_28%),radial-gradient(circle_at_78%_22%,rgba(255,255,255,0.10),transparent_30%),linear-gradient(180deg,rgba(0,0,0,0.10),rgba(0,0,0,0.76))]" />
+      <div className="absolute inset-0 opacity-[0.08] [background-image:linear-gradient(rgba(255,255,255,0.5)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.5)_1px,transparent_1px)] [background-size:34px_34px]" />
+      <div className="absolute inset-x-0 bottom-0 h-72 bg-gradient-to-t from-black/72 to-transparent" />
+
+      <div
+        className="relative flex h-full min-h-0 flex-col"
+        style={{
+          padding: `${typography.paddingY}px ${typography.paddingX}px`,
+        }}
+      >
+        <div>
+          <span className="inline-flex max-w-full rounded-full border border-white/12 bg-white/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.2em] text-[#ffd166]">
+            {fact.category}
+          </span>
+        </div>
+
+        <div className="flex min-h-0 flex-1 items-center py-5">
+          <div className="min-w-0">
+            <h2
+              className="font-black tracking-[-0.035em] [text-wrap:balance]"
+              style={{
+                fontSize: typography.titleSize,
+                lineHeight: 1.04,
+              }}
+            >
+              {title}
+            </h2>
+            <p
+              className="font-semibold text-white/84"
+              style={{
+                fontSize: typography.detailSize,
+                lineHeight: 1.42,
+                marginTop: typography.gap,
+              }}
+            >
+              {detail}
+            </p>
+          </div>
+        </div>
+
+        <div className="shrink-0">
+          <div className="flex items-center gap-2 text-white/70">
+            <span className="grid h-8 w-8 place-items-center rounded-[11px] bg-gradient-to-br from-[#ffd166] to-[#6ae3c0] text-sm font-black text-[#06111d]">
+              G
+            </span>
+            <span className="text-[14px] font-black tracking-[-0.03em]">
+              Grumm.
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export default function FactShareModal({ fact, onClose }: FactShareModalProps) {
@@ -74,16 +154,13 @@ export default function FactShareModal({ fact, onClose }: FactShareModalProps) {
 
   const activeFact = fact;
   const fileName = `grumm-${activeFact.slug}-story.png`;
-  const title = truncateText(activeFact.title, 96);
-  const detail = truncateText(activeFact.detail, 250);
-  const shareText = `Découvert sur Grumm.\n${factUrl}`;
-  const toneBackground = getToneBackground(activeFact.tone);
+  const shareText = `${publicSiteTexts.share.brandLine}\n${factUrl}`;
 
   async function renderStoryBlob() {
     const node = cardRef.current;
 
     if (!node) {
-      throw new Error("Aperçu indisponible.");
+      throw new Error(publicSiteTexts.share.previewUnavailable);
     }
 
     const dataUrl = await toPng(node, {
@@ -113,7 +190,7 @@ export default function FactShareModal({ fact, onClose }: FactShareModalProps) {
       anchor.download = fileName;
       anchor.click();
       URL.revokeObjectURL(objectUrl);
-      setStatus("Image téléchargée.");
+      setStatus(publicSiteTexts.share.imageDownloaded);
     } catch (error) {
       logStructuredError(error, {
         component: "FactShareModal",
@@ -125,14 +202,14 @@ export default function FactShareModal({ fact, onClose }: FactShareModalProps) {
       setStatus(
         error instanceof Error
           ? error.message
-          : "L’image n’a pas pu être générée.",
+          : "L'image n'a pas pu être générée.",
       );
     } finally {
       setIsRendering(false);
     }
   }
 
-  async function copyLink(message = "Lien copié.") {
+  async function copyLink(message: string = publicSiteTexts.share.linkCopied) {
     if (!navigator.clipboard) {
       setStatus("Copie indisponible sur ce navigateur.");
       return false;
@@ -161,7 +238,7 @@ export default function FactShareModal({ fact, onClose }: FactShareModalProps) {
         text: shareText,
         title: activeFact.title,
       });
-      setStatus("Image prête à être partagée.");
+      setStatus(publicSiteTexts.share.imageReady);
     } catch (error) {
       if (error instanceof DOMException && error.name === "AbortError") {
         setStatus(null);
@@ -186,20 +263,20 @@ export default function FactShareModal({ fact, onClose }: FactShareModalProps) {
     try {
       if (navigator.share) {
         await navigator.share({
-          text: "Découvert sur Grumm.",
+          text: publicSiteTexts.share.brandLine,
           title: activeFact.title,
           url: factUrl,
         });
-        setStatus("Lien prêt à être partagé.");
+        setStatus(publicSiteTexts.share.linkReady);
         return;
       }
 
-      await copyLink("Partage natif indisponible. Lien copié.");
+      await copyLink(publicSiteTexts.share.nativeUnavailable);
     } catch (error) {
       if (error instanceof DOMException && error.name === "AbortError") {
         setStatus(null);
       } else {
-        await copyLink("Partage natif indisponible. Lien copié.");
+        await copyLink(publicSiteTexts.share.nativeUnavailable);
       }
     }
   }
@@ -222,50 +299,7 @@ export default function FactShareModal({ fact, onClose }: FactShareModalProps) {
         </button>
 
         <div className="mx-auto hidden w-full max-w-[360px] overflow-hidden lg:block">
-          <div
-            className={`relative isolate h-[640px] w-[360px] max-w-full overflow-hidden ${toneBackground.className} text-white shadow-2xl`}
-            style={{ ...toneBackground.style, borderRadius: 0 }}
-          >
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_13%,rgba(255,255,255,0.20),transparent_28%),radial-gradient(circle_at_78%_22%,rgba(255,255,255,0.10),transparent_30%),linear-gradient(180deg,rgba(0,0,0,0.08),rgba(0,0,0,0.70))]" />
-            <div className="absolute inset-0 opacity-[0.08] [background-image:linear-gradient(rgba(255,255,255,0.5)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.5)_1px,transparent_1px)] [background-size:34px_34px]" />
-            <div className="absolute inset-x-0 bottom-0 h-72 bg-gradient-to-t from-black/70 to-transparent" />
-
-            <div className="relative flex h-full min-h-0 flex-col px-7 py-8">
-              <div>
-                <span className="inline-flex max-w-full overflow-hidden rounded-full border border-white/12 bg-white/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.2em] text-[#ffd166]">
-                  <span className="truncate">{activeFact.category}</span>
-                </span>
-              </div>
-
-              <div className="flex min-h-0 flex-1 items-center py-8">
-                <div className="min-w-0">
-                  <h2
-                    className="max-h-[170px] overflow-hidden text-[30px] font-black leading-[1.03] tracking-[-0.035em]"
-                    style={clampStyle(5)}
-                  >
-                    {title}
-                  </h2>
-                  <p
-                    className="mt-6 max-h-[236px] overflow-hidden text-[18px] font-semibold leading-[1.45] text-white/82"
-                    style={clampStyle(9)}
-                  >
-                    {detail}
-                  </p>
-                </div>
-              </div>
-
-              <div className="shrink-0">
-                <div className="flex items-center gap-2 text-white/70">
-                  <span className="grid h-8 w-8 place-items-center rounded-[11px] bg-gradient-to-br from-[#ffd166] to-[#6ae3c0] text-sm font-black text-[#06111d]">
-                    G
-                  </span>
-                  <span className="text-[14px] font-black tracking-[-0.03em]">
-                    Grumm.
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
+          <StoryCard fact={activeFact} />
         </div>
 
         <section className="flex min-w-0 flex-col justify-center pr-0 pt-8 lg:pr-8 lg:pt-0">
@@ -273,45 +307,16 @@ export default function FactShareModal({ fact, onClose }: FactShareModalProps) {
             Partage
           </p>
           <h2 className="mt-4 max-w-xl text-3xl font-extrabold tracking-[-0.04em] sm:text-4xl">
-            Génère une carte verticale prête à être partagée !
+            {publicSiteTexts.share.title}
           </h2>
           <p className="mt-4 max-w-xl text-sm leading-6 text-white/58">
-            Tu as appris quelque chose ? Fais le savoir à tes amis en partageant ce fait de manière simple et rapide.
+            {publicSiteTexts.share.description}
           </p>
           <div
-            ref={cardRef}
-            className={`pointer-events-none fixed -left-[9999px] top-0 h-[640px] w-[360px] overflow-hidden ${toneBackground.className} text-white`}
-            style={{ ...toneBackground.style, borderRadius: 0 }}
+            className="pointer-events-none fixed -left-[9999px] top-0"
             aria-hidden="true"
           >
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_13%,rgba(255,255,255,0.20),transparent_28%),radial-gradient(circle_at_78%_22%,rgba(255,255,255,0.10),transparent_30%),linear-gradient(180deg,rgba(0,0,0,0.08),rgba(0,0,0,0.70))]" />
-            <div className="absolute inset-0 opacity-[0.08] [background-image:linear-gradient(rgba(255,255,255,0.5)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.5)_1px,transparent_1px)] [background-size:34px_34px]" />
-            <div className="absolute inset-x-0 bottom-0 h-72 bg-gradient-to-t from-black/70 to-transparent" />
-            <div className="relative flex h-full min-h-0 flex-col px-7 py-8">
-              <div>
-                <span className="inline-flex max-w-full overflow-hidden rounded-full border border-white/12 bg-white/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.2em] text-[#ffd166]">
-                  <span className="truncate">{activeFact.category}</span>
-                </span>
-              </div>
-              <div className="flex min-h-0 flex-1 items-center py-8">
-                <div className="min-w-0">
-                  <h2 className="max-h-[170px] overflow-hidden text-[30px] font-black leading-[1.03] tracking-[-0.035em]" style={clampStyle(5)}>
-                    {title}
-                  </h2>
-                  <p className="mt-6 max-h-[236px] overflow-hidden text-[18px] font-semibold leading-[1.45] text-white/82" style={clampStyle(9)}>
-                    {detail}
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2 text-white/70">
-                <span className="grid h-8 w-8 place-items-center rounded-[11px] bg-gradient-to-br from-[#ffd166] to-[#6ae3c0] text-sm font-black text-[#06111d]">
-                  G
-                </span>
-                <span className="text-[14px] font-black tracking-[-0.03em]">
-                  Grumm.
-                </span>
-              </div>
-            </div>
+            <StoryCard fact={activeFact} refProp={cardRef} />
           </div>
 
           <div className="mt-7 grid gap-3 sm:grid-cols-2">
@@ -322,7 +327,7 @@ export default function FactShareModal({ fact, onClose }: FactShareModalProps) {
               className={`${premiumPrimaryCtaClassName} gap-2`}
             >
               <Download className="h-4 w-4" />
-              Télécharger l’image
+              {"Télécharger l'image"}
             </button>
             <button
               type="button"
@@ -331,7 +336,7 @@ export default function FactShareModal({ fact, onClose }: FactShareModalProps) {
               className="inline-flex items-center justify-center gap-2 rounded-[14px] border border-white/10 bg-white/[0.06] px-[18px] py-3 text-sm font-bold text-white transition hover:-translate-y-[2px] hover:border-white/20 disabled:cursor-not-allowed disabled:opacity-60"
             >
               <Share2 className="h-4 w-4" />
-              Partager l’image
+              {"Partager l'image"}
             </button>
             <button
               type="button"

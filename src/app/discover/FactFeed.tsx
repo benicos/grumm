@@ -356,7 +356,7 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
       }
     } catch {
       toggleAction(factId, setter);
-      showTemporaryNotice("Cette action nâa pas pu Ãªtre synchronisÃ©e.");
+      showTemporaryNotice("Cette action n’a pas pu être synchronisée.");
     }
   };
 
@@ -505,7 +505,7 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
           setFeedError(
             error instanceof Error
               ? error.message
-              : "DÃ©couvrir est indisponible pour le moment.",
+              : "Découvrir est indisponible pour le moment.",
           );
         }
       } finally {
@@ -828,13 +828,13 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
   if (isUnknownTheme) {
     return (
       <AppState
-        eyebrow="ThÃ¨me introuvable"
-        title="Ce thÃ¨me nâexiste pas encore."
-        description="Ce lien ne correspond Ã  aucun thÃ¨me visible."
+        eyebrow="Thème introuvable"
+        title="Ce thème n’existe pas encore."
+        description="Ce lien ne correspond à aucun thème visible."
         primaryHref="/theme"
-        primaryLabel="Explorer les thÃ¨mes"
+        primaryLabel="Explorer les thèmes"
         secondaryHref="/decouvrir"
-        secondaryLabel="DÃ©couvrir"
+        secondaryLabel="Découvrir"
       />
     );
   }
@@ -842,11 +842,11 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
   if (feedError && !isLoadingFacts) {
     return (
       <AppState
-        eyebrow="DÃ©couvrir indisponible"
-        title="Les faits ne peuvent pas Ãªtre chargÃ©s."
+        eyebrow="Découvrir indisponible"
+        title="Les faits ne peuvent pas être chargés."
         description={feedError}
         primaryHref="/decouvrir"
-        primaryLabel="Recharger DÃ©couvrir"
+        primaryLabel="Recharger Découvrir"
         secondaryHref="/theme"
         secondaryLabel="Explorer"
       />
@@ -966,7 +966,7 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
                   )}
                   {theme && (
                     <div className="w-fit rounded-full border border-white/10 bg-black/16 px-4 py-2 text-xs font-bold uppercase tracking-[0.18em] text-white/62 backdrop-blur-xl">
-                      ThÃ¨me
+                      Thème
                     </div>
                   )}
                 </div>
@@ -1204,7 +1204,7 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
           <div className="absolute inset-0 grid place-items-center bg-[#132338] px-6 text-center">
             <div className="max-w-sm">
               <p className="text-xs font-bold uppercase tracking-[0.22em] text-[#ffd166]">
-                DÃ©couvrir est vide
+                Découvrir est vide
               </p>
               <h1 className="mt-4 text-3xl font-extrabold tracking-[-0.04em]">
                 Aucun fait disponible pour le moment.

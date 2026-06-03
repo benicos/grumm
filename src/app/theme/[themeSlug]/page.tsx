@@ -8,13 +8,15 @@ import {
   type SeoFact,
 } from "@/lib/serverMetadata";
 import {
-  getThemeGradientStyle,
+  getThemeAccent,
+  getThemeGradientStops,
   getThemeLongDescription,
   getThemeShortDescription,
 } from "@/lib/themeDisplay";
 import Footer from "../../components/Footer";
 import HeroBackground from "../../components/HeroBackground";
 import Navbar from "../../components/Navbar";
+import ThemeMotif from "../../components/ThemeMotif";
 import {
   premiumPrimaryCtaClassName,
   premiumTitleGradientClassName,
@@ -66,6 +68,8 @@ export default async function ThemeLandingPage({ params }: ThemePageProps) {
     .sort((a, b) => (b.hook?.length ?? 0) - (a.hook?.length ?? 0))
     .slice(0, 3);
   const recentFacts = facts.slice(0, 12);
+  const accent = getThemeAccent(theme);
+  const gradient = getThemeGradientStops(theme);
 
   return (
     <div className="relative min-h-screen overflow-x-hidden bg-[#07111f] text-white">
@@ -77,34 +81,51 @@ export default async function ThemeLandingPage({ params }: ThemePageProps) {
       <Navbar />
       <main className="relative z-10 mx-auto max-w-[1180px] px-5 pb-24 pt-16 lg:px-8">
         <section
-          className="overflow-hidden rounded-[34px] border border-white/10 p-8 shadow-[0_32px_100px_rgba(0,0,0,0.34)] sm:p-12"
-          style={getThemeGradientStyle(theme)}
+          className="relative overflow-hidden rounded-[34px] border border-white/10 bg-[#0a1728]/88 p-8 shadow-[0_32px_100px_rgba(0,0,0,0.34)] sm:p-12"
+          style={{
+            backgroundImage: `radial-gradient(circle at 82% 18%, ${accent}24, transparent 30%), radial-gradient(circle at 12% 96%, ${gradient.middle}18, transparent 38%), linear-gradient(145deg, rgba(255,255,255,0.065), rgba(255,255,255,0.018))`,
+          }}
         >
-          <p className="text-sm font-bold uppercase tracking-[0.18em] text-white/58">
+          <div
+            className="absolute inset-x-0 top-0 h-px"
+            style={{
+              backgroundImage: `linear-gradient(90deg, transparent, ${accent}, transparent)`,
+            }}
+          />
+          <ThemeMotif
+            motif={theme.visual_motif}
+            className="absolute right-8 top-8 h-24 w-24 opacity-40 sm:h-36 sm:w-36"
+            style={{ color: accent }}
+          />
+          <p className="relative text-sm font-bold uppercase tracking-[0.18em] text-white/58">
             Thème culturel
           </p>
           <h1
-            className={`${premiumTitleGradientClassName} mt-5 max-w-3xl text-[clamp(2.5rem,5.8vw,4.8rem)] font-extrabold leading-[0.98]`}
+            className={`${premiumTitleGradientClassName} relative mt-5 max-w-3xl text-[clamp(2.5rem,5.8vw,4.8rem)] font-extrabold leading-[0.98]`}
           >
             {theme.name}
           </h1>
-          <p className="mt-6 max-w-2xl text-lg leading-8 text-white/76">
+          <p className="relative mt-6 max-w-2xl text-lg leading-8 text-white/76">
             {getThemeLongDescription(theme)}
           </p>
-          <div className="mt-7 flex flex-wrap gap-2">
+          <div className="relative mt-7 flex flex-wrap gap-2">
             {(theme.keywords ?? []).slice(0, 5).map((keyword) => (
               <span
                 key={keyword}
                 className="rounded-full border border-white/12 bg-black/16 px-3 py-1 text-xs font-bold text-white/68"
+                style={{ boxShadow: `inset 0 0 0 1px ${accent}18` }}
               >
                 {keyword}
               </span>
             ))}
           </div>
-          <div className="mt-8 flex flex-wrap items-center gap-4">
+          <div className="relative mt-8 flex flex-wrap items-center gap-4">
             <Link
               href={`/decouvrir?theme=${theme.slug}`}
-              className={premiumPrimaryCtaClassName}
+              className={`${premiumPrimaryCtaClassName} ring-1 ring-white/20`}
+              style={{
+                boxShadow: `0 22px 70px ${accent}22, inset 0 1px 0 rgba(255,255,255,0.55)`,
+              }}
             >
               Explorer ce thème
             </Link>
@@ -142,7 +163,10 @@ export default async function ThemeLandingPage({ params }: ThemePageProps) {
               Ce que ce thème permet de comprendre
             </h2>
             <div className="mt-6 flex flex-wrap gap-2">
-              {(theme.keywords?.length ? theme.keywords : [getThemeShortDescription(theme)]).map((keyword) => (
+              {(theme.keywords?.length
+                ? theme.keywords
+                : [getThemeShortDescription(theme)]
+              ).map((keyword) => (
                 <span
                   key={keyword}
                   className="rounded-full bg-white/[0.07] px-4 py-2 text-sm font-bold text-white/70"

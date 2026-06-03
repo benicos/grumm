@@ -1,8 +1,11 @@
 import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
+import type { CSSProperties } from "react";
+import { publicSiteTexts } from "@/config/site-texts";
 import {
+  getThemeAccent,
   getThemeFactCount,
-  getThemeGradientStyle,
+  getThemeGradientStops,
   getThemeShortDescription,
   type ThemeDisplayData,
 } from "@/lib/themeDisplay";
@@ -27,29 +30,40 @@ export default function ThemeCard({
   theme,
 }: ThemeCardProps) {
   const count = getThemeFactCount(theme);
+  const accent = getThemeAccent(theme);
+  const gradient = getThemeGradientStops(theme);
   const discovered = Math.max(0, progress?.discovered ?? 0);
   const total = Math.max(progress?.total ?? count, 0);
-  const percent = total > 0 ? Math.min(Math.round((discovered / total) * 100), 100) : 0;
+  const percent =
+    total > 0 ? Math.min(Math.round((discovered / total) * 100), 100) : 0;
   const progressLabel = progress
     ? discovered > 0
-      ? `${discovered} / ${total} découverts`
-      : "Commencer ce thème"
+      ? `${discovered} / ${total} ${publicSiteTexts.themeProgress.readSuffix}`
+      : publicSiteTexts.themeProgress.empty
     : count > 0
-      ? `${count} faits à explorer`
-      : "Un thème à découvrir";
+      ? `${count} ${publicSiteTexts.themeProgress.factsToExplore}`
+      : publicSiteTexts.themeProgress.fallback;
 
   return (
     <Link
       href={href ?? `/theme/${theme.slug}`}
-      className={`group relative overflow-hidden rounded-[32px] border border-white/10 p-6 shadow-[0_30px_100px_rgba(0,0,0,0.28)] transition duration-500 hover:-translate-y-1 hover:border-white/24 hover:shadow-[0_42px_130px_rgba(0,0,0,0.42)] ${
+      className={`group relative overflow-hidden rounded-[32px] border border-white/10 bg-[#0a1728]/88 p-6 shadow-[0_30px_100px_rgba(0,0,0,0.28)] transition duration-500 hover:-translate-y-1 hover:border-white/24 hover:shadow-[0_42px_130px_rgba(0,0,0,0.42)] ${
         compact ? "min-h-[248px]" : "min-h-[292px]"
       }`}
-      style={getThemeGradientStyle(theme)}
+      style={{
+        backgroundImage: `radial-gradient(circle at 82% 12%, ${accent}24, transparent 28%), radial-gradient(circle at 18% 96%, ${gradient.middle}20, transparent 34%), linear-gradient(145deg, rgba(255,255,255,0.055), rgba(255,255,255,0.018))`,
+      }}
     >
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_78%_18%,rgba(255,255,255,0.20),transparent_25%),radial-gradient(circle_at_18%_88%,rgba(244,234,213,0.12),transparent_34%),linear-gradient(180deg,rgba(0,0,0,0.04),rgba(0,0,0,0.68))]" />
+      <div
+        className="absolute inset-x-0 top-0 h-px"
+        style={{
+          backgroundImage: `linear-gradient(90deg, transparent, ${accent}, transparent)`,
+        }}
+      />
       <ThemeMotif
         motif={theme.visual_motif}
-        className="absolute left-6 top-6 h-16 w-16 text-white/28"
+        className="absolute left-6 top-6 h-16 w-16 opacity-70"
+        style={{ color: accent } as CSSProperties}
       />
       <div className="relative flex h-full flex-col">
         <div className="flex items-start justify-end gap-4">
@@ -62,7 +76,7 @@ export default function ThemeCard({
           <h3 className="text-center text-[clamp(1.7rem,3.8vw,2.75rem)] font-extrabold leading-[1.02] tracking-[-0.028em] text-white [text-wrap:balance]">
             {theme.name}
           </h3>
-          <p className="mx-auto mt-4 line-clamp-3 max-w-[34ch] text-center text-sm font-semibold leading-6 text-white/76">
+          <p className="mx-auto mt-4 max-w-[34ch] text-center text-sm font-semibold leading-6 text-white/76">
             {getThemeShortDescription(theme)}
           </p>
 
@@ -70,8 +84,8 @@ export default function ThemeCard({
             {progress ? (
               <div className="mb-4 h-1 overflow-hidden rounded-full bg-white/14">
                 <div
-                  className="h-full rounded-full bg-white/70"
-                  style={{ width: `${percent}%` }}
+                  className="h-full rounded-full"
+                  style={{ backgroundColor: accent, width: `${percent}%` }}
                 />
               </div>
             ) : null}

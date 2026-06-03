@@ -20,42 +20,42 @@ export const quizCopy = {
 const quizCopyVariants = {
   correctFeedback: [
     {
-      detail: "Cette connaissance est bien restée.",
+      detail: "Un nouveau fait est bien ancré. C'est parti pour le suivant !",
       title: "Exact.",
     },
     {
-      detail: "La bonne association est retrouvée.",
+      detail: "Top, tu as retenu ce fait. En route pour le prochain !",
       title: "Bonne réponse.",
     },
     {
-      detail: "Ta mémoire progresse.",
-      title: "C'est juste.",
+      detail: "Tu as retenu ce fait. Continuons avec le suivant !",
+      title: "Bingo !",
     },
   ],
   resultHigh: [
-    "Les faits sont bien retenus. La révision peut rester légère.",
+    "Tu as très bien retenu ces faits. Continues comme ça !",
     "Très bonne restitution. Les associations principales sont solides.",
   ],
   resultLow: [
-    "La mémoire se reconstruit par passages courts. Relire quelques faits aidera à fixer les repères.",
-    "Plusieurs associations restent à consolider. Une nouvelle lecture ciblée sera utile.",
+    "Prends peut être un peu plus de temps pour lire les faits, sans pression. Une relecture attentive aidera à mieux les retenir.",
+    "La prochaine sera la bonne !",
   ],
   resultMedium: [
-    "Une partie des repères est déjà en place. Une autre passe aidera à stabiliser le reste.",
-    "Le souvenir progresse. Les faits les moins nets méritent une relecture courte.",
+    "Difficile de tout retenir du premier coup, c'est normal. Si tu en as retenu certains, c'est déjà super !",
+    "Les souvenirs progressent. Les faits les moins nets méritent une relecture courte.",
   ],
   wrongFeedback: [
     {
-      detailPrefix: "Pas encore retenu. La bonne réponse était :",
-      title: "À revoir calmement.",
+      detailPrefix: "La bonne réponse était :",
+      title: "Oups, ce n'était pas vraiment ça.",
     },
     {
       detailPrefix: "Ce fait mérite peut-être une seconde lecture. Réponse :",
-      title: "À consolider.",
+      title: "La prochaine sera la bonne !",
     },
     {
-      detailPrefix: "Tu le retiendras mieux la prochaine fois. Réponse :",
-      title: "Pas tout à fait.",
+      detailPrefix: "Pas vraiment, la bonne réponse était :",
+      title: "Malheureusement non !",
     },
   ],
 } as const;

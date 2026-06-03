@@ -4,8 +4,8 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { getFactOfTheDay } from "@/lib/facts";
 import type { FeedFact } from "@/lib/facts";
-import { getToneBackground } from "@/lib/gradients";
 import { premiumPrimaryCtaClassName } from "./buttonStyles";
+import ThemeMotif from "./ThemeMotif";
 
 function FactOfDaySkeleton() {
   return (
@@ -96,7 +96,6 @@ export default function FactOfDay() {
     return null;
   }
 
-  const toneBackground = getToneBackground(fact.tone);
   const accentColor = fact.accent || "#ffd166";
   const badgeColors = getReadableBadgeColors(accentColor);
 
@@ -104,13 +103,20 @@ export default function FactOfDay() {
     <section className="py-16">
       <div className="mx-auto max-w-[1180px] px-5">
         <article
-          className={`relative overflow-hidden rounded-lg border border-white/10 p-6 shadow-2xl backdrop-blur-xl md:p-8 ${toneBackground.className}`}
-          style={toneBackground.style}
+          className="relative overflow-hidden rounded-lg border border-white/10 bg-[#0a1728]/88 p-6 shadow-2xl backdrop-blur-xl md:p-8"
+          style={{
+            backgroundImage: `radial-gradient(circle at 82% 10%, ${accentColor}22, transparent 30%), linear-gradient(145deg, rgba(255,255,255,0.065), rgba(255,255,255,0.022))`,
+          }}
         >
+          <ThemeMotif
+            motif={fact.visualMotif}
+            className="absolute right-6 top-6 h-24 w-24 opacity-35 md:h-32 md:w-32"
+            style={{ color: accentColor }}
+          />
           <div
-            className="absolute inset-0"
+            className="absolute inset-x-0 top-0 h-px"
             style={{
-              background: `radial-gradient(circle at top right, ${accentColor}38, transparent 32%), linear-gradient(135deg, rgba(6,17,29,0.08), rgba(6,17,29,0.62))`,
+              background: `linear-gradient(90deg, transparent, ${accentColor}, transparent)`,
             }}
           />
           <div className="relative grid gap-8 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
