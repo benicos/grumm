@@ -185,10 +185,10 @@ body {
 }
 
 .quiz-confetti-burst {
-  position: absolute;
+  position: fixed;
   inset: 0;
-  z-index: 30;
-  overflow: hidden;
+  z-index: 9999;
+  overflow: visible;
   pointer-events: none;
 }
 
@@ -216,9 +216,33 @@ body {
   animation: grummQuizProgressPulse 620ms ease-out both;
 }
 
+.quiz-answer-shake {
+  animation: quizAnswerShake 420ms ease-in-out both !important;
+}
+
+@keyframes quizAnswerShake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20% {
+    transform: translateX(-8px);
+  }
+  40% {
+    transform: translateX(8px);
+  }
+  60% {
+    transform: translateX(-5px);
+  }
+  80% {
+    transform: translateX(5px);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .quiz-confetti-fragment,
-  .quiz-progress-correct-pulse {
+  .quiz-progress-correct-pulse,
+  .quiz-answer-shake {
     animation: none;
   }
 

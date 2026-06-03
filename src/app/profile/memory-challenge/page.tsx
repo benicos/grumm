@@ -3,9 +3,8 @@
 import { Inter } from "next/font/google";
 import Link from "next/link";
 import { Brain, Check, RotateCcw, X } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  getRandomQuizCopy,
   getRandomQuizResultCopy,
   quizCopy,
 } from "@/config/quizCopy";
@@ -80,10 +79,15 @@ function MemoryLoadingState() {
 }
 
 function ChallengeContent() {
+  const confettiTimerRef = useRef<number | null>(null);
+  const shakeTimerRef = useRef<number | null>(null);
+  const feedbackRevealTimerRef = useRef<number | null>(null);
   const [session, setSession] = useState<MemoryChallengeSession | null>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<AnswerState[]>([]);
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
+  const [shakingAnswerId, setShakingAnswerId] = useState<string | null>(null);
+  const [showConfetti, setShowConfetti] = useState(false);
   const [feedback, setFeedback] = useState<FeedbackState | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -96,16 +100,62 @@ function ChallengeContent() {
     [answers],
   );
 
-  async function startSession() {
+  const clearAnimationTimers = useCallback(() => {
+    if (confettiTimerRef.current) {
+      window.clearTimeout(confettiTimerRef.current);
+      confettiTimerRef.current = null;
+    }
+
+    if (shakeTimerRef.current) {
+      window.clearTimeout(shakeTimerRef.current);
+      shakeTimerRef.current = null;
+    }
+
+    if (feedbackRevealTimerRef.current) {
+      window.clearTimeout(feedbackRevealTimerRef.current);
+      feedbackRevealTimerRef.current = null;
+    }
+  }, []);
+
+  const triggerCorrectAnswerAnimation = useCallback(() => {
+    clearAnimationTimers();
+    setShakingAnswerId(null);
+    setShowConfetti(false);
+    requestAnimationFrame(() => {
+      setShowConfetti(true);
+      confettiTimerRef.current = window.setTimeout(() => {
+        setShowConfetti(false);
+        confettiTimerRef.current = null;
+      }, 1100);
+    });
+  }, [clearAnimationTimers]);
+
+  const triggerWrongAnswerAnimation = useCallback((answerId: string) => {
+    clearAnimationTimers();
+    setShowConfetti(false);
+    setShakingAnswerId(null);
+    requestAnimationFrame(() => {
+      setShakingAnswerId(answerId);
+      shakeTimerRef.current = window.setTimeout(() => {
+        setShakingAnswerId(null);
+        shakeTimerRef.current = null;
+      }, 430);
+    });
+  }, [clearAnimationTimers]);
+
+  const startSession = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     setSession(null);
     setAnswers([]);
     setSelectedAnswer(null);
+    setShakingAnswerId(null);
+    setShowConfetti(false);
     setFeedback(null);
     setCurrentIndex(0);
     setIsCompleted(false);
     setResultMessage("");
+    clearAnimationTimers();
 
     const result = await createMemoryChallengeSession();
 
@@ -117,13 +167,17 @@ function ChallengeContent() {
 
     setSession(result.session);
     setIsLoading(false);
-  }
+  }, [clearAnimationTimers]);
 
   useEffect(() => {
     queueMicrotask(() => {
       void startSession();
     });
-  }, []);
+
+    return () => {
+      clearAnimationTimers();
+    };
+  }, [startSession, clearAnimationTimers]);
 
   useEffect(() => {
     if (!feedback?.isCorrect || typeof navigator === "undefined") {
@@ -142,17 +196,25 @@ function ChallengeContent() {
     setIsSaving(true);
 
     const isCorrect = answer === currentQuestion.correctAnswer;
-    const correctCopy = isCorrect ? getRandomQuizCopy("correctFeedback") : null;
-    const wrongCopy = isCorrect ? null : getRandomQuizCopy("wrongFeedback");
+    if (isCorrect) {
+      triggerCorrectAnswerAnimation();
+    } else {
+      triggerWrongAnswerAnimation(answer);
+    }
+
     const nextFeedback: FeedbackState = {
-      detail: isCorrect
-        ? correctCopy?.detail ?? ""
-        : `${wrongCopy?.detailPrefix ?? ""} ${currentQuestion.correctAnswer}`.trim(),
+      detail: isCorrect ? "" : currentQuestion.correctAnswer,
       isCorrect,
       question: currentQuestion,
       selectedAnswer: answer,
-      title: correctCopy?.title ?? wrongCopy?.title ?? "",
+      title: isCorrect ? "Bonne réponse" : "Mauvaise réponse",
     };
+    setAnswers((current) => [...current, nextFeedback]);
+    feedbackRevealTimerRef.current = window.setTimeout(() => {
+      setFeedback(nextFeedback);
+      feedbackRevealTimerRef.current = null;
+    }, 120);
+
     const saveResult = await saveMemoryChallengeAnswer({
       correctAnswer: currentQuestion.correctAnswer,
       factId: currentQuestion.factId,
@@ -167,8 +229,6 @@ function ChallengeContent() {
       return;
     }
 
-    setAnswers((current) => [...current, nextFeedback]);
-    setFeedback(nextFeedback);
     setIsSaving(false);
   }
 
@@ -180,6 +240,9 @@ function ChallengeContent() {
     const nextIndex = currentIndex + 1;
     setFeedback(null);
     setSelectedAnswer(null);
+    setShakingAnswerId(null);
+    setShowConfetti(false);
+    clearAnimationTimers();
 
     if (nextIndex < session.questions.length) {
       setCurrentIndex(nextIndex);
@@ -287,10 +350,7 @@ function ChallengeContent() {
 
   return (
     <section className="relative mx-auto max-w-5xl overflow-hidden rounded-[30px] border border-white/10 bg-[radial-gradient(circle_at_82%_12%,rgba(244,234,213,0.105),transparent_30%),linear-gradient(145deg,rgba(255,255,255,0.074),rgba(255,255,255,0.024))] p-5 shadow-[0_26px_88px_rgba(0,0,0,0.28)] backdrop-blur-2xl sm:p-8">
-      <QuizConfetti
-        active={Boolean(feedback?.isCorrect)}
-        className="rounded-[30px]"
-      />
+      <QuizConfetti active={showConfetti} />
       {feedback?.isCorrect ? (
         <div
           aria-hidden
@@ -323,7 +383,7 @@ function ChallengeContent() {
 
       <div
         key={`${currentQuestion.factId}-${currentIndex}`}
-        className={`memory-flip mt-7 ${feedback?.isCorrect ? "is-flipped" : ""}`}
+        className={`memory-flip mt-7 ${feedback ? "is-flipped" : ""}`}
       >
         <div className="memory-face memory-front">
           <p className="text-sm font-bold uppercase tracking-[0.14em] text-white/44">
@@ -336,11 +396,12 @@ function ChallengeContent() {
           <div className="mt-8 grid gap-3">
             {currentQuestion.options.map((option) => {
               const isSelected = selectedAnswer === option;
+              const hasAnswered = Boolean(selectedAnswer || feedback);
               const isCorrect =
-                Boolean(feedback) && option === currentQuestion.correctAnswer;
+                hasAnswered && option === currentQuestion.correctAnswer;
               const isWrongSelected =
-                Boolean(feedback) && isSelected && !isCorrect;
-              const isMuted = Boolean(feedback) && !isSelected && !isCorrect;
+                hasAnswered && isSelected && !isCorrect;
+              const isMuted = hasAnswered && !isSelected && !isCorrect;
 
               return (
                 <button
@@ -356,7 +417,7 @@ function ChallengeContent() {
                         : isMuted
                           ? "memory-answer-muted border-white/8 bg-black/10 text-white/36"
                           : "border-white/10 bg-black/16 text-white/72 hover:border-white/24 hover:bg-white/[0.055]"
-                  }`}
+                  } ${shakingAnswerId === option ? "quiz-answer-shake" : ""}`}
                 >
                   <span className="min-w-0 whitespace-normal break-words">{option}</span>
                   {isCorrect ? <Check className="memory-check h-4 w-4 shrink-0" /> : null}
@@ -370,50 +431,57 @@ function ChallengeContent() {
         <div className="memory-face memory-back">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(106,227,192,0.22),transparent_45%)]" />
           <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#6ae3c0]/70 to-transparent memory-shine" />
-          <div className="relative grid min-h-[inherit] place-items-center rounded-[26px] border border-emerald-200/20 bg-emerald-300/10 p-6 text-center shadow-[0_0_90px_rgba(106,227,192,0.16)]">
+          <div
+            className={`relative grid min-h-[inherit] place-items-center rounded-[26px] border p-6 text-center ${
+              feedback?.isCorrect
+                ? "border-emerald-200/20 bg-emerald-300/10 shadow-[0_0_90px_rgba(106,227,192,0.16)]"
+                : "border-amber-200/18 bg-amber-300/[0.08] shadow-[0_0_76px_rgba(255,209,102,0.12)]"
+            }`}
+          >
             <div>
-              <div className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-[#6ae3c0] text-[#07111f] shadow-[0_0_48px_rgba(106,227,192,0.36)] memory-success-pulse">
-                <Check className="h-8 w-8" />
+              <div
+                className={`mx-auto grid h-16 w-16 place-items-center rounded-full text-[#07111f] memory-success-pulse ${
+                  feedback?.isCorrect
+                    ? "bg-[#6ae3c0] shadow-[0_0_48px_rgba(106,227,192,0.36)]"
+                    : "bg-[#ffd166] shadow-[0_0_44px_rgba(255,209,102,0.24)]"
+                }`}
+              >
+                {feedback?.isCorrect ? (
+                  <Check className="h-8 w-8" />
+                ) : (
+                  <X className="h-8 w-8" />
+                )}
               </div>
               <p className="mt-6 text-2xl font-black tracking-[-0.04em] text-white">
                 {feedback?.title}
               </p>
-              <p className="mx-auto mt-3 max-w-md text-sm font-semibold leading-7 text-white/66">
-                {feedback?.detail}
-              </p>
+              {feedback && !feedback.isCorrect ? (
+                <div className="mx-auto mt-4 max-w-md rounded-[18px] border border-white/10 bg-black/18 px-4 py-3 text-left">
+                  <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#f4ead5]/64">
+                    La bonne réponse était
+                  </p>
+                  <p className="mt-2 text-sm font-semibold leading-7 text-white/82">
+                    {feedback.detail}
+                  </p>
+                </div>
+              ) : null}
               <ContextReminder context={feedback?.question.factContext} />
               <button
                 type="button"
                 onClick={() => void goNext()}
+                disabled={isSaving}
                 className={`${premiumPrimaryCtaClassName} memory-next-button mt-7 justify-center`}
               >
-                {currentIndex + 1 === session.questions.length
-                  ? quizCopy.buttons.result
-                  : quizCopy.buttons.continue}
+                {isSaving
+                  ? "Enregistrement..."
+                  : currentIndex + 1 === session.questions.length
+                    ? quizCopy.buttons.result
+                    : quizCopy.buttons.continue}
               </button>
             </div>
           </div>
         </div>
       </div>
-
-      {feedback && !feedback.isCorrect ? (
-        <div className="memory-feedback mt-6 rounded-[22px] border border-white/10 bg-black/18 p-4">
-          <p className="text-lg font-black text-white">{feedback.title}</p>
-          <p className="mt-2 text-sm font-semibold leading-6 text-white/62">
-            {feedback.detail}
-          </p>
-          <ContextReminder context={feedback.question.factContext} />
-          <button
-            type="button"
-            onClick={() => void goNext()}
-            className={`${premiumPrimaryCtaClassName} memory-next-button mt-5 justify-center`}
-          >
-            {currentIndex + 1 === session.questions.length
-              ? quizCopy.buttons.result
-              : quizCopy.buttons.continue}
-          </button>
-        </div>
-      ) : null}
 
       {error ? (
         <p className="mt-5 rounded-md border border-red-300/20 bg-red-500/10 px-4 py-3 text-sm font-semibold text-red-100">
@@ -501,10 +569,6 @@ function ChallengeContent() {
         .memory-check {
           animation: memoryCheck 360ms cubic-bezier(0.21, 0.82, 0.27, 1.25)
             both;
-        }
-
-        .memory-feedback {
-          animation: memoryFeedback 320ms ease-out both;
         }
 
         .memory-next-button {
@@ -608,17 +672,6 @@ function ChallengeContent() {
           }
         }
 
-        @keyframes memoryFeedback {
-          from {
-            opacity: 0;
-            transform: translateY(8px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-
         @keyframes memoryNextButton {
           from {
             opacity: 0;
@@ -650,7 +703,6 @@ function ChallengeContent() {
           .memory-answer,
           .memory-answer-wrong,
           .memory-check,
-          .memory-feedback,
           .memory-next-button,
           .memory-shine,
           .memory-success-pulse,

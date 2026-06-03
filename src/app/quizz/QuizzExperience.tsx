@@ -4,7 +4,7 @@ import { Inter } from "next/font/google";
 import Link from "next/link";
 import { Brain, Check, RotateCcw, Sparkles, X } from "lucide-react";
 import type { CSSProperties } from "react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   createGeneralQuizSession,
   persistGeneralQuizResult,
@@ -313,10 +313,14 @@ export default function QuizzExperience() {
   const quizAnchorRef = useRef<HTMLDivElement | null>(null);
   const nextActionRef = useRef<() => void>(() => undefined);
   const isAdvancingRef = useRef(false);
+  const confettiTimerRef = useRef<number | null>(null);
+  const shakeTimerRef = useRef<number | null>(null);
   const [questions, setQuestions] = useState<GeneralQuizQuestion[]>([]);
   const [answers, setAnswers] = useState<AnswerState[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
+  const [shakingAnswerId, setShakingAnswerId] = useState<string | null>(null);
+  const [showConfetti, setShowConfetti] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isPersisting, setIsPersisting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -352,6 +356,44 @@ export default function QuizzExperience() {
     ? appRoutes.memoryChallenge
     : `/login?redirect=${encodeURIComponent(appRoutes.memoryChallenge)}`;
 
+  const clearAnimationTimers = useCallback(() => {
+    if (confettiTimerRef.current) {
+      window.clearTimeout(confettiTimerRef.current);
+      confettiTimerRef.current = null;
+    }
+
+    if (shakeTimerRef.current) {
+      window.clearTimeout(shakeTimerRef.current);
+      shakeTimerRef.current = null;
+    }
+  }, []);
+
+  const triggerCorrectAnswerAnimation = useCallback(() => {
+    clearAnimationTimers();
+    setShakingAnswerId(null);
+    setShowConfetti(false);
+    requestAnimationFrame(() => {
+      setShowConfetti(true);
+      confettiTimerRef.current = window.setTimeout(() => {
+        setShowConfetti(false);
+        confettiTimerRef.current = null;
+      }, 1100);
+    });
+  }, [clearAnimationTimers]);
+
+  const triggerWrongAnswerAnimation = useCallback((answerId: string) => {
+    clearAnimationTimers();
+    setShowConfetti(false);
+    setShakingAnswerId(null);
+    requestAnimationFrame(() => {
+      setShakingAnswerId(answerId);
+      shakeTimerRef.current = window.setTimeout(() => {
+        setShakingAnswerId(null);
+        shakeTimerRef.current = null;
+      }, 430);
+    });
+  }, [clearAnimationTimers]);
+
   function scrollToQuizAnchor(force = false) {
     const node = quizAnchorRef.current;
 
@@ -376,13 +418,16 @@ export default function QuizzExperience() {
     });
   }
 
-  async function loadQuiz() {
+  const loadQuiz = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     setFinished(false);
     setAnswers([]);
     setCurrentIndex(0);
     setSelectedAnswer(null);
+    setShakingAnswerId(null);
+    setShowConfetti(false);
+    clearAnimationTimers();
 
     const result = await createGeneralQuizSession();
 
@@ -395,13 +440,17 @@ export default function QuizzExperience() {
 
     setQuestions(result.questions);
     setIsLoading(false);
-  }
+  }, [clearAnimationTimers]);
 
   useEffect(() => {
     queueMicrotask(() => {
       void loadQuiz();
     });
-  }, []);
+
+    return () => {
+      clearAnimationTimers();
+    };
+  }, [loadQuiz, clearAnimationTimers]);
 
   function chooseAnswer(answer: string) {
     if (!currentQuestion || selectedAnswer) {
@@ -413,6 +462,9 @@ export default function QuizzExperience() {
 
     if (answer === currentQuestion.correctAnswer) {
       navigator.vibrate?.(35);
+      triggerCorrectAnswerAnimation();
+    } else {
+      triggerWrongAnswerAnimation(answer);
     }
   }
 
@@ -443,6 +495,8 @@ export default function QuizzExperience() {
     const nextAnswers = [...answers, nextAnswer];
     setAnswers(nextAnswers);
     setSelectedAnswer(null);
+    setShakingAnswerId(null);
+    setShowConfetti(false);
 
     if (currentIndex + 1 < questions.length) {
       setCurrentIndex((index) => index + 1);
@@ -595,10 +649,7 @@ export default function QuizzExperience() {
                 key={currentQuestion.id}
                 className="quizz-question relative rounded-[30px] border border-white/10 bg-[radial-gradient(circle_at_88%_8%,rgba(244,234,213,0.13),transparent_30%),linear-gradient(145deg,rgba(255,255,255,0.074),rgba(255,255,255,0.024))] p-5 shadow-[0_28px_90px_rgba(0,0,0,0.26)] backdrop-blur-2xl sm:p-7 lg:p-8"
               >
-                <QuizConfetti
-                  active={Boolean(selectedState?.isCorrect)}
-                  className="rounded-[30px]"
-                />
+                <QuizConfetti active={showConfetti} />
                 <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
                   <div>
                     <p className="text-xs font-black uppercase tracking-[0.22em] text-white/42">
@@ -659,7 +710,7 @@ export default function QuizzExperience() {
                               : isMuted
                                 ? "border-white/8 bg-black/10 text-white/36 opacity-60 saturate-50"
                                 : "border-white/10 bg-black/16 text-white/76 hover:border-white/24 hover:bg-white/[0.055] disabled:opacity-72"
-                        }`}
+                        } ${shakingAnswerId === option ? "quiz-answer-shake" : ""}`}
                       >
                         <span className="min-w-0 whitespace-normal break-words">
                           {option}
