@@ -43,6 +43,7 @@ type QuizQuestionRow = {
 export type MemoryChallengeFact = {
   category: string;
   categorySlug: string;
+  context: string | null;
   id: string;
   promptAnswer: string;
   slug: string;
@@ -53,6 +54,7 @@ export type MemoryChallengeQuestion = {
   correctAnswer: string;
   factTitle: string;
   factId: string;
+  factContext: string | null;
   factSlug: string;
   isCustom: boolean;
   options: string[];
@@ -89,7 +91,7 @@ function cleanAnswer(value: string | null | undefined) {
     return null;
   }
 
-  return text.length > 160 ? `${text.slice(0, 157).trim()}...` : text;
+  return text;
 }
 
 function mapReadFact(row: ReadFactRow): MemoryChallengeFact | null {
@@ -114,6 +116,7 @@ function mapReadFact(row: ReadFactRow): MemoryChallengeFact | null {
   return {
     category: category.name,
     categorySlug: category.slug,
+    context: cleanAnswer(fact.content),
     id: fact.id,
     promptAnswer,
     slug: fact.slug,
@@ -149,6 +152,7 @@ function buildCuratedQuestions(
 
       const question: MemoryChallengeQuestion = {
         correctAnswer: row.correct_answer,
+        factContext: fact.context,
         factTitle: fact.title,
         factId: fact.id,
         factSlug: fact.slug,
@@ -197,6 +201,7 @@ function buildQuestions(
 
       const question: MemoryChallengeQuestion = {
         correctAnswer: fact.promptAnswer,
+        factContext: fact.context,
         factTitle: fact.title,
         factId: fact.id,
         factSlug: fact.slug,
@@ -326,6 +331,7 @@ export async function getMemoryChallengeStats(): Promise<MemoryStats> {
       .from("quiz_sessions")
       .select("score,total_questions,completed_at")
       .eq("user_id", auth.user.id)
+      .eq("quiz_type", "memory_challenge")
       .not("completed_at", "is", null)
       .order("completed_at", { ascending: false })
       .limit(20),
@@ -442,6 +448,7 @@ export async function createMemoryChallengeSession(): Promise<
   }
 
   const payload: QuizSessionInsert = {
+    quiz_type: "memory_challenge",
     score: 0,
     total_questions: questions.length,
     user_id: auth.user.id,

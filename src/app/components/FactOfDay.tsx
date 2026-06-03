@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { getFactOfTheDay } from "@/lib/facts";
+import { getTodayEventFact } from "@/lib/facts";
 import type { FeedFact } from "@/lib/facts";
 import { premiumPrimaryCtaClassName } from "./buttonStyles";
 import ThemeMotif from "./ThemeMotif";
@@ -61,6 +61,8 @@ function getReadableBadgeColors(color: string) {
 export default function FactOfDay() {
   const [fact, setFact] = useState<FeedFact | null>(null);
   const [interactionCount, setInteractionCount] = useState(0);
+  const [yearsAgo, setYearsAgo] = useState<number | null>(null);
+  const [isEditorialDate, setIsEditorialDate] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -68,11 +70,13 @@ export default function FactOfDay() {
 
     async function loadFact() {
       try {
-        const result = await getFactOfTheDay();
+        const result = await getTodayEventFact();
 
         if (isMounted) {
           setFact(result.fact);
           setInteractionCount(result.interactionCount);
+          setIsEditorialDate(result.isEditorialDate);
+          setYearsAgo(result.yearsAgo);
         }
       } finally {
         if (isMounted) {
@@ -98,6 +102,13 @@ export default function FactOfDay() {
 
   const accentColor = fact.accent || "#ffd166";
   const badgeColors = getReadableBadgeColors(accentColor);
+  const badgeLabel = isEditorialDate
+    ? "Aujourd'hui dans l'Histoire"
+    : "Fait du jour";
+  const dateSubtitle =
+    isEditorialDate && yearsAgo !== null
+      ? `Il y a ${yearsAgo} ans aujourd'hui`
+      : null;
 
   return (
     <section className="py-16">
@@ -126,8 +137,20 @@ export default function FactOfDay() {
                   className="rounded-full border px-3 py-1 text-xs font-black uppercase tracking-[0.18em] shadow-[0_14px_34px_rgba(0,0,0,0.22)]"
                   style={badgeColors}
                 >
-                  Fait du jour
+                  {badgeLabel}
                 </span>
+                {dateSubtitle ? (
+                  <span
+                    className="rounded-full border px-3 py-1 text-xs font-black uppercase tracking-[0.16em]"
+                    style={{
+                      borderColor: `${accentColor}55`,
+                      color: "#f8f1df",
+                      backgroundColor: `${accentColor}18`,
+                    }}
+                  >
+                    {dateSubtitle}
+                  </span>
+                ) : null}
                 <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.16em] text-white/62">
                   {fact.category}
                 </span>

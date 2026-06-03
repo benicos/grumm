@@ -96,9 +96,18 @@ export default function AuthForm({ mode }: AuthFormProps) {
     return getLegacyNextParam() ?? consumeAuthRedirect("/profil");
   }
 
+  function getAuthModeSwitchPath() {
+    const target = getLegacyNextParam();
+    const authPath = isLogin ? "/register" : "/login";
+
+    return target
+      ? `${authPath}?redirect=${encodeURIComponent(target)}`
+      : authPath;
+  }
+
   useEffect(() => {
     if (!isLoading && isAuthenticated) {
-      router.replace("/profil");
+      router.replace(getRedirectTarget());
     }
   }, [isAuthenticated, isLoading, router]);
 
@@ -513,7 +522,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
             {isLogin ? "Pas encore de compte ?" : "Déjà un compte ?"}{" "}
         <button
           type="button"
-          onClick={() => router.push(isLogin ? "/register" : "/login")}
+          onClick={() => router.push(getAuthModeSwitchPath())}
           className="font-bold text-[#ffd166] underline-offset-4 hover:underline"
         >
           {isLogin ? "Inscription" : "Connexion"}

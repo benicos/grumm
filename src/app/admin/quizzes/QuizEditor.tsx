@@ -8,6 +8,11 @@ import {
   saveAdminQuizQuestion,
   searchAdminFactOptions,
 } from "@/lib/admin";
+import {
+  quizDifficultyLabels,
+  quizDifficultyOptions,
+  type QuizDifficulty,
+} from "@/lib/quizShared";
 import { AdminBackLink, AdminField, adminFieldClassName } from "../forms";
 import {
   AdminButton,
@@ -24,6 +29,7 @@ type FactOption = {
 
 type QuizFormState = {
   correct_answer: string;
+  difficulty: QuizDifficulty;
   fact_id: string;
   fact_label: string;
   id: string;
@@ -36,6 +42,7 @@ type QuizFormState = {
 
 const emptyQuiz: QuizFormState = {
   correct_answer: "",
+  difficulty: "standard",
   fact_id: "",
   fact_label: "",
   id: "",
@@ -80,6 +87,7 @@ export default function QuizEditor({ questionId }: { questionId?: string }) {
 
         setForm({
           correct_answer: question.correct_answer,
+          difficulty: question.difficulty,
           fact_id: question.fact_id ?? "",
           fact_label: question.facts?.title ?? "",
           id: question.id,
@@ -141,6 +149,7 @@ export default function QuizEditor({ questionId }: { questionId?: string }) {
 
     const result = await saveAdminQuizQuestion({
       correct_answer: form.correct_answer,
+      difficulty: form.difficulty,
       fact_id: form.fact_id || null,
       id: form.id || undefined,
       is_active: form.is_active,
@@ -193,6 +202,26 @@ export default function QuizEditor({ questionId }: { questionId?: string }) {
                 setForm((current) => ({ ...current, question }))
               }
             />
+
+            <label className="block text-sm font-medium text-gray-700">
+              Difficulté
+              <select
+                value={form.difficulty}
+                onChange={(event) =>
+                  setForm((current) => ({
+                    ...current,
+                    difficulty: event.target.value as QuizDifficulty,
+                  }))
+                }
+                className={adminFieldClassName}
+              >
+                {quizDifficultyOptions.map((difficulty) => (
+                  <option key={difficulty} value={difficulty}>
+                    {quizDifficultyLabels[difficulty]}
+                  </option>
+                ))}
+              </select>
+            </label>
 
             <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4">
               <label className="block text-sm font-medium text-gray-700">

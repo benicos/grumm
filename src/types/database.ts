@@ -507,6 +507,7 @@ export type Database = {
           completed_at: string | null;
           score: number;
           total_questions: number;
+          quiz_type: "memory_challenge" | "general_quizz";
           created_at: string;
         };
         Insert: {
@@ -516,6 +517,7 @@ export type Database = {
           completed_at?: string | null;
           score?: number;
           total_questions?: number;
+          quiz_type?: "memory_challenge" | "general_quizz";
           created_at?: string;
         };
         Update: {
@@ -525,6 +527,7 @@ export type Database = {
           completed_at?: string | null;
           score?: number;
           total_questions?: number;
+          quiz_type?: "memory_challenge" | "general_quizz";
           created_at?: string;
         };
         Relationships: [];
@@ -586,6 +589,7 @@ export type Database = {
           wrong_answer_1: string;
           wrong_answer_2: string;
           wrong_answer_3: string;
+          difficulty: "easy" | "standard" | "hard";
           is_active: boolean;
           created_at: string;
           updated_at: string;
@@ -598,6 +602,7 @@ export type Database = {
           wrong_answer_1: string;
           wrong_answer_2: string;
           wrong_answer_3: string;
+          difficulty?: "easy" | "standard" | "hard";
           is_active?: boolean;
           created_at?: string;
           updated_at?: string;
@@ -610,6 +615,7 @@ export type Database = {
           wrong_answer_1?: string;
           wrong_answer_2?: string;
           wrong_answer_3?: string;
+          difficulty?: "easy" | "standard" | "hard";
           is_active?: boolean;
           created_at?: string;
           updated_at?: string;

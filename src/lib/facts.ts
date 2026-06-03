@@ -168,10 +168,6 @@ type FeedRpcRow = {
   score_debug?: Record<string, unknown> | null;
 };
 
-type ExplorerThemeRpcRow = FactCategory & {
-  published_facts_count: number;
-};
-
 type ThemeSampleRow = {
   title: string;
   category_id: string | null;
@@ -292,13 +288,6 @@ function mapFeedRpcFact(fact: FeedRpcRow): FeedFact {
       "from-[#0b1424] via-[#132744] to-[#f0a95a]",
     accent: fact.accent_color ?? fact.category_accent_color ?? "#ffd166",
     visualMotif: null,
-  };
-}
-
-function mapExplorerTheme(category: ExplorerThemeRpcRow): CategorySummary {
-  return {
-    ...mapCategory(category),
-    count: category.published_facts_count,
   };
 }
 
@@ -565,17 +554,9 @@ async function getExplorerThemesWithCounts(
   searchTerm: string,
   limit = 18,
 ) {
-  const rpcResult = await supabase.rpc("get_explorer_themes", {
-    p_limit: searchTerm ? Math.max(limit, 60) : limit,
-    p_query: searchTerm || null,
-  });
-
-  if (!rpcResult.error) {
-    return ((rpcResult.data ?? []) as ExplorerThemeRpcRow[]).map(
-      mapExplorerTheme,
-    );
-  }
-
+  // Source de vérité des thèmes: lecture directe de categories avec les champs
+  // éditoriaux. Le RPC historique ne renvoie pas toujours visual_motif /
+  // descriptions / gradients, ce qui forçait des fallbacks sur /theme.
   const categoriesQuery = supabase
     .from("categories")
     .select("id,name,slug,tone,accent_color,description_courte,description_longue,seo_title,seo_description,keywords,visual_motif,gradient_start,gradient_middle,gradient_end")
@@ -923,7 +904,13 @@ export async function getTodayEventFact() {
   const supabase = createSupabaseBrowserClient();
 
   if (!supabase) {
-    return getFactOfTheDay();
+    const fallback = await getFactOfTheDay();
+
+    return {
+      ...fallback,
+      isEditorialDate: false,
+      yearsAgo: null as number | null,
+    };
   }
 
   const today = new Date();
@@ -938,14 +925,28 @@ export async function getTodayEventFact() {
     .limit(1);
 
   if (!error && data?.[0]) {
+    const fact = mapFact(data[0] as FactRow);
+    const yearsAgo =
+      typeof fact.eventYear === "number"
+        ? Math.max(today.getFullYear() - fact.eventYear, 0)
+        : null;
+
     return {
-      fact: mapFact(data[0] as FactRow),
+      fact,
       interactionCount: 0,
+      isEditorialDate: true,
       source: "supabase" as const,
+      yearsAgo,
     };
   }
 
-  return getFactOfTheDay();
+  const fallback = await getFactOfTheDay();
+
+  return {
+    ...fallback,
+    isEditorialDate: false,
+    yearsAgo: null as number | null,
+  };
 }
 
 export async function getFactBySlug(slug: string) {

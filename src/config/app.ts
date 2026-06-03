@@ -21,6 +21,7 @@ export const appRoutes = {
   privacy: "/politique-confidentialite",
   profile: "/profil",
   profileEdit: "/profil/edit",
+  quizz: "/quizz",
   register: "/register",
   resetPassword: "/reset-password",
 } as const;

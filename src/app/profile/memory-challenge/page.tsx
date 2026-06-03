@@ -3,7 +3,7 @@
 import { Inter } from "next/font/google";
 import Link from "next/link";
 import { Brain, Check, RotateCcw, X } from "lucide-react";
-import { type CSSProperties, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   getRandomQuizCopy,
   getRandomQuizResultCopy,
@@ -23,6 +23,7 @@ import { premiumPrimaryCtaClassName } from "../../components/buttonStyles";
 import HeroBackground from "../../components/HeroBackground";
 import Navbar from "../../components/Navbar";
 import Footer from "../../components/Footer";
+import QuizConfetti from "../../components/QuizConfetti";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -40,35 +41,40 @@ type FeedbackState = AnswerState & {
   title: string;
 };
 
-const confettiPieces = [
-  { color: "#f4ead5", x: "-48px", y: "-42px", rotate: "-24deg" },
-  { color: "#c5ccd6", x: "-22px", y: "-64px", rotate: "18deg" },
-  { color: "#6ae3c0", x: "18px", y: "-58px", rotate: "34deg" },
-  { color: "#ffd166", x: "48px", y: "-36px", rotate: "-18deg" },
-] as const;
-
-function SoberConfetti({ active }: { active: boolean }) {
-  if (!active) {
+function ContextReminder({ context }: { context?: string | null }) {
+  if (!context?.trim()) {
     return null;
   }
 
   return (
-    <div aria-hidden className="pointer-events-none absolute right-6 top-5 h-16 w-24">
-      {confettiPieces.map((piece, index) => (
-        <span
-          key={`${piece.color}-${index}`}
-          className="quiz-confetti-piece"
-          style={
-            {
-              "--quiz-confetti-color": piece.color,
-              "--quiz-confetti-delay": `${index * 55}ms`,
-              "--quiz-confetti-rotate": piece.rotate,
-              "--quiz-confetti-x": piece.x,
-              "--quiz-confetti-y": piece.y,
-            } as CSSProperties
-          }
-        />
-      ))}
+    <div className="mx-auto mt-5 max-w-xl rounded-[18px] border border-white/10 bg-black/18 px-4 py-3 text-left">
+      <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#f4ead5]/64">
+        Rappel
+      </p>
+      <p className="mt-2 text-sm font-semibold leading-7 text-white/72">
+        {context}
+      </p>
+    </div>
+  );
+}
+
+function MemoryLoadingState() {
+  return (
+    <div className="relative overflow-hidden rounded-[30px] border border-white/10 bg-white/[0.055] p-8 text-white/68 shadow-[0_24px_80px_rgba(0,0,0,0.24)] backdrop-blur-xl">
+      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#6ae3c0]/60 to-transparent" />
+      <div className="flex items-center gap-4">
+        <span className="memory-loader grid h-11 w-11 shrink-0 place-items-center rounded-full border border-white/12 bg-white/[0.06] text-[#6ae3c0]">
+          <Brain className="h-5 w-5" />
+        </span>
+        <div>
+          <p className="text-sm font-black uppercase tracking-[0.18em] text-white/42">
+            Défi mémoire
+          </p>
+          <p className="mt-1 text-lg font-extrabold text-white">
+            Préparation du défi mémoire...
+          </p>
+        </div>
+      </div>
     </div>
   );
 }
@@ -198,11 +204,7 @@ function ChallengeContent() {
   }
 
   if (isLoading) {
-    return (
-      <div className="rounded-[30px] border border-white/10 bg-white/[0.055] p-8 text-white/62 backdrop-blur-xl">
-        {quizCopy.loading}
-      </div>
-    );
+    return <MemoryLoadingState />;
   }
 
   if (error && !session) {
@@ -285,7 +287,10 @@ function ChallengeContent() {
 
   return (
     <section className="relative mx-auto max-w-5xl overflow-hidden rounded-[30px] border border-white/10 bg-[radial-gradient(circle_at_82%_12%,rgba(244,234,213,0.105),transparent_30%),linear-gradient(145deg,rgba(255,255,255,0.074),rgba(255,255,255,0.024))] p-5 shadow-[0_26px_88px_rgba(0,0,0,0.28)] backdrop-blur-2xl sm:p-8">
-      <SoberConfetti active={Boolean(feedback?.isCorrect)} />
+      <QuizConfetti
+        active={Boolean(feedback?.isCorrect)}
+        className="rounded-[30px]"
+      />
       {feedback?.isCorrect ? (
         <div
           aria-hidden
@@ -301,8 +306,25 @@ function ChallengeContent() {
           {currentIndex + 1}/{session.questions.length}
         </span>
       </div>
+      <div className="mt-4 h-2 overflow-hidden rounded-full bg-white/10">
+        <div
+          className={`h-full rounded-full bg-gradient-to-r from-[#ffd166] to-[#6ae3c0] transition-[width] duration-500 ${
+            feedback?.isCorrect ? "quiz-progress-correct-pulse" : ""
+          }`}
+          style={{
+            width: `${Math.round(
+              ((currentIndex + (feedback ? 1 : 0)) /
+                session.questions.length) *
+                100,
+            )}%`,
+          }}
+        />
+      </div>
 
-      <div className={`memory-flip mt-7 ${feedback?.isCorrect ? "is-flipped" : ""}`}>
+      <div
+        key={`${currentQuestion.factId}-${currentIndex}`}
+        className={`memory-flip mt-7 ${feedback?.isCorrect ? "is-flipped" : ""}`}
+      >
         <div className="memory-face memory-front">
           <p className="text-sm font-bold uppercase tracking-[0.14em] text-white/44">
             {currentQuestion.prompt}
@@ -314,8 +336,11 @@ function ChallengeContent() {
           <div className="mt-8 grid gap-3">
             {currentQuestion.options.map((option) => {
               const isSelected = selectedAnswer === option;
-              const isCorrect = feedback && option === currentQuestion.correctAnswer;
-              const isWrongSelected = feedback && isSelected && !isCorrect;
+              const isCorrect =
+                Boolean(feedback) && option === currentQuestion.correctAnswer;
+              const isWrongSelected =
+                Boolean(feedback) && isSelected && !isCorrect;
+              const isMuted = Boolean(feedback) && !isSelected && !isCorrect;
 
               return (
                 <button
@@ -323,16 +348,18 @@ function ChallengeContent() {
                   type="button"
                   disabled={Boolean(feedback) || isSaving}
                   onClick={() => void chooseAnswer(option)}
-                  className={`flex items-start justify-between gap-4 rounded-[20px] border px-4 py-4 text-left text-sm font-bold leading-7 transition ${
+                  className={`memory-answer flex items-start justify-between gap-4 rounded-[20px] border px-4 py-4 text-left text-sm font-bold leading-7 transition ${
                     isCorrect
-                      ? "border-emerald-300/35 bg-emerald-400/12 text-emerald-50"
+                      ? "memory-answer-correct border-emerald-300/40 bg-emerald-400/12 text-emerald-50"
                       : isWrongSelected
-                        ? "border-amber-200/24 bg-amber-100/8 text-white/82"
-                        : "border-white/10 bg-black/16 text-white/72 hover:border-white/24 hover:bg-white/[0.055]"
+                        ? "memory-answer-wrong border-rose-200/30 bg-rose-300/10 text-white"
+                        : isMuted
+                          ? "memory-answer-muted border-white/8 bg-black/10 text-white/36"
+                          : "border-white/10 bg-black/16 text-white/72 hover:border-white/24 hover:bg-white/[0.055]"
                   }`}
                 >
                   <span className="min-w-0 whitespace-normal break-words">{option}</span>
-                  {isCorrect ? <Check className="h-4 w-4 shrink-0" /> : null}
+                  {isCorrect ? <Check className="memory-check h-4 w-4 shrink-0" /> : null}
                   {isWrongSelected ? <X className="h-4 w-4 shrink-0 text-amber-100/70" /> : null}
                 </button>
               );
@@ -343,7 +370,7 @@ function ChallengeContent() {
         <div className="memory-face memory-back">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(106,227,192,0.22),transparent_45%)]" />
           <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#6ae3c0]/70 to-transparent memory-shine" />
-          <div className="relative grid min-h-[360px] place-items-center rounded-[26px] border border-emerald-200/20 bg-emerald-300/10 p-6 text-center shadow-[0_0_90px_rgba(106,227,192,0.16)]">
+          <div className="relative grid min-h-[inherit] place-items-center rounded-[26px] border border-emerald-200/20 bg-emerald-300/10 p-6 text-center shadow-[0_0_90px_rgba(106,227,192,0.16)]">
             <div>
               <div className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-[#6ae3c0] text-[#07111f] shadow-[0_0_48px_rgba(106,227,192,0.36)] memory-success-pulse">
                 <Check className="h-8 w-8" />
@@ -354,10 +381,11 @@ function ChallengeContent() {
               <p className="mx-auto mt-3 max-w-md text-sm font-semibold leading-7 text-white/66">
                 {feedback?.detail}
               </p>
+              <ContextReminder context={feedback?.question.factContext} />
               <button
                 type="button"
                 onClick={() => void goNext()}
-                className={`${premiumPrimaryCtaClassName} mt-7 justify-center`}
+                className={`${premiumPrimaryCtaClassName} memory-next-button mt-7 justify-center`}
               >
                 {currentIndex + 1 === session.questions.length
                   ? quizCopy.buttons.result
@@ -369,15 +397,16 @@ function ChallengeContent() {
       </div>
 
       {feedback && !feedback.isCorrect ? (
-        <div className="mt-6 rounded-[22px] border border-white/10 bg-black/18 p-4">
+        <div className="memory-feedback mt-6 rounded-[22px] border border-white/10 bg-black/18 p-4">
           <p className="text-lg font-black text-white">{feedback.title}</p>
           <p className="mt-2 text-sm font-semibold leading-6 text-white/62">
             {feedback.detail}
           </p>
+          <ContextReminder context={feedback.question.factContext} />
           <button
             type="button"
             onClick={() => void goNext()}
-            className={`${premiumPrimaryCtaClassName} mt-5 justify-center`}
+            className={`${premiumPrimaryCtaClassName} memory-next-button mt-5 justify-center`}
           >
             {currentIndex + 1 === session.questions.length
               ? quizCopy.buttons.result
@@ -397,11 +426,13 @@ function ChallengeContent() {
           display: grid;
           min-height: 360px;
           perspective: 1400px;
+          animation: memoryQuestionEnter 280ms ease-out both;
         }
 
         .memory-face {
           backface-visibility: hidden;
           grid-area: 1 / 1;
+          min-height: inherit;
           transform-style: preserve-3d;
           transition:
             transform 620ms cubic-bezier(0.16, 1, 0.3, 1),
@@ -438,6 +469,70 @@ function ChallengeContent() {
           animation: memoryPulse 1.25s ease-out both;
         }
 
+        .memory-loader {
+          animation: memoryLoaderPulse 1.4s ease-in-out infinite;
+        }
+
+        .memory-answer {
+          animation: memoryAnswerEnter 280ms ease-out both;
+        }
+
+        .memory-answer-correct {
+          box-shadow:
+            0 0 0 1px rgba(106, 227, 192, 0.16),
+            0 0 58px rgba(106, 227, 192, 0.25),
+            0 0 32px rgba(255, 209, 102, 0.12),
+            inset 0 1px 0 rgba(255, 255, 255, 0.12);
+        }
+
+        .memory-answer-wrong {
+          animation: memoryShake 380ms cubic-bezier(0.36, 0.07, 0.19, 0.97)
+            both;
+          box-shadow:
+            0 0 0 1px rgba(251, 113, 133, 0.12),
+            0 0 42px rgba(251, 113, 133, 0.16);
+        }
+
+        .memory-answer-muted {
+          opacity: 0.58;
+          filter: saturate(0.5);
+        }
+
+        .memory-check {
+          animation: memoryCheck 360ms cubic-bezier(0.21, 0.82, 0.27, 1.25)
+            both;
+        }
+
+        .memory-feedback {
+          animation: memoryFeedback 320ms ease-out both;
+        }
+
+        .memory-next-button {
+          animation: memoryNextButton 360ms ease-out both;
+        }
+
+        @keyframes memoryQuestionEnter {
+          from {
+            opacity: 0;
+            transform: translateY(8px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        @keyframes memoryAnswerEnter {
+          from {
+            opacity: 0;
+            transform: translateY(7px) scale(0.985);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+          }
+        }
+
         @keyframes memoryShine {
           from {
             opacity: 0;
@@ -464,8 +559,75 @@ function ChallengeContent() {
           }
         }
 
+        @keyframes memoryLoaderPulse {
+          0%,
+          100% {
+            box-shadow: 0 0 0 0 rgba(106, 227, 192, 0.12);
+            transform: scale(1);
+          }
+          50% {
+            box-shadow: 0 0 0 10px rgba(106, 227, 192, 0);
+            transform: scale(1.04);
+          }
+        }
+
         .memory-correct-halo {
           animation: memoryHalo 900ms ease-out both;
+        }
+
+        @keyframes memoryShake {
+          0%,
+          100% {
+            transform: translateX(0);
+          }
+          20% {
+            transform: translateX(-7px);
+          }
+          40% {
+            transform: translateX(7px);
+          }
+          60% {
+            transform: translateX(-5px);
+          }
+          80% {
+            transform: translateX(4px);
+          }
+        }
+
+        @keyframes memoryCheck {
+          from {
+            opacity: 0;
+            transform: scale(0.72) rotate(-12deg);
+          }
+          70% {
+            transform: scale(1.12) rotate(0deg);
+          }
+          to {
+            opacity: 1;
+            transform: scale(1) rotate(0deg);
+          }
+        }
+
+        @keyframes memoryFeedback {
+          from {
+            opacity: 0;
+            transform: translateY(8px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        @keyframes memoryNextButton {
+          from {
+            opacity: 0;
+            transform: translateY(8px) scale(0.985);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+          }
         }
 
         @keyframes memoryHalo {
@@ -479,6 +641,21 @@ function ChallengeContent() {
           100% {
             opacity: 0;
             transform: scale(1.01);
+          }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .memory-loader,
+          .memory-flip,
+          .memory-answer,
+          .memory-answer-wrong,
+          .memory-check,
+          .memory-feedback,
+          .memory-next-button,
+          .memory-shine,
+          .memory-success-pulse,
+          .memory-correct-halo {
+            animation: none;
           }
         }
       `}</style>

@@ -7,6 +7,10 @@ import {
   type DifficultyLevel,
   normalizeDifficultyLevel,
 } from "@/lib/learning";
+import {
+  normalizeQuizDifficulty,
+  type QuizDifficulty,
+} from "@/lib/quizShared";
 import type { PermissionKey, UserRole } from "@/lib/roles";
 import {
   getDefaultRolePermissions,
@@ -178,7 +182,7 @@ const DEFAULT_PAGE_SIZE: number = paginationConfig.adminDefaultPageSize;
 const ADMIN_FACT_SELECT =
   "id,category_id,slug,title,hook,content,difficulty_level,long_content,seo_title,seo_description,event_day,event_month,event_year,source,source_url,status,published_at,display_order,tone,accent_color,created_at,updated_at,categories(name,slug)";
 const ADMIN_QUIZ_SELECT =
-  "id,fact_id,question,correct_answer,wrong_answer_1,wrong_answer_2,wrong_answer_3,is_active,created_at,updated_at,facts(id,title,slug,categories(name,slug))";
+  "id,fact_id,question,correct_answer,wrong_answer_1,wrong_answer_2,wrong_answer_3,difficulty,is_active,created_at,updated_at,facts(id,title,slug,categories(name,slug))";
 
 function normalizeSearchTerm(query?: string) {
   return query?.trim().replace(/[%,_]/g, " ").replace(/\s+/g, " ") ?? "";
@@ -1309,11 +1313,13 @@ export async function getAdminCategories({
 
 export async function getAdminQuizQuestions({
   active,
+  difficulty,
   page = 1,
   pageSize = DEFAULT_PAGE_SIZE,
   query,
 }: {
   active?: "active" | "all" | "inactive";
+  difficulty?: QuizDifficulty | "all";
   page?: number;
   pageSize?: number;
   query?: string;
@@ -1349,6 +1355,10 @@ export async function getAdminQuizQuestions({
 
   if (active === "inactive") {
     request = request.eq("is_active", false);
+  }
+
+  if (difficulty && difficulty !== "all") {
+    request = request.eq("difficulty", difficulty);
   }
 
   const { data, count, error } = await request;
@@ -2276,6 +2286,7 @@ export async function deleteAdminCategory(
 
 export async function saveAdminQuizQuestion(input: {
   correct_answer: string;
+  difficulty?: QuizDifficulty | string;
   fact_id?: string | null;
   id?: string;
   is_active: boolean;
@@ -2296,6 +2307,7 @@ export async function saveAdminQuizQuestion(input: {
 
   const payload = {
     correct_answer: input.correct_answer.trim(),
+    difficulty: normalizeQuizDifficulty(input.difficulty),
     fact_id: input.fact_id || null,
     is_active: input.is_active,
     question: input.question.trim(),
@@ -2371,6 +2383,7 @@ export async function saveAdminFact(input: {
   long_content?: string | null;
   quiz?: {
     correct_answer: string;
+    difficulty?: QuizDifficulty | string;
     question: string;
     wrong_answer_1: string;
     wrong_answer_2: string;
@@ -2428,6 +2441,7 @@ export async function saveAdminFact(input: {
     const quiz = input.quiz
       ? {
           correct_answer: input.quiz.correct_answer.trim(),
+          difficulty: normalizeQuizDifficulty(input.quiz.difficulty),
           question: input.quiz.question.trim(),
           wrong_answer_1: input.quiz.wrong_answer_1.trim(),
           wrong_answer_2: input.quiz.wrong_answer_2.trim(),

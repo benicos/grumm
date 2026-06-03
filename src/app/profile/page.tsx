@@ -19,6 +19,7 @@ import { premiumPrimaryCtaClassName } from "../components/buttonStyles";
 import GradeIcon from "../components/GradeIcon";
 import HeroBackground from "../components/HeroBackground";
 import Navbar from "../components/Navbar";
+import ThemeMotif from "../components/ThemeMotif";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -201,6 +202,15 @@ function ThemeInsightsPanel({ profile }: { profile: UserProfileSummary }) {
                   }}
                   title={`${theme.name} - ${theme.count} faits lus`}
                 >
+                  <span
+                    className="absolute inset-1 rounded-full border border-white/10 bg-black/18 backdrop-blur-[2px]"
+                    aria-hidden="true"
+                  />
+                  <ThemeMotif
+                    motif={theme.visualMotif}
+                    className="relative h-[42%] w-[42%] drop-shadow-[0_10px_18px_rgba(0,0,0,0.38)]"
+                    style={{ color: "#ffffff" }}
+                  />
                   <span className="sr-only">
                     {theme.name}, {theme.count} faits lus
                   </span>

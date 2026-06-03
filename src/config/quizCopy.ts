@@ -33,12 +33,12 @@ const quizCopyVariants = {
     },
   ],
   resultHigh: [
-    "Tu as très bien retenu ces faits. Continues comme ça !",
-    "Très bonne restitution. Les associations principales sont solides.",
+    "Bravo, tu mémorises vite ! Continue à explorer les faits pour renforcer tes connaissances.",
+    "Wow, tu as un super score ! Tu mémorises vraiment bien. Continue à lire pour apprendre davantage.",
   ],
   resultLow: [
-    "Prends peut être un peu plus de temps pour lire les faits, sans pression. Une relecture attentive aidera à mieux les retenir.",
-    "La prochaine sera la bonne !",
+    "Pas de panique, la mémoire a besoin de temps et de répétitions pour se renforcer. Relis les faits et retente le quiz, tu verras des progrès !",
+    "La mémoire est un muscle qui se travaille. Relis les faits et retente le quiz, tu vas y arriver !",
   ],
   resultMedium: [
     "Difficile de tout retenir du premier coup, c'est normal. Si tu en as retenu certains, c'est déjà super !",

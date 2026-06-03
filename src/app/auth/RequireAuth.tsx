@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { rememberAuthRedirect } from "@/lib/authRedirect";
@@ -13,7 +14,7 @@ export default function RequireAuth({ children }: { children: React.ReactNode })
     if (!isLoading && !isAuthenticated) {
       const currentPath = `${window.location.pathname}${window.location.search}`;
       rememberAuthRedirect(currentPath);
-      router.replace("/login");
+      router.replace(`/login?redirect=${encodeURIComponent(currentPath)}`);
     }
   }, [isAuthenticated, isLoading, router]);
 
@@ -32,6 +33,12 @@ export default function RequireAuth({ children }: { children: React.ReactNode })
   }
 
   if (!isAuthenticated) {
+    const redirectTarget =
+      typeof window === "undefined"
+        ? "/profil"
+        : `${window.location.pathname}${window.location.search}`;
+    const loginHref = `/login?redirect=${encodeURIComponent(redirectTarget)}`;
+
     return (
       <div className="grid min-h-screen place-items-center bg-[#132338] px-6 text-center text-white">
         <div className="max-w-sm rounded-lg border border-white/10 bg-white/[0.055] p-6 shadow-2xl backdrop-blur-xl">
@@ -39,11 +46,17 @@ export default function RequireAuth({ children }: { children: React.ReactNode })
             Connexion requise
           </p>
           <h1 className="mt-4 text-2xl font-extrabold tracking-[-0.04em]">
-            Redirection vers ton compte.
+            Pour accéder à cette page, un compte est nécessaire.
           </h1>
           <p className="mt-3 text-sm leading-6 text-white/62">
-            Cette page contient des données personnelles.
+            Redirection vers la connexion...
           </p>
+          <Link
+            href={loginHref}
+            className="mt-5 inline-flex rounded-full border border-[#ffd166]/30 bg-[#ffd166]/12 px-5 py-3 text-sm font-black text-[#ffe2a3] transition hover:border-[#ffd166]/55 hover:text-white"
+          >
+            Se connecter
+          </Link>
         </div>
       </div>
     );

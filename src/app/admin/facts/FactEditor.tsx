@@ -16,6 +16,11 @@ import {
   type DifficultyLevel,
   difficultyLevelOptions,
 } from "@/lib/learning";
+import {
+  quizDifficultyLabels,
+  quizDifficultyOptions,
+  type QuizDifficulty,
+} from "@/lib/quizShared";
 import { hasPermission } from "@/lib/roles";
 import { useAuth } from "../../auth/AuthProvider";
 import { AdminBackLink, AdminField, adminFieldClassName } from "../forms";
@@ -46,6 +51,7 @@ type FactFormState = {
 
 type FactQuizFormState = {
   correct_answer: string;
+  difficulty: QuizDifficulty;
   question: string;
   wrong_answer_1: string;
   wrong_answer_2: string;
@@ -62,6 +68,7 @@ const factStatuses: FactStatus[] = [
 
 const emptyQuizForm: FactQuizFormState = {
   correct_answer: "",
+  difficulty: "standard",
   question: "",
   wrong_answer_1: "",
   wrong_answer_2: "",
@@ -447,6 +454,25 @@ export default function FactEditor({ factId }: { factId?: string }) {
                       setQuizForm((current) => ({ ...current, question }))
                     }
                   />
+                  <label className="block text-sm font-medium text-gray-700">
+                    Difficulté
+                    <select
+                      value={quizForm.difficulty}
+                      onChange={(event) =>
+                        setQuizForm((current) => ({
+                          ...current,
+                          difficulty: event.target.value as QuizDifficulty,
+                        }))
+                      }
+                      className={adminFieldClassName}
+                    >
+                      {quizDifficultyOptions.map((difficulty) => (
+                        <option key={difficulty} value={difficulty}>
+                          {quizDifficultyLabels[difficulty]}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
                   <div className="grid gap-5 lg:grid-cols-2">
                     <AdminField
                       label="Réponse correcte"

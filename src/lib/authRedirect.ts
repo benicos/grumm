@@ -36,7 +36,9 @@ export function getLegacyNextParam() {
     return null;
   }
 
-  const next = new URLSearchParams(window.location.search).get("next");
+  const searchParams = new URLSearchParams(window.location.search);
+  const next =
+    searchParams.get("redirect") ?? searchParams.get("next");
 
   if (!isSafePath(next) || isAuthPath(next)) {
     return null;
@@ -57,6 +59,6 @@ export function redirectToLogin(path = getCurrentPathForRedirect()) {
   rememberAuthRedirect(path);
 
   if (typeof window !== "undefined") {
-    window.location.assign("/login");
+    window.location.assign(`/login?redirect=${encodeURIComponent(path)}`);
   }
 }

@@ -9,6 +9,7 @@ import {
   getAdminQuizQuestion,
   type AdminQuizQuestion,
 } from "@/lib/admin";
+import { quizDifficultyLabels } from "@/lib/quizShared";
 import { AdminBackLink } from "../../forms";
 import {
   AdminAttributeList,
@@ -140,6 +141,11 @@ export default function AdminQuizQuestionDetailPage() {
           <AdminAttributeList className="mt-6">
             <AdminAttributeRow label="ID" value={question.id} />
             <AdminAttributeRow label="Question" value={question.question} />
+            <AdminAttributeRow
+              label="Difficulté"
+              technicalName="difficulty"
+              value={quizDifficultyLabels[question.difficulty]}
+            />
             <AdminAttributeRow
               label="Réponse correcte"
               technicalName="correct_answer"

@@ -46,12 +46,14 @@ type RelatedFactRow = {
               slug: string;
               tone: string;
               accent_color: string;
+              visual_motif?: string | null;
             }
           | {
               name: string;
               slug: string;
               tone: string;
               accent_color: string;
+              visual_motif?: string | null;
             }[]
           | null;
       }
@@ -68,12 +70,14 @@ type ViewedFactRow = {
               slug: string;
               tone: string;
               accent_color: string;
+              visual_motif?: string | null;
             }
           | {
               name: string;
               slug: string;
               tone: string;
               accent_color: string;
+              visual_motif?: string | null;
             }[]
           | null;
       }
@@ -86,6 +90,7 @@ export type ThemeViewStat = {
   name: string;
   percent: number;
   slug: string;
+  visualMotif: string | null;
 };
 
 export type UserProfileSummary = {
@@ -189,9 +194,9 @@ function getProfileErrorMessage(error: unknown) {
 }
 
 const RELATED_FACT_SELECT =
-  "fact_id,facts(id,slug,title,hook,content,difficulty_level,long_content,source,source_url,tone,accent_color,categories(name,slug,tone,accent_color))";
+  "fact_id,facts(id,slug,title,hook,content,difficulty_level,long_content,source,source_url,tone,accent_color,categories(name,slug,tone,accent_color,visual_motif))";
 const VIEWED_FACT_SELECT =
-  "fact_id,facts(categories(name,slug,tone,accent_color))";
+  "fact_id,facts(categories(name,slug,tone,accent_color,visual_motif))";
 
 function getTopViewedThemes(rows: ViewedFactRow[]): ThemeViewStat[] {
   const themesBySlug = new Map<string, Omit<ThemeViewStat, "percent">>();
@@ -218,6 +223,7 @@ function getTopViewedThemes(rows: ViewedFactRow[]): ThemeViewStat[] {
       count: (current?.count ?? 0) + 1,
       name: category.name,
       slug: category.slug,
+      visualMotif: category.visual_motif ?? current?.visualMotif ?? null,
     });
   });
 

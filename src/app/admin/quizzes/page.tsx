@@ -6,6 +6,7 @@ import {
   getAdminQuizQuestions,
   type AdminQuizQuestion,
 } from "@/lib/admin";
+import { quizDifficultyLabels, type QuizDifficulty } from "@/lib/quizShared";
 import AdminListingPage from "../AdminListingPage";
 
 function loadQuizQuestions({
@@ -21,6 +22,7 @@ function loadQuizQuestions({
 }) {
   return getAdminQuizQuestions({
     active: (filters.active as "active" | "all" | "inactive") ?? "all",
+    difficulty: (filters.difficulty as QuizDifficulty | "all") ?? "all",
     page,
     pageSize,
     query,
@@ -48,6 +50,16 @@ export default function AdminQuizQuestionsPage() {
             { label: "Tous", value: "all" },
             { label: "Actives", value: "active" },
             { label: "Inactives", value: "inactive" },
+          ],
+        },
+        {
+          id: "difficulty",
+          label: "Difficulté",
+          options: [
+            { label: "Toutes", value: "all" },
+            { label: "Facile", value: "easy" },
+            { label: "Standard", value: "standard" },
+            { label: "Difficile", value: "hard" },
           ],
         },
       ]}
@@ -93,6 +105,15 @@ export default function AdminQuizQuestionsPage() {
             ) : (
               <span className="text-gray-400">Indépendante</span>
             ),
+        },
+        {
+          key: "difficulty",
+          label: "Difficulté",
+          render: (question) => (
+            <span className="rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-700">
+              {quizDifficultyLabels[question.difficulty]}
+            </span>
+          ),
         },
         {
           key: "status",

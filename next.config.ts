@@ -35,6 +35,11 @@ const nextConfig: NextConfig = {
         permanent: true,
       },
       {
+        source: "/quiz",
+        destination: "/quizz",
+        permanent: true,
+      },
+      {
         source: "/discover/theme/:themeSlug",
         destination: "/decouvrir?theme=:themeSlug",
         permanent: true,
