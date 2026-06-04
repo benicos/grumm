@@ -130,7 +130,7 @@ export default function ThemeEditor({ themeId }: { themeId?: string }) {
     tone: toneFromStops(form),
   };
 
-  function updateColor(field: keyof Pick<ThemeFormState, "gradient_start" | "gradient_middle" | "gradient_end">, value: string) {
+  function updateColor(field: keyof Pick<ThemeFormState, "gradient_start" | "gradient_middle" | "gradient_end" | "accent_color">, value: string) {
     setForm((current) => ({ ...current, [field]: value }));
   }
 
@@ -358,11 +358,12 @@ export default function ThemeEditor({ themeId }: { themeId?: string }) {
                 </div>
               </div>
 
-              <div className="mt-5 grid gap-4 md:grid-cols-3">
+              <div className="mt-5 grid gap-4 md:grid-cols-4">
                 {[
-                  ["gradient_start", "Couleur principale"],
-                  ["gradient_middle", "Couleur secondaire"],
-                  ["gradient_end", "Couleur d'accent"],
+                  ["gradient_start", "Couleur 1"],
+                  ["gradient_middle", "Couleur 2"],
+                  ["gradient_end", "Couleur 3"],
+                  ["accent_color", "Couleur d'accent"],
                 ].map(([field, label]) => (
                   <label
                     key={field}
@@ -371,10 +372,10 @@ export default function ThemeEditor({ themeId }: { themeId?: string }) {
                     {label}
                     <input
                       type="color"
-                      value={form[field as "gradient_start" | "gradient_middle" | "gradient_end"]}
+                      value={form[field as "gradient_start" | "gradient_middle" | "gradient_end" | "accent_color"]}
                       onChange={(event) =>
                         updateColor(
-                          field as "gradient_start" | "gradient_middle" | "gradient_end",
+                          field as "gradient_start" | "gradient_middle" | "gradient_end" | "accent_color",
                           event.target.value,
                         )
                       }
