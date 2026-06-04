@@ -52,10 +52,12 @@ export function getToneBackground(tone?: string | null): {
     };
   }
 
+  // Fallback: if no colors found, return DEFAULT_TONE as inline style
   return {
-    className: value.includes("bg-gradient-")
-      ? value
-      : `bg-gradient-to-br ${value}`,
+    className: "",
+    style: {
+      backgroundImage: DEFAULT_TONE,
+    },
   };
 }
 
