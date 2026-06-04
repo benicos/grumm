@@ -7,7 +7,7 @@ import {
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import type { Database } from "@/types/database";
 
-const GENERAL_QUIZZ_SIZE = 10;
+const GENERAL_QUIZ_SIZE = 10;
 
 type QuizQuestionRow = {
   id: string;
@@ -138,7 +138,7 @@ export async function createGeneralQuizSession(): Promise<
 
   if (error) {
     logSupabaseError(error, {
-      operation: "read general quizz questions",
+      operation: "read general quiz questions",
       table: "quiz_questions",
     });
 
@@ -146,7 +146,7 @@ export async function createGeneralQuizSession(): Promise<
       ok: false,
       message: formatAppError(error, {
         context: {
-          operation: "read general quizz questions",
+          operation: "read general quiz questions",
           source: "Supabase",
           table: "quiz_questions",
         },
@@ -165,9 +165,9 @@ export async function createGeneralQuizSession(): Promise<
       }
     });
 
-  const questions = [...byFact.values()].slice(0, GENERAL_QUIZZ_SIZE);
+  const questions = [...byFact.values()].slice(0, GENERAL_QUIZ_SIZE);
 
-  if (questions.length < GENERAL_QUIZZ_SIZE) {
+  if (questions.length < GENERAL_QUIZ_SIZE) {
     return {
       ok: false,
       message:
@@ -218,7 +218,7 @@ export async function persistGeneralQuizResult({
   if (sessionError || !session) {
     if (sessionError) {
       logSupabaseError(sessionError, {
-        operation: "create general quizz session",
+        operation: "create general quiz session",
         table: "quiz_sessions",
       });
     }
@@ -240,7 +240,7 @@ export async function persistGeneralQuizResult({
 
   if (answersError) {
     logSupabaseError(answersError, {
-      operation: "save general quizz answers",
+      operation: "save general quiz answers",
       table: "quiz_answers",
     });
     return { ok: false as const };

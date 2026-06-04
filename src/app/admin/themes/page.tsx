@@ -8,6 +8,28 @@ import {
 } from "@/lib/admin";
 import AdminListingPage from "../AdminListingPage";
 
+function getThemePreviewBackground(theme: AdminCategory) {
+  const colors = [
+    theme.gradient_start,
+    theme.gradient_middle,
+    theme.gradient_end,
+  ].filter(Boolean);
+
+  if (colors.length >= 2) {
+    return `linear-gradient(135deg, ${colors.join(", ")})`;
+  }
+
+  const toneColors = [...theme.tone.matchAll(/\[(#[0-9a-fA-F]{3,8})\]/g)]
+    .map((match) => match[1])
+    .filter(Boolean);
+
+  if (toneColors.length >= 2) {
+    return `linear-gradient(135deg, ${toneColors.join(", ")})`;
+  }
+
+  return `linear-gradient(135deg, #111827, ${theme.accent_color})`;
+}
+
 function loadThemes({
   page,
   pageSize,
@@ -66,11 +88,20 @@ export default function AdminThemesPage() {
                 ) : (
                   <span
                     className="block h-full w-full"
-                    style={{ backgroundColor: theme.accent_color }}
+                    style={{ background: getThemePreviewBackground(theme) }}
                   />
                 )}
               </span>
-              <span className="font-medium text-gray-800">{theme.name}</span>
+              <span className="min-w-0">
+                <span className="block font-medium text-gray-800">{theme.name}</span>
+                <span className="mt-1 flex items-center gap-2 text-xs text-gray-500">
+                  <span
+                    className="h-2.5 w-8 rounded-full border border-white shadow-sm"
+                    style={{ background: getThemePreviewBackground(theme) }}
+                  />
+                  {theme.accent_color}
+                </span>
+              </span>
             </div>
           ),
         },

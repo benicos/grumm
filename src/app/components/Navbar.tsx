@@ -15,7 +15,7 @@ type NavbarProps = {
 const desktopLinks = [
   { label: "D\u00e9couvrir", href: "/decouvrir" },
   { label: "Explorer", href: "/theme" },
-  { label: "Quizz", href: "/quizz" },
+  { label: "Quiz", href: "/quiz" },
 ];
 
 const mobileLinks = [

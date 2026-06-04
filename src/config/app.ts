@@ -17,11 +17,11 @@ export const appRoutes = {
   home: "/",
   login: "/login",
   legalNotice: "/mentions-legales",
-  memoryChallenge: "/profil/defi-memoire",
+  memoryChallenge: "/quiz/memoire",
   privacy: "/politique-confidentialite",
   profile: "/profil",
   profileEdit: "/profil/edit",
-  quizz: "/quizz",
+  quiz: "/quiz",
   register: "/register",
   resetPassword: "/reset-password",
 } as const;

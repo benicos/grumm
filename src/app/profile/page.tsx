@@ -1,16 +1,15 @@
 "use client";
 
 import { Inter } from "next/font/google";
+import Image from "next/image";
 import Link from "next/link";
-import { Brain, CalendarDays, Flag, Layers3, Mail, Pencil, ShieldCheck, Target, Trophy } from "lucide-react";
+import { Brain, Info, Layers3, Mail, Pencil, Target, Trophy, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { trackAnalyticsEvent } from "@/lib/analytics/web";
 import { getBadgeInfo } from "@/lib/badges";
-import { getLearningGoalLabel } from "@/lib/learning";
 import { MIN_MEMORY_FACTS } from "@/lib/memoryChallenge";
 import { getUserProfileSummary } from "@/lib/profile";
 import type { UserProfileSummary } from "@/lib/profile";
-import { getRoleLabel } from "@/lib/roles";
 import { useAuth } from "../auth/AuthProvider";
 import RequireAuth from "../auth/RequireAuth";
 import { AppState } from "../components/AppState";
@@ -25,16 +24,6 @@ const inter = Inter({
   subsets: ["latin"],
   weight: ["400", "500", "600", "700", "800"],
 });
-
-function formatProfileDate(value: string | null) {
-  if (!value) {
-    return "Non disponible";
-  }
-
-  return new Intl.DateTimeFormat("fr-FR", {
-    dateStyle: "medium",
-  }).format(new Date(value));
-}
 
 function ProfileSkeleton() {
   return (
@@ -54,72 +43,75 @@ function ProfileSkeleton() {
 
 function ProgressPanel({ profile }: { profile: UserProfileSummary }) {
   const badge = getBadgeInfo(profile.completedDailyGoals, profile.grades);
-  const nextThreshold = badge.nextThreshold ?? badge.currentThreshold;
-  const gradeValue = badge.nextThreshold
-    ? `${profile.completedDailyGoals} / ${badge.nextThreshold} objectifs atteints`
-    : `${profile.completedDailyGoals} objectifs atteints`;
+  const nextGrade =
+    profile.grades.find(
+      (grade) => grade.requiredGoals > profile.completedDailyGoals,
+    ) ?? null;
+  const currentGrade =
+    [...profile.grades]
+      .reverse()
+      .find((grade) => grade.requiredGoals <= profile.completedDailyGoals) ??
+    null;
+  const nextThreshold = nextGrade?.requiredGoals ?? badge.currentThreshold;
+  const remainingGoals = nextGrade
+    ? Math.max(nextGrade.requiredGoals - profile.completedDailyGoals, 0)
+    : 0;
+  const gradePercent = badge.nextThreshold
+    ? Math.min((profile.completedDailyGoals / Math.max(nextThreshold, 1)) * 100, 100)
+    : 100;
 
   return (
-    <section className="mt-5 grid gap-4 lg:grid-cols-2">
-      <div className="flex min-h-[148px] flex-col justify-between rounded-[24px] border border-white/10 bg-white/[0.055] p-5 shadow-2xl backdrop-blur-xl">
-        <div className="flex items-center justify-between gap-4 text-sm">
-          <div>
-            <p className="flex items-center gap-2 font-bold text-white">
-              <Target className="h-4 w-4 text-[#ffd166]" aria-hidden="true" />
-              Progression quotidienne
-            </p>
-            <p className="mt-1 text-xs text-white/45">
-              Faits uniques vus aujourd&apos;hui
-            </p>
-          </div>
-          <span className="font-extrabold text-white">
-            {profile.todayReadCount}/{profile.dailyGoal}
-          </span>
+    <section className="mt-6 rounded-[26px] border border-white/10 bg-white/[0.045] p-5 shadow-[0_24px_80px_rgba(0,0,0,0.22)] backdrop-blur-xl">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div>
+          <p className="flex items-center gap-2 text-sm font-black uppercase tracking-[0.16em] text-[#ffd166]">
+            <Trophy className="h-4 w-4" aria-hidden="true" />
+            Prochain grade
+          </p>
+          <h2 className="mt-2 text-2xl font-black tracking-[-0.045em] text-white">
+            {currentGrade?.name ?? badge.title}
+            {nextGrade ? ` → ${nextGrade.name}` : ""}
+          </h2>
+          <p className="mt-2 text-sm font-semibold leading-6 text-white/56">
+            {nextGrade
+              ? `${remainingGoals} objectif${remainingGoals > 1 ? "s" : ""} quotidien${remainingGoals > 1 ? "s" : ""} avant le prochain palier. Les avatars évolueront bientôt avec ton grade.`
+              : "Dernier palier atteint. Les avatars évolueront bientôt avec ton grade."}
+          </p>
         </div>
-        <div className="mt-4 h-2 overflow-hidden rounded-full bg-white/10">
-          <div
-            className="h-full rounded-full bg-gradient-to-r from-[#ffd166] to-[#6ae3c0]"
-            style={{
-              width: `${Math.min(
-                (profile.todayReadCount / Math.max(profile.dailyGoal, 1)) * 100,
-                100,
-              )}%`,
-            }}
-          />
-        </div>
+        <span className="rounded-full border border-white/10 bg-black/18 px-4 py-2 text-sm font-black text-white/72">
+          {profile.completedDailyGoals}/{nextThreshold} objectifs
+        </span>
       </div>
 
-      <div className="flex min-h-[148px] flex-col justify-between rounded-[24px] border border-white/10 bg-white/[0.04] p-5 shadow-2xl backdrop-blur-xl">
-        <div className="flex items-center justify-between gap-4 text-sm">
-          <div>
-            <p className="flex items-center gap-2 font-bold text-white">
-              <Trophy className="h-4 w-4 text-[#ffd166]" aria-hidden="true" />
-              Prochain grade
-            </p>
-            <p className="mt-1 text-xs text-white/45">
-              {badge.nextThreshold
-                ? `Cap vers ${badge.nextThreshold} objectifs`
-                : "Dernier palier atteint"}
-            </p>
-          </div>
-          <span className="max-w-[160px] text-right text-xs font-bold leading-5 text-white/58">
-            {gradeValue}
-          </span>
-        </div>
-        <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-white/10">
-          <div
-            className="h-full rounded-full bg-white/50"
-            style={{
-              width: `${Math.min(
-                badge.nextThreshold
-                  ? (profile.completedDailyGoals / Math.max(nextThreshold, 1)) *
-                      100
-                  : 100,
-                100,
-              )}%`,
-            }}
-          />
-        </div>
+      <div className="mt-5 h-2 overflow-hidden rounded-full bg-white/10">
+        <div
+          className="h-full rounded-full bg-gradient-to-r from-[#ffd166] to-[#6ae3c0] transition-[width] duration-700"
+          style={{ width: `${gradePercent}%` }}
+        />
+      </div>
+
+      <div className="mt-5 flex items-center gap-2 overflow-x-auto pb-1">
+        {profile.grades.slice(0, 6).map((grade) => {
+          const isReached = profile.completedDailyGoals >= grade.requiredGoals;
+
+          return (
+            <div
+              key={grade.slug}
+              className={`flex min-w-[92px] items-center gap-2 rounded-full border px-3 py-2 text-xs font-bold ${
+                isReached
+                  ? "border-[#ffd166]/28 bg-[#ffd166]/12 text-white"
+                  : "border-white/10 bg-black/16 text-white/40"
+              }`}
+            >
+              <span
+                className={`h-2 w-2 rounded-full ${
+                  isReached ? "bg-[#ffd166]" : "bg-white/20"
+                }`}
+              />
+              <span className="truncate">{grade.name}</span>
+            </div>
+          );
+        })}
       </div>
     </section>
   );
@@ -319,7 +311,7 @@ function MemoryChallengePanel({ profile }: { profile: UserProfileSummary }) {
         )}
 
         <Link
-          href={isUnlocked ? "/profil/defi-memoire" : "/decouvrir"}
+          href={isUnlocked ? "/quiz/memoire" : "/decouvrir"}
           className={
             isUnlocked
               ? `${premiumPrimaryCtaClassName} justify-center`
@@ -348,7 +340,7 @@ function QuickAccessPanel() {
         </h2>
       </Link>
       <Link
-        href="/profil/defi-memoire"
+        href="/quiz/memoire"
         className="rounded-[24px] border border-white/10 bg-white/[0.055] p-5 transition hover:-translate-y-1 hover:border-white/20 hover:bg-white/[0.08]"
       >
         <p className="text-xs font-black uppercase tracking-[0.18em] text-[#6ae3c0]">
@@ -425,6 +417,7 @@ function ProfileContent() {
   const [profile, setProfile] = useState<UserProfileSummary | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isGradeModalOpen, setIsGradeModalOpen] = useState(false);
 
   useEffect(() => {
     void trackAnalyticsEvent({ eventName: "profile_opened" });
@@ -485,6 +478,34 @@ function ProfileContent() {
     : null;
   const gradeBadge = authProfile?.gradeBadge ?? badge?.badge ?? null;
   const gradeTitle = authProfile?.gradeName ?? badge?.title ?? null;
+  const dailyProgressPercent = profile
+    ? Math.min((profile.todayReadCount / Math.max(profile.dailyGoal, 1)) * 100, 100)
+    : 0;
+  const gradeRank = profile
+    ? [...profile.grades]
+        .sort(
+          (a, b) =>
+            a.requiredGoals - b.requiredGoals ||
+            (a.displayOrder ?? 0) - (b.displayOrder ?? 0),
+        )
+        .reduce(
+          (activeRank, grade, index) =>
+            profile.completedDailyGoals >= grade.requiredGoals
+              ? index + 1
+              : activeRank,
+          1,
+        )
+    : 1;
+  const avatarSrc = `/avatar/avatar_rank_${gradeRank}.png`;
+  const remainingDailyFacts = profile
+    ? Math.max(profile.dailyGoal - profile.todayReadCount, 0)
+    : 0;
+  const dailyProgressMessage =
+    !profile || profile.todayReadCount <= 0
+      ? "Commence ta série du jour."
+      : remainingDailyFacts <= 0
+        ? "Objectif validé aujourd'hui."
+        : `Plus que ${remainingDailyFacts} fait${remainingDailyFacts > 1 ? "s" : ""} pour valider ton objectif.`;
 
   return (
     <div
@@ -499,103 +520,107 @@ function ProfileContent() {
         ) : (
           <>
 
-            <div className="-mt-3 mb-4 flex justify-end">
-              <Link
-                href="/profil/edit"
-                className={`${premiumPrimaryCtaClassName} shadow-[0_18px_65px_rgba(255,209,102,0.20)]`}
-              >
-                <Pencil className="mr-2 h-4 w-4" aria-hidden="true" />
-                Modifier le profil
-              </Link>
-            </div>
-            <section className="mb-8 overflow-hidden rounded-[30px] border border-white/10 bg-[linear-gradient(135deg,rgba(255,255,255,0.09),rgba(255,255,255,0.035))] p-5 shadow-[0_30px_110px_rgba(0,0,0,0.26)] backdrop-blur-2xl sm:p-7">
+            <section className="mb-7">
               <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
-                <div className="min-w-0">
-                  <h1 className="text-[clamp(2.5rem,6vw,4.8rem)] font-semibold leading-[0.96] tracking-[-0.055em] text-white">
-                    {profile.username ?? "Profil"}
-                  </h1>
-                  {profile.email && (
-                    <p className="mt-3 flex items-center gap-2 text-sm font-semibold text-white/48">
-                      <Mail className="h-4 w-4" aria-hidden="true" />
-                      {profile.email}
-                    </p>
-                  )}
-                  <p className="mt-5 max-w-2xl text-lg font-semibold leading-8 text-white/66">
-                    {profile.uniqueViewsCount} connaissance
-                    {profile.uniqueViewsCount > 1 ? "s" : ""} découverte
-                    {profile.uniqueViewsCount > 1 ? "s" : ""}. Ta bibliothèque
-                    commence à prendre forme.
-                  </p>
-                </div>
-
-                <div className="flex shrink-0 items-center justify-between gap-4 rounded-[22px] border border-[#ffd166]/18 bg-[#ffd166]/10 px-4 py-3 text-[#ffe2a3] lg:min-w-[240px]">
-                  <div className="grid h-12 w-12 place-items-center rounded-[16px] bg-black/20 text-[#ffd166]">
-                    <GradeIcon
-                      badge={gradeBadge}
-                      className="h-7 w-7 text-[#ffd166]"
+                <div className="flex min-w-0 items-center gap-4">
+                  <div className="h-28 w-28 shrink-0 overflow-hidden rounded-[32px] border-2 border-[#ffd166]/28 bg-white/[0.06] shadow-[0_0_0_1px_rgba(255,255,255,0.08),0_22px_78px_rgba(0,0,0,0.30),0_0_54px_rgba(255,209,102,0.16)]">
+                    {/* Les avatars sont liés au rang, pas modifiables par l'utilisateur. */}
+                    <Image
+                      alt=""
+                      height={112}
+                      src={avatarSrc}
+                      width={112}
+                      onError={(event) => {
+                        event.currentTarget.onerror = null;
+                        event.currentTarget.src = "/avatar/avatar.png";
+                      }}
+                      className="h-full w-full object-cover"
                     />
                   </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#ffd166]/70">
-                      Rang
-                    </p>
-                    <p className="truncate text-lg font-extrabold text-white">
-                      {gradeTitle}
-                    </p>
+                  <div className="min-w-0 pt-1">
+                    <h1 className="truncate text-[clamp(2.35rem,6vw,4.5rem)] font-semibold leading-[0.96] tracking-[-0.055em] text-white">
+                      {profile.username ?? "Profil"}
+                    </h1>
+                    {profile.email && (
+                      <p className="mt-3 flex min-w-0 items-center gap-2 text-sm font-semibold text-white/48">
+                        <Mail className="h-4 w-4 shrink-0" aria-hidden="true" />
+                        <span className="truncate">{profile.email}</span>
+                      </p>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setIsGradeModalOpen(true)}
+                      className="mt-3 inline-flex max-w-full items-center gap-3 rounded-full border border-[#ffd166]/18 bg-[#ffd166]/10 px-3 py-2 text-[#ffe2a3] transition hover:border-[#ffd166]/36 hover:bg-[#ffd166]/16"
+                    >
+                      <GradeIcon
+                        badge={gradeBadge}
+                        className="h-5 w-5 shrink-0 text-[#ffd166]"
+                      />
+                      <span className="truncate text-sm font-black text-white">
+                        {gradeTitle}
+                      </span>
+                      <Info className="h-3.5 w-3.5 shrink-0 text-[#ffd166]/70" aria-hidden="true" />
+                    </button>
                   </div>
                 </div>
+
+                <Link
+                  href="/profil/edit"
+                  className="inline-flex shrink-0 items-center justify-center rounded-full border border-white/12 px-5 py-3 text-sm font-black text-white/70 transition hover:border-white/24 hover:text-white"
+                >
+                  <Pencil className="mr-2 h-4 w-4" aria-hidden="true" />
+                  Modifier
+                </Link>
               </div>
 
-              <div className="mt-6 grid gap-3 text-sm md:grid-cols-2 xl:grid-cols-4">
-                <div className="flex items-center gap-3 rounded-[18px] border border-white/10 bg-black/14 p-4">
-                  <CalendarDays className="h-5 w-5 text-[#ffd166]" aria-hidden="true" />
-                  <div>
-                    <p className="text-xs font-bold uppercase tracking-[0.16em] text-white/38">
-                      Inscription
-                    </p>
-                    <p className="mt-1 font-extrabold text-white">
-                      {formatProfileDate(profile.createdAt)}
-                    </p>
-                  </div>
+              <div className="mt-7 w-full rounded-[24px] border border-white/10 bg-[linear-gradient(135deg,rgba(255,255,255,0.07),rgba(255,255,255,0.026))] p-4 shadow-[0_18px_70px_rgba(0,0,0,0.18)] backdrop-blur-xl">
+                <div className="flex items-center justify-between gap-4 text-sm font-bold">
+                  <span className="flex items-center gap-2 text-white/70">
+                    <Target className="h-4 w-4 text-[#ffd166]" aria-hidden="true" />
+                    Objectif du jour : {profile.todayReadCount} / {profile.dailyGoal} faits
+                  </span>
+                  <span className="hidden text-white/48 sm:inline">
+                    {Math.round(dailyProgressPercent)}%
+                  </span>
                 </div>
-                <div className="flex items-center gap-3 rounded-[18px] border border-white/10 bg-black/14 p-4">
-                  <ShieldCheck className="h-5 w-5 text-[#6ae3c0]" aria-hidden="true" />
-                  <div>
-                    <p className="text-xs font-bold uppercase tracking-[0.16em] text-white/38">
-                      Rôle
-                    </p>
-                    <p className="mt-1 font-extrabold text-white">
-                      {getRoleLabel(profile.role)}
-                    </p>
-                  </div>
+                <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/10">
+                  <div
+                    className="profile-daily-progress h-full rounded-full bg-gradient-to-r from-[#ffd166] to-[#6ae3c0] transition-[width] duration-700"
+                    style={{ width: `${dailyProgressPercent}%` }}
+                  />
                 </div>
-                <div className="flex items-center gap-3 rounded-[18px] border border-white/10 bg-black/14 p-4">
-                  <Flag className="h-5 w-5 text-[#ffd166]" aria-hidden="true" />
-                  <div>
-                    <p className="text-xs font-bold uppercase tracking-[0.16em] text-white/38">
-                      Objectif quotidien
-                    </p>
-                    <p className="mt-1 font-extrabold text-white">
-                      {profile.dailyGoal} faits
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3 rounded-[18px] border border-white/10 bg-black/14 p-4">
-                  <Layers3 className="h-5 w-5 text-[#f4ead5]" aria-hidden="true" />
-                  <div>
-                    <p className="text-xs font-bold uppercase tracking-[0.16em] text-white/38">
-                      Objectif culturel
-                    </p>
-                    <p className="mt-1 font-extrabold text-white">
-                      {getLearningGoalLabel(profile.learningGoal)}
-                    </p>
-                  </div>
-                </div>
+                <p className="mt-3 text-sm font-semibold leading-6 text-white/52">
+                  {dailyProgressMessage}
+                </p>
               </div>
 
             </section>
 
-            <ProgressPanel profile={profile} />
+            {isGradeModalOpen ? (
+              <div
+                aria-modal="true"
+                className="fixed inset-0 z-[80] grid place-items-end bg-black/62 px-4 py-5 backdrop-blur-sm sm:place-items-center"
+                role="dialog"
+              >
+                <button
+                  type="button"
+                  aria-label="Fermer"
+                  className="absolute inset-0 cursor-default"
+                  onClick={() => setIsGradeModalOpen(false)}
+                />
+                <div className="grade-modal relative w-full max-w-[560px]">
+                  <button
+                    type="button"
+                    aria-label="Fermer la progression"
+                    className="absolute right-4 top-4 z-10 grid h-10 w-10 place-items-center rounded-full border border-white/10 bg-black/24 text-white/62 transition hover:border-white/20 hover:text-white"
+                    onClick={() => setIsGradeModalOpen(false)}
+                  >
+                    <X className="h-4 w-4" aria-hidden="true" />
+                  </button>
+                  <ProgressPanel profile={profile} />
+                </div>
+              </div>
+            ) : null}
             <MemoryChallengePanel profile={profile} />
             <ThemeInsightsPanel profile={profile} />
             <QuickAccessPanel />
@@ -604,6 +629,42 @@ function ProfileContent() {
         )}
       </main>
       <Footer />
+      <style jsx>{`
+        .profile-daily-progress {
+          animation: profileDailyGlow 1.8s ease-in-out infinite alternate;
+        }
+
+        .grade-modal {
+          animation: gradeModalEnter 180ms ease-out both;
+        }
+
+        @keyframes profileDailyGlow {
+          from {
+            box-shadow: 0 0 0 rgba(106, 227, 192, 0);
+          }
+          to {
+            box-shadow: 0 0 28px rgba(106, 227, 192, 0.22);
+          }
+        }
+
+        @keyframes gradeModalEnter {
+          from {
+            opacity: 0;
+            transform: translateY(14px) scale(0.985);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+          }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .profile-daily-progress,
+          .grade-modal {
+            animation: none;
+          }
+        }
+      `}</style>
     </div>
   );
 }

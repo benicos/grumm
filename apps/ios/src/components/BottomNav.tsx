@@ -1,4 +1,4 @@
-import { LinearGradient } from "expo-linear-gradient";
+﻿import { LinearGradient } from "expo-linear-gradient";
 import {
   Brain,
   Compass,
@@ -12,7 +12,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { colors } from "../theme/colors";
 import { GrummLogo } from "./GrummLogo";
 
-export type MobileTab = "discover" | "explore" | "quizz" | "profile";
+export type MobileTab = "discover" | "explore" | "quiz" | "profile";
 
 export type NavVariant =
   | "minimal-premium"
@@ -27,7 +27,7 @@ const NAV_VARIANT: NavVariant = "gradient-indicator";
 const tabs: { key: MobileTab; label: string; Icon: LucideIcon }[] = [
   { key: "discover", label: "Découvrir", Icon: Sparkles },
   { key: "explore", label: "Thèmes", Icon: Compass },
-  { key: "quizz", label: "Quizz", Icon: Brain },
+  { key: "quiz", label: "Quiz", Icon: Brain },
   { key: "profile", label: "Profil", Icon: UserRound },
 ];
 

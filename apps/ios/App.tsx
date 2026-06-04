@@ -1,4 +1,4 @@
-import { StatusBar } from "expo-status-bar";
+﻿import { StatusBar } from "expo-status-bar";
 import { useEffect, useRef, useState } from "react";
 import { AppState, InteractionManager, StyleSheet, View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -15,7 +15,7 @@ import {
 import { DiscoverScreen } from "./src/screens/DiscoverScreen";
 import { ExploreScreen } from "./src/screens/ExploreScreen";
 import { ProfileScreen } from "./src/screens/ProfileScreen";
-import { QuizzScreen } from "./src/screens/QuizzScreen";
+import { QuizScreen } from "./src/screens/QuizScreen";
 import { colors } from "./src/theme/colors";
 import type { FeedFact } from "./src/types/domain";
 
@@ -59,7 +59,7 @@ function GrummMobileApp() {
 
   function openMemoryChallenge() {
     setMemoryStartSignal((value) => value + 1);
-    setActiveTab("quizz");
+    setActiveTab("quiz");
   }
 
   useEffect(() => {
@@ -125,8 +125,8 @@ function GrummMobileApp() {
                 onOpenTheme={openThemeInDiscover}
               />
             ) : null}
-            {activeTab === "quizz" ? (
-              <QuizzScreen
+            {activeTab === "quiz" ? (
+              <QuizScreen
                 memoryStartSignal={memoryStartSignal}
                 onMemoryStartHandled={() => setMemoryStartSignal(0)}
               />

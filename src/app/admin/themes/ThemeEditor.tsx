@@ -4,7 +4,9 @@ import type { ChangeEvent, FormEvent } from "react";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getAdminCategory, saveAdminCategory } from "@/lib/admin";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { themeIconOptions } from "@/lib/icons";
 import {
   getThemeGradientStyle,
   themeMotifLabels,
@@ -32,6 +34,7 @@ type ThemeFormState = {
   name: string;
   seo_description: string;
   seo_title: string;
+  theme_icon: string;
   theme_image_url: string;
   visual_motif: ThemeVisualMotif;
 };
@@ -53,6 +56,7 @@ const emptyTheme: ThemeFormState = {
   name: "",
   seo_description: "",
   seo_title: "",
+  theme_icon: "star",
   theme_image_url: "",
   visual_motif: "constellation",
 };
@@ -68,42 +72,6 @@ const gradientPresets: GradientPreset[] = [
 
 function toneFromStops(form: ThemeFormState) {
   return `linear-gradient(135deg, ${form.gradient_start}, ${form.gradient_middle}, ${form.gradient_end})`;
-}
-
-function extractToneStops(tone?: string | null) {
-  if (!tone) {
-    return {
-      gradient_end: emptyTheme.gradient_end,
-      gradient_middle: emptyTheme.gradient_middle,
-      gradient_start: emptyTheme.gradient_start,
-    };
-  }
-
-  const trimmed = tone.trim();
-
-  // Handle CSS linear-gradient format: linear-gradient(135deg, #color1, #color2, #color3)
-  if (trimmed.startsWith("linear-gradient(")) {
-    const colors = [...trimmed.matchAll(/#[0-9a-fA-F]{3,8}/g)]
-      .map((match) => match[0])
-      .filter(Boolean);
-
-    return {
-      gradient_start: colors[0] ?? emptyTheme.gradient_start,
-      gradient_middle: colors[1] ?? emptyTheme.gradient_middle,
-      gradient_end: colors[2] ?? emptyTheme.gradient_end,
-    };
-  }
-
-  // Handle Tailwind format: from-[#color1] via-[#color2] to-[#color3]
-  const colors = [...trimmed.matchAll(/\[(#[0-9a-fA-F]{3,8})\]/g)]
-    .map((match) => match[1])
-    .filter(Boolean);
-
-  return {
-    gradient_end: colors[2] ?? colors[1] ?? emptyTheme.gradient_end,
-    gradient_middle: colors[1] ?? colors[0] ?? emptyTheme.gradient_middle,
-    gradient_start: colors[0] ?? emptyTheme.gradient_start,
-  };
 }
 
 function parseKeywords(value: string) {
@@ -177,6 +145,7 @@ export default function ThemeEditor({ themeId }: { themeId?: string }) {
           name: theme.name,
           seo_description: theme.seo_description ?? "",
           seo_title: theme.seo_title ?? "",
+          theme_icon: theme.theme_icon ?? emptyTheme.theme_icon,
           theme_image_url: theme.theme_image_url ?? "",
           visual_motif:
             (theme.visual_motif as ThemeVisualMotif | null) ??
@@ -222,6 +191,7 @@ export default function ThemeEditor({ themeId }: { themeId?: string }) {
       name: form.name,
       seo_description: form.seo_description || null,
       seo_title: form.seo_title || null,
+      theme_icon: form.theme_icon || null,
       theme_image_url: form.theme_image_url || null,
       tone: toneFromStops(form),
       visual_motif: form.visual_motif,
@@ -450,6 +420,39 @@ export default function ThemeEditor({ themeId }: { themeId?: string }) {
                       <span className="font-medium">
                         {themeMotifLabels[motif]}
                       </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </section>
+
+            <section className="rounded-2xl border border-gray-200 bg-white p-4">
+              <div className="flex items-center gap-2 text-sm font-medium text-gray-800">
+                Icône du thème
+                <AdminHelpTooltip text="Icône Font Awesome utilisée pour identifier le thème dans les interfaces." />
+              </div>
+              <div className="mt-4 grid gap-2 sm:grid-cols-3 lg:grid-cols-4">
+                {themeIconOptions.map((option) => {
+                  const selected = form.theme_icon === option.name;
+
+                  return (
+                    <button
+                      key={option.name}
+                      type="button"
+                      onClick={() =>
+                        setForm((current) => ({
+                          ...current,
+                          theme_icon: option.name,
+                        }))
+                      }
+                      className={`flex items-center gap-3 rounded-xl border px-3 py-3 text-left text-sm transition ${
+                        selected
+                          ? "border-[#465fff] bg-[#f5f7ff] text-[#1d2adf]"
+                          : "border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50"
+                      }`}
+                    >
+                      <FontAwesomeIcon icon={option.icon} className="h-4 w-4 shrink-0" />
+                      <span className="font-medium">{option.label}</span>
                     </button>
                   );
                 })}

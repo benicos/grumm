@@ -101,9 +101,9 @@ export default function GrummLanding() {
                 {
                   icon: "03",
                   title: "Aller plus loin",
-                  text: "Certaines d\u00e9couvertes m\u00e9ritent plus qu'un swipe. Approfondissez avec des contenus plus immersifs.",
-                  href: "/#",
-                  alt: "En savoir plus",
+                  text: "Teste tes connaissances rapidement avec les quiz.",
+                  href: "/quiz",
+                  alt: "Quiz",
                 },
               ].map((card) => (
                 <div

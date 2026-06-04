@@ -16,27 +16,32 @@ const nextConfig: NextConfig = {
       },
       {
         source: "/memory-challenge",
-        destination: "/profil/defi-memoire",
+        destination: "/quiz/memoire",
         permanent: true,
       },
       {
         source: "/defi-memoire",
-        destination: "/profil/defi-memoire",
+        destination: "/quiz/memoire",
         permanent: true,
       },
       {
         source: "/profile/memory-challenge",
-        destination: "/profil/defi-memoire",
+        destination: "/quiz/memoire",
         permanent: true,
       },
       {
         source: "/profil/memory-challenge",
-        destination: "/profil/defi-memoire",
+        destination: "/quiz/memoire",
         permanent: true,
       },
       {
-        source: "/quiz",
-        destination: "/quizz",
+        source: "/profil/defi-memoire",
+        destination: "/quiz/memoire",
+        permanent: true,
+      },
+      {
+        source: "/quizz",
+        destination: "/quiz",
         permanent: true,
       },
       {

@@ -443,7 +443,7 @@ export default function FactDetailPage() {
               </>
             )}
             <Link
-              href="/profil/defi-memoire"
+              href="/quiz/memoire"
               className="rounded-full border border-white/15 bg-black/20 px-5 py-3 text-sm font-bold text-white/72 backdrop-blur-xl transition hover:scale-[1.02] hover:text-white"
             >
               Réviser plus tard
@@ -497,7 +497,7 @@ export default function FactDetailPage() {
               Lire d&apos;autres faits
             </Link>
             <Link
-              href="/profil/defi-memoire"
+              href="/quiz/memoire"
               className="rounded-[14px] border border-white/10 px-4 py-3 text-center text-sm font-bold text-white/72 transition hover:border-white/20 hover:text-white"
             >
               Quiz mémoire

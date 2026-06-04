@@ -1,4 +1,4 @@
-import * as Haptics from "expo-haptics";
+﻿import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
 import { Brain, Bolt, ChevronRight, Flame, Play, RotateCcw, Target, Trophy, type LucideIcon } from "lucide-react-native";
 import { useCallback, useEffect, useState } from "react";
@@ -19,13 +19,13 @@ import {
   type MobileQuizQuestion,
   type MobileQuizResult,
   type MobileQuizType,
-} from "../lib/quizz";
+} from "../lib/quiz";
 import { colors } from "../theme/colors";
 import { designTokens as ds } from "../theme/designTokens";
 import type { ProfileSummary, QuizStatsSummary } from "../types/domain";
 import { AuthScreen } from "./AuthScreen";
 
-export function QuizzScreen({
+export function QuizScreen({
   memoryStartSignal = 0,
   onMemoryStartHandled,
 }: {
@@ -186,7 +186,7 @@ export function QuizzScreen({
   }
 
   if (isAuthLoading) {
-    return <LoadingState label="Ouverture du Quizz..." />;
+    return <LoadingState label="Ouverture du Quiz..." />;
   }
 
   if (!session) {
@@ -214,7 +214,7 @@ export function QuizzScreen({
               <Text style={styles.resultPrimaryText}>Recommencer</Text>
             </Pressable>
             <Pressable onPress={resetQuizHub} style={styles.resultSecondary}>
-              <Text style={styles.resultSecondaryText}>Retour Quizz</Text>
+              <Text style={styles.resultSecondaryText}>Retour Quiz</Text>
             </Pressable>
           </View>
         </View>
@@ -286,7 +286,7 @@ export function QuizzScreen({
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.headerSimple}>
-          <Text style={styles.screenTitle}>Quizz</Text>
+          <Text style={styles.screenTitle}>Quiz</Text>
           <View style={styles.streakPill}>
             <Text style={styles.streakText}>🔥 {streak}</Text>
           </View>

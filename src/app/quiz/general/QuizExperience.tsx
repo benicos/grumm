@@ -1,8 +1,8 @@
-"use client";
+﻿"use client";
 
 import { Inter } from "next/font/google";
 import Link from "next/link";
-import { Brain, Check, RotateCcw, Sparkles, X } from "lucide-react";
+import { ArrowLeft, Check, RotateCcw, Sparkles, X } from "lucide-react";
 import type { CSSProperties } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -12,16 +12,13 @@ import {
   type GeneralQuizQuestion,
 } from "@/lib/generalQuiz";
 import { quizDifficultyLabels } from "@/lib/quizShared";
-import { appRoutes } from "@/config/app";
-import Footer from "../components/Footer";
-import HeroBackground from "../components/HeroBackground";
-import Navbar from "../components/Navbar";
-import { useAuth } from "../auth/AuthProvider";
-import QuizConfetti from "../components/QuizConfetti";
+import Footer from "../../components/Footer";
+import HeroBackground from "../../components/HeroBackground";
+import Navbar from "../../components/Navbar";
+import QuizConfetti from "../../components/QuizConfetti";
 import {
   premiumPrimaryCtaClassName,
-  premiumTitleGradientClassName,
-} from "../components/buttonStyles";
+} from "../../components/buttonStyles";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -30,18 +27,14 @@ const inter = Inter({
 
 const correctFeedback = [
   "Bonne réponse.",
-  "Exact.",
+  "Réponse validée.",
   "C'est la bonne réponse.",
-  "Bien vu.",
-  "Tu l'avais.",
 ] as const;
 
 const wrongFeedback = [
   "Mauvaise réponse.",
-  "Pas cette fois.",
   "Ce n'était pas la bonne réponse.",
-  "Presque.",
-  "La bonne réponse était ailleurs.",
+  "Correction nécessaire.",
 ] as const;
 
 type AnswerState = GeneralQuizAnswer & {
@@ -131,12 +124,12 @@ function LoadingState() {
   return (
     <div className="rounded-[28px] border border-white/10 bg-white/[0.055] p-6 shadow-[0_24px_80px_rgba(0,0,0,0.22)] backdrop-blur-2xl">
       <div className="flex items-center gap-4">
-        <span className="quizz-loader grid h-11 w-11 place-items-center rounded-full border border-white/12 bg-white/[0.06] text-[#ffd166]">
+        <span className="quiz-loader grid h-11 w-11 place-items-center rounded-full border border-white/12 bg-white/[0.06] text-[#ffd166]">
           <Sparkles className="h-5 w-5" />
         </span>
         <div>
           <p className="text-xs font-black uppercase tracking-[0.22em] text-white/42">
-            Grumm Quizz
+            Grumm Quiz
           </p>
           <p className="mt-1 text-lg font-extrabold text-white">
             Préparation des questions...
@@ -147,44 +140,17 @@ function LoadingState() {
   );
 }
 
-function MemoryBanner({ href }: { href: string }) {
-  return (
-    <section className="rounded-[28px] border border-emerald-200/16 bg-[radial-gradient(circle_at_88%_12%,rgba(106,227,192,0.16),transparent_32%),linear-gradient(145deg,rgba(255,255,255,0.065),rgba(255,255,255,0.02))] p-5 shadow-[0_24px_90px_rgba(0,0,0,0.22)] backdrop-blur-2xl sm:p-6">
-      <div className="grid gap-5 md:grid-cols-[auto_minmax(0,1fr)_auto] md:items-center">
-        <span className="grid h-12 w-12 place-items-center rounded-2xl border border-emerald-200/18 bg-emerald-300/10 text-[#6ae3c0]">
-          <Brain className="h-6 w-6" />
-        </span>
-        <div>
-          <h2 className="text-xl font-black tracking-[-0.04em] text-white">
-            Envie de réviser ce que tu as déjà lu ?
-          </h2>
-          <p className="mt-2 max-w-3xl text-sm font-semibold leading-6 text-white/62">
-            Le défi mémoire te propose un quiz 100% personnalisé, basé
-            uniquement sur les faits que tu as découverts sur Grumm.
-          </p>
-        </div>
-        <Link
-          href={href}
-          className="inline-flex h-11 items-center justify-center rounded-full border border-emerald-200/18 px-4 text-sm font-black text-[#bdf9e9] transition hover:border-emerald-100/40 hover:text-white"
-        >
-          Défi mémoire
-        </Link>
-      </div>
-    </section>
-  );
-}
-
 function SuccessParticles({ active }: { active: boolean }) {
   if (!active) {
     return null;
   }
 
   return (
-    <span className="quizz-particles" aria-hidden="true">
+    <span className="quiz-particles" aria-hidden="true">
       {Array.from({ length: 8 }).map((_, index) => (
         <span
           key={index}
-          className="quizz-particle"
+          className="quiz-particle"
           style={
             {
               "--particle-index": index,
@@ -270,7 +236,7 @@ function QuizFactReview({ answers }: { answers: AnswerState[] }) {
           <Link
             key={`${answer.questionId}-${answer.factId}`}
             href={`/fait/${answer.factSlug}`}
-            className={`quizz-review-card group rounded-[22px] border p-4 transition ${
+            className={`quiz-review-card group rounded-[22px] border p-4 transition ${
               answer.isCorrect
                 ? "border-white/10 bg-white/[0.04] hover:border-white/20"
                 : "border-amber-200/24 bg-amber-300/[0.075] shadow-[0_18px_50px_rgba(255,209,102,0.06)] hover:border-amber-100/40"
@@ -308,8 +274,7 @@ function QuizFactReview({ answers }: { answers: AnswerState[] }) {
   );
 }
 
-export default function QuizzExperience() {
-  const { isAuthenticated } = useAuth();
+export default function QuizExperience() {
   const quizAnchorRef = useRef<HTMLDivElement | null>(null);
   const nextActionRef = useRef<() => void>(() => undefined);
   const isAdvancingRef = useRef(false);
@@ -352,10 +317,6 @@ export default function QuizzExperience() {
           100,
       )
     : 0;
-  const memoryChallengeHref = isAuthenticated
-    ? appRoutes.memoryChallenge
-    : `/login?redirect=${encodeURIComponent(appRoutes.memoryChallenge)}`;
-
   const clearAnimationTimers = useCallback(() => {
     if (confettiTimerRef.current) {
       window.clearTimeout(confettiTimerRef.current);
@@ -561,27 +522,17 @@ export default function QuizzExperience() {
     >
       <HeroBackground />
       <Navbar />
-      <main className="relative z-10 mx-auto w-full max-w-[1180px] px-5 pb-24 pt-10 sm:px-6 lg:px-8">
-        <section className="mx-auto max-w-4xl py-10 text-center">
-          <p className="text-xs font-black uppercase tracking-[0.26em] text-[#f4ead5]/62">
-            Expérience générale
-          </p>
-          <h1
-            className={`${premiumTitleGradientClassName} mt-4 text-[clamp(3.1rem,9vw,7rem)] font-black leading-[0.86] tracking-[-0.075em]`}
-          >
-            GRUMM QUIZZ
-          </h1>
-          <p className="mx-auto mt-7 max-w-2xl text-base font-semibold leading-8 text-white/64 sm:text-lg">
-            Fais varier ton apprentissage avec un quiz rapide, vivant et pensé
-            pour tester tes connaissances autrement.
-          </p>
-        </section>
+      <main className="relative z-10 mx-auto w-full max-w-[1180px] px-5 pb-24 pt-8 sm:px-6 lg:px-8">
+        <Link
+          href="/quiz"
+          className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.035] px-4 py-2 text-sm font-black text-white/54 transition hover:border-white/20 hover:text-white"
+        >
+          <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+          Retour aux quiz
+        </Link>
 
-        <div className="space-y-8">
-          <MemoryBanner href={memoryChallengeHref} />
-
-          <div ref={quizAnchorRef} className="scroll-mt-24" />
-          <section>
+        <div className="mt-6 space-y-8">
+          <section id="quiz-container" ref={quizAnchorRef} className="scroll-mt-28">
             {isLoading ? (
               <LoadingState />
             ) : error ? (
@@ -601,11 +552,11 @@ export default function QuizzExperience() {
                 </button>
               </section>
             ) : finished ? (
-              <section className="quizz-result rounded-[30px] border border-white/10 bg-[radial-gradient(circle_at_50%_0%,rgba(255,209,102,0.18),transparent_38%),linear-gradient(145deg,rgba(255,255,255,0.075),rgba(255,255,255,0.024))] p-7 text-center shadow-[0_30px_100px_rgba(0,0,0,0.28)] backdrop-blur-2xl sm:p-10">
+              <section className="quiz-result rounded-[30px] border border-white/10 bg-[radial-gradient(circle_at_50%_0%,rgba(255,209,102,0.18),transparent_38%),linear-gradient(145deg,rgba(255,255,255,0.075),rgba(255,255,255,0.024))] p-7 text-center shadow-[0_30px_100px_rgba(0,0,0,0.28)] backdrop-blur-2xl sm:p-10">
                 <p className="text-xs font-black uppercase tracking-[0.22em] text-[#ffd166]">
                   Résultat
                 </p>
-                <h2 className="quizz-score mt-4 text-[clamp(4rem,12vw,8rem)] font-black leading-none tracking-[-0.08em] text-white">
+                <h2 className="quiz-score mt-4 text-[clamp(4rem,12vw,8rem)] font-black leading-none tracking-[-0.08em] text-white">
                   {score}/10
                 </h2>
                 <p className="mx-auto mt-5 max-w-xl text-lg font-semibold leading-8 text-white/70">
@@ -635,19 +586,13 @@ export default function QuizzExperience() {
                   >
                     Découvrir de nouveaux faits
                   </Link>
-                  <Link
-                    href={memoryChallengeHref}
-                    className="inline-flex min-h-12 items-center justify-center rounded-[18px] border border-emerald-200/16 px-7 py-3.5 text-sm font-black text-[#bdf9e9] transition hover:border-emerald-100/36 hover:text-white"
-                  >
-                    Défi mémoire
-                  </Link>
                 </div>
                 <QuizFactReview answers={answers} />
               </section>
             ) : currentQuestion ? (
               <section
                 key={currentQuestion.id}
-                className="quizz-question relative rounded-[30px] border border-white/10 bg-[radial-gradient(circle_at_88%_8%,rgba(244,234,213,0.13),transparent_30%),linear-gradient(145deg,rgba(255,255,255,0.074),rgba(255,255,255,0.024))] p-5 shadow-[0_28px_90px_rgba(0,0,0,0.26)] backdrop-blur-2xl sm:p-7 lg:p-8"
+                className="quiz-question relative rounded-[30px] border border-white/10 bg-[radial-gradient(circle_at_88%_8%,rgba(244,234,213,0.13),transparent_30%),linear-gradient(145deg,rgba(255,255,255,0.074),rgba(255,255,255,0.024))] p-5 shadow-[0_28px_90px_rgba(0,0,0,0.26)] backdrop-blur-2xl sm:p-7 lg:p-8"
               >
                 <QuizConfetti active={showConfetti} />
                 <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
@@ -702,11 +647,11 @@ export default function QuizzExperience() {
                         aria-pressed={isSelected}
                         onClick={() => chooseAnswer(option)}
                         style={{ animationDelay: `${index * 38}ms` }}
-                        className={`quizz-answer group relative flex min-h-14 items-start justify-between gap-4 rounded-[20px] border px-4 py-4 text-left text-sm font-bold leading-7 transition sm:text-base ${
+                        className={`quiz-answer group relative flex min-h-14 items-start justify-between gap-4 rounded-[20px] border px-4 py-4 text-left text-sm font-bold leading-7 transition sm:text-base ${
                           isCorrect
-                            ? "quizz-answer-correct border-emerald-300/44 bg-emerald-300/13 text-emerald-50"
+                            ? "quiz-answer-correct border-emerald-300/44 bg-emerald-300/13 text-emerald-50"
                             : isWrong
-                              ? "quizz-answer-wrong border-rose-200/28 bg-rose-300/10 text-white"
+                              ? "quiz-answer-wrong border-rose-200/28 bg-rose-300/10 text-white"
                               : isMuted
                                 ? "border-white/8 bg-black/10 text-white/36 opacity-60 saturate-50"
                                 : "border-white/10 bg-black/16 text-white/76 hover:border-white/24 hover:bg-white/[0.055] disabled:opacity-72"
@@ -718,7 +663,7 @@ export default function QuizzExperience() {
                         {isCorrect ? (
                           <span className="relative mt-1 shrink-0">
                             <SuccessParticles active={isSelected} />
-                            <Check className="quizz-check h-5 w-5" />
+                            <Check className="quiz-check h-5 w-5" />
                           </span>
                         ) : isWrong ? (
                           <X className="mt-1 h-5 w-5 shrink-0 text-rose-100/78" />
@@ -729,33 +674,54 @@ export default function QuizzExperience() {
                 </div>
 
                 {selectedState ? (
-                  <aside className="quizz-feedback mt-5 rounded-[24px] border border-white/10 bg-black/20 p-4 backdrop-blur-2xl sm:p-5">
+                  <aside
+                    className={`quiz-feedback mt-5 rounded-[24px] border p-4 backdrop-blur-2xl sm:p-5 ${
+                      selectedState.isCorrect
+                        ? "border-emerald-200/24 bg-emerald-300/[0.09] shadow-[0_0_70px_rgba(106,227,192,0.14)]"
+                        : "border-[#f28c8c]/24 bg-[#f28c8c]/[0.08] shadow-[0_0_70px_rgba(210,75,99,0.12)]"
+                    }`}
+                  >
                     <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
-                      <div>
-                        <p
-                          className={`text-lg font-black ${
+                      <div className="flex items-start gap-4">
+                        <span
+                          className={`grid h-11 w-11 shrink-0 place-items-center rounded-full ${
                             selectedState.isCorrect
-                              ? "text-emerald-100"
-                              : "text-amber-100"
+                              ? "bg-[#6ae3c0] text-[#07111f]"
+                              : "bg-[#f28c8c] text-[#07111f]"
                           }`}
                         >
-                          {selectedState.label}
-                        </p>
-                        {!selectedState.isCorrect ? (
-                          <p className="mt-2 text-sm font-semibold leading-6 text-white/66">
-                            La bonne réponse était :{" "}
-                            <span className="text-white">
-                              {currentQuestion.correctAnswer}
-                            </span>
+                          {selectedState.isCorrect ? (
+                            <Check className="h-5 w-5" aria-hidden="true" />
+                          ) : (
+                            <X className="h-5 w-5" aria-hidden="true" />
+                          )}
+                        </span>
+                        <div>
+                          <p
+                            className={`text-lg font-black ${
+                              selectedState.isCorrect
+                                ? "text-emerald-50"
+                                : "text-[#ffd7d7]"
+                            }`}
+                          >
+                            {selectedState.label}
                           </p>
-                        ) : null}
+                          {!selectedState.isCorrect ? (
+                            <p className="mt-2 text-sm font-semibold leading-6 text-white/72">
+                              La bonne réponse était :{" "}
+                              <span className="font-black text-white">
+                                {currentQuestion.correctAnswer}
+                              </span>
+                            </p>
+                          ) : null}
+                        </div>
                       </div>
                       <div>
                         <button
                           type="button"
                           disabled={isPersisting}
                           onClick={() => void goNext()}
-                          className={`${premiumPrimaryCtaClassName} quizz-next-button w-full lg:w-auto`}
+                          className={`${premiumPrimaryCtaClassName} quiz-next-button w-full lg:w-auto`}
                         >
                           {currentIndex + 1 === questions.length
                             ? "Voir le résultat"
@@ -768,9 +734,9 @@ export default function QuizzExperience() {
                     </div>
 
                     {currentQuestion.factContext ? (
-                      <div className="quizz-reminder mt-4 rounded-[18px] border border-white/10 bg-white/[0.045] px-4 py-3">
+                      <div className="quiz-reminder mt-4 rounded-[18px] border border-white/10 bg-white/[0.045] px-4 py-3">
                         <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#f4ead5]/64">
-                          Rappel
+                          À retenir
                         </p>
                         <p className="mt-2 text-sm font-semibold leading-7 text-white/72">
                           {currentQuestion.factContext}
@@ -787,29 +753,29 @@ export default function QuizzExperience() {
       <Footer />
 
       <style jsx>{`
-        .quizz-loader {
-          animation: quizzPulse 1.45s ease-in-out infinite;
+        .quiz-loader {
+          animation: quizPulse 1.45s ease-in-out infinite;
         }
 
-        .quizz-question {
-          animation: quizzEnter 360ms ease-out both;
+        .quiz-question {
+          animation: quizEnter 360ms ease-out both;
         }
 
-        .quizz-answer {
-          animation: quizzAnswerEnter 320ms ease-out both;
+        .quiz-answer {
+          animation: quizAnswerEnter 320ms ease-out both;
         }
 
-        .quizz-feedback {
-          animation: quizzFeedback 300ms ease-out both;
+        .quiz-feedback {
+          animation: quizFeedback 300ms ease-out both;
         }
 
-        .quizz-reminder,
-        .quizz-next-button,
-        .quizz-review-card {
-          animation: quizzFeedback 360ms ease-out both;
+        .quiz-reminder,
+        .quiz-next-button,
+        .quiz-review-card {
+          animation: quizFeedback 360ms ease-out both;
         }
 
-        .quizz-answer-correct {
+        .quiz-answer-correct {
           box-shadow:
             0 0 0 1px rgba(106, 227, 192, 0.16),
             0 0 58px rgba(106, 227, 192, 0.26),
@@ -817,24 +783,24 @@ export default function QuizzExperience() {
             inset 0 1px 0 rgba(255, 255, 255, 0.12);
         }
 
-        .quizz-answer-wrong {
-          animation: quizzShake 360ms cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+        .quiz-answer-wrong {
+          animation: quizShake 360ms cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
           box-shadow:
             0 0 0 1px rgba(251, 113, 133, 0.1),
             0 0 40px rgba(251, 113, 133, 0.16);
         }
 
-        .quizz-check {
-          animation: quizzCheck 340ms ease-out both;
+        .quiz-check {
+          animation: quizCheck 340ms ease-out both;
         }
 
-        .quizz-particles {
+        .quiz-particles {
           position: absolute;
           inset: 0;
           pointer-events: none;
         }
 
-        .quizz-particle {
+        .quiz-particle {
           --particle-index: 0;
           --particle-x: 0px;
           --particle-y: -18px;
@@ -846,19 +812,19 @@ export default function QuizzExperience() {
           border-radius: 999px;
           background: linear-gradient(135deg, #ffd166, #6ae3c0);
           opacity: 0;
-          animation: quizzParticle 640ms ease-out both;
+          animation: quizParticle 640ms ease-out both;
           animation-delay: calc(var(--particle-index) * 24ms);
         }
 
-        .quizz-result {
-          animation: quizzResult 520ms ease-out both;
+        .quiz-result {
+          animation: quizResult 520ms ease-out both;
         }
 
-        .quizz-score {
-          animation: quizzScore 560ms ease-out both;
+        .quiz-score {
+          animation: quizScore 560ms ease-out both;
         }
 
-        @keyframes quizzPulse {
+        @keyframes quizPulse {
           0%,
           100% {
             transform: scale(1);
@@ -870,7 +836,7 @@ export default function QuizzExperience() {
           }
         }
 
-        @keyframes quizzEnter {
+        @keyframes quizEnter {
           from {
             opacity: 0;
             transform: translateY(10px);
@@ -881,7 +847,7 @@ export default function QuizzExperience() {
           }
         }
 
-        @keyframes quizzAnswerEnter {
+        @keyframes quizAnswerEnter {
           from {
             opacity: 0;
             transform: translateY(8px) scale(0.985);
@@ -892,7 +858,7 @@ export default function QuizzExperience() {
           }
         }
 
-        @keyframes quizzFeedback {
+        @keyframes quizFeedback {
           from {
             opacity: 0;
             transform: translateY(8px);
@@ -903,7 +869,7 @@ export default function QuizzExperience() {
           }
         }
 
-        @keyframes quizzCheck {
+        @keyframes quizCheck {
           from {
             opacity: 0;
             transform: scale(0.72) rotate(-12deg);
@@ -914,7 +880,7 @@ export default function QuizzExperience() {
           }
         }
 
-        @keyframes quizzParticle {
+        @keyframes quizParticle {
           0% {
             opacity: 0;
             transform: translate(-50%, -50%) scale(0.8);
@@ -932,7 +898,7 @@ export default function QuizzExperience() {
           }
         }
 
-        @keyframes quizzShake {
+        @keyframes quizShake {
           0%,
           100% {
             transform: translateX(0);
@@ -951,7 +917,7 @@ export default function QuizzExperience() {
           }
         }
 
-        @keyframes quizzResult {
+        @keyframes quizResult {
           from {
             opacity: 0;
             transform: translateY(14px) scale(0.985);
@@ -962,7 +928,7 @@ export default function QuizzExperience() {
           }
         }
 
-        @keyframes quizzScore {
+        @keyframes quizScore {
           from {
             opacity: 0;
             transform: translateY(12px) scale(0.96);
@@ -974,18 +940,18 @@ export default function QuizzExperience() {
         }
 
         @media (prefers-reduced-motion: reduce) {
-          .quizz-loader,
-          .quizz-question,
-          .quizz-answer,
-          .quizz-feedback,
-          .quizz-reminder,
-          .quizz-next-button,
-          .quizz-review-card,
-          .quizz-answer-wrong,
-          .quizz-check,
-          .quizz-particle,
-          .quizz-result,
-          .quizz-score {
+          .quiz-loader,
+          .quiz-question,
+          .quiz-answer,
+          .quiz-feedback,
+          .quiz-reminder,
+          .quiz-next-button,
+          .quiz-review-card,
+          .quiz-answer-wrong,
+          .quiz-check,
+          .quiz-particle,
+          .quiz-result,
+          .quiz-score {
             animation: none;
           }
         }

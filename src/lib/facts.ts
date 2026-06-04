@@ -356,6 +356,156 @@ function uniqueFactsById(facts: FeedFact[]) {
   });
 }
 
+function getDebugNumber(debug: Record<string, unknown> | null | undefined, key: string) {
+  const value = debug?.[key];
+
+  return typeof value === "number" && Number.isFinite(value) ? value : 0;
+}
+
+function getThemeQuota(position: number) {
+  if (position < 4) {
+    return 1;
+  }
+
+  if (position < 10) {
+    return 2;
+  }
+
+  if (position < 15) {
+    return 3;
+  }
+
+  return Number.POSITIVE_INFINITY;
+}
+
+function getDiversityPenalty(
+  fact: FeedFactWithScore,
+  selected: FeedFactWithScore[],
+  recentCategorySlugs: string[],
+) {
+  const selectedSlugs = selected.map((item) => item.categorySlug);
+  const recentWindow = [...recentCategorySlugs, ...selectedSlugs].slice(-10);
+  const lastThreeCount = recentWindow
+    .slice(-3)
+    .filter((slug) => slug === fact.categorySlug).length;
+  const lastTenCount = recentWindow.filter((slug) => slug === fact.categorySlug).length;
+  const firstFifteenCount = selectedSlugs
+    .slice(0, 15)
+    .filter((slug) => slug === fact.categorySlug).length;
+
+  return lastThreeCount * 28 + Math.max(0, lastTenCount - 1) * 14 + firstFifteenCount * 8;
+}
+
+function diversifyFeedFacts({
+  facts,
+  limit,
+  recentCategorySlugs,
+  shouldDiversify,
+}: {
+  facts: FeedFactWithScore[];
+  limit: number;
+  recentCategorySlugs: string[];
+  shouldDiversify: boolean;
+}) {
+  if (!shouldDiversify) {
+    return facts.slice(0, limit);
+  }
+
+  const remaining = facts.map((fact, originalIndex) => ({
+    fact,
+    originalIndex,
+  }));
+  const selected: FeedFactWithScore[] = [];
+  const themeCounts = new Map<string, number>();
+
+  while (selected.length < limit && remaining.length > 0) {
+    const quota = getThemeQuota(selected.length);
+    let bestIndex = -1;
+    let bestScore = Number.NEGATIVE_INFINITY;
+
+    remaining.forEach(({ fact, originalIndex }, index) => {
+      const themeCount = themeCounts.get(fact.categorySlug) ?? 0;
+
+      if (themeCount >= quota) {
+        return;
+      }
+
+      const debug = fact.recommendationScoreBreakdown;
+      const rawScore = fact.recommendationScore ?? 0;
+      const themeAffinityBonus = getDebugNumber(debug, "theme_affinity_bonus");
+      const themeAffinityAdjustment = themeAffinityBonus * 0.65;
+      const diversityPenalty = getDiversityPenalty(
+        fact,
+        selected,
+        recentCategorySlugs,
+      );
+      const score =
+        rawScore -
+        themeAffinityAdjustment -
+        diversityPenalty -
+        originalIndex * 0.001;
+
+      if (score > bestScore) {
+        bestIndex = index;
+        bestScore = score;
+      }
+    });
+
+    if (bestIndex === -1) {
+      remaining.forEach(({ fact, originalIndex }, index) => {
+        const debug = fact.recommendationScoreBreakdown;
+        const rawScore = fact.recommendationScore ?? 0;
+        const themeAffinityBonus = getDebugNumber(debug, "theme_affinity_bonus");
+        const diversityPenalty = getDiversityPenalty(
+          fact,
+          selected,
+          recentCategorySlugs,
+        );
+        const score =
+          rawScore -
+          themeAffinityBonus * 0.65 -
+          diversityPenalty -
+          originalIndex * 0.001;
+
+        if (score > bestScore) {
+          bestIndex = index;
+          bestScore = score;
+        }
+      });
+    }
+
+    const [picked] = remaining.splice(bestIndex, 1);
+    const debug = picked.fact.recommendationScoreBreakdown;
+    const rawScore = picked.fact.recommendationScore ?? 0;
+    const themeAffinityBonus = getDebugNumber(debug, "theme_affinity_bonus");
+    const diversityPenalty = getDiversityPenalty(
+      picked.fact,
+      selected,
+      recentCategorySlugs,
+    );
+    const finalScore =
+      rawScore -
+      themeAffinityBonus * 0.65 -
+      diversityPenalty;
+
+    picked.fact.recommendationScore = finalScore;
+    picked.fact.recommendationScoreBreakdown = {
+      ...(debug ?? {}),
+      diversity_penalty: diversityPenalty,
+      final_position: selected.length + 1,
+      final_score_before_diversity: rawScore,
+      theme_affinity_adjustment: themeAffinityBonus * 0.65,
+    };
+    selected.push(picked.fact);
+    themeCounts.set(
+      picked.fact.categorySlug,
+      (themeCounts.get(picked.fact.categorySlug) ?? 0) + 1,
+    );
+  }
+
+  return selected;
+}
+
 function todayKey() {
   const now = new Date();
   const year = now.getFullYear();
@@ -472,10 +622,11 @@ export async function getFeedFacts(options?: {
   }
 
   const limit = options?.limit ?? DISCOVER_FEED_BATCH_SIZE;
+  const candidateLimit = options?.themeSlug ? limit : Math.max(limit * 3, 30);
   const { userId } = await getCurrentUserId();
   const personalizedResult = await supabase.rpc("get_personalized_feed", {
     p_debug: options?.debug ?? false,
-    p_limit: limit,
+    p_limit: candidateLimit,
     p_session_id: options?.sessionId ?? null,
     p_theme_slug: options?.themeSlug ?? null,
     p_user_id: userId,
@@ -498,7 +649,7 @@ export async function getFeedFacts(options?: {
     const fallbackResult = await supabase.rpc("get_discover_feed", {
       p_exclude_ids: options?.excludeIds ?? [],
       p_learning_goal: options?.learningGoal ?? null,
-      p_limit: limit,
+      p_limit: candidateLimit,
       p_theme_slug: options?.themeSlug ?? null,
     });
 
@@ -522,9 +673,8 @@ export async function getFeedFacts(options?: {
   }
 
   const excludedIds = new Set(options?.excludeIds ?? []);
-  const rankedFeedFacts = uniqueFactsById(feedRows.map(mapFeedRpcFact))
+  const candidateFacts = uniqueFactsById(feedRows.map(mapFeedRpcFact))
     .filter((fact) => !excludedIds.has(fact.id))
-    .slice(0, limit)
     .map((fact) => {
       const row = feedRows.find((item) => item.id === fact.id);
       const scoredFact = fact as FeedFactWithScore;
@@ -537,6 +687,12 @@ export async function getFeedFacts(options?: {
 
       return scoredFact;
     });
+  const rankedFeedFacts = diversifyFeedFacts({
+    facts: candidateFacts,
+    limit,
+    recentCategorySlugs: options?.recentCategorySlugs ?? [],
+    shouldDiversify: !options?.themeSlug,
+  });
 
   return {
     facts: rankedFeedFacts,
