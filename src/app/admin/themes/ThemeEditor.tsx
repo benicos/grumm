@@ -67,11 +67,35 @@ const gradientPresets: GradientPreset[] = [
 ];
 
 function toneFromStops(form: ThemeFormState) {
-  return `from-[${form.gradient_start}] via-[${form.gradient_middle}] to-[${form.gradient_end}]`;
+  return `linear-gradient(135deg, ${form.gradient_start}, ${form.gradient_middle}, ${form.gradient_end})`;
 }
 
 function extractToneStops(tone?: string | null) {
-  const colors = [...(tone ?? "").matchAll(/\[(#[0-9a-fA-F]{3,8})\]/g)]
+  if (!tone) {
+    return {
+      gradient_end: emptyTheme.gradient_end,
+      gradient_middle: emptyTheme.gradient_middle,
+      gradient_start: emptyTheme.gradient_start,
+    };
+  }
+
+  const trimmed = tone.trim();
+
+  // Handle CSS linear-gradient format: linear-gradient(135deg, #color1, #color2, #color3)
+  if (trimmed.startsWith("linear-gradient(")) {
+    const colors = [...trimmed.matchAll(/#[0-9a-fA-F]{3,8}/g)]
+      .map((match) => match[0])
+      .filter(Boolean);
+
+    return {
+      gradient_start: colors[0] ?? emptyTheme.gradient_start,
+      gradient_middle: colors[1] ?? emptyTheme.gradient_middle,
+      gradient_end: colors[2] ?? emptyTheme.gradient_end,
+    };
+  }
+
+  // Handle Tailwind format: from-[#color1] via-[#color2] to-[#color3]
+  const colors = [...trimmed.matchAll(/\[(#[0-9a-fA-F]{3,8})\]/g)]
     .map((match) => match[1])
     .filter(Boolean);
 
@@ -106,7 +130,7 @@ export default function ThemeEditor({ themeId }: { themeId?: string }) {
     tone: toneFromStops(form),
   };
 
-  function updateColor(field: keyof Pick<ThemeFormState, "accent_color" | "gradient_start" | "gradient_middle" | "gradient_end">, value: string) {
+  function updateColor(field: keyof Pick<ThemeFormState, "gradient_start" | "gradient_middle" | "gradient_end">, value: string) {
     setForm((current) => ({ ...current, [field]: value }));
   }
 
@@ -141,15 +165,13 @@ export default function ThemeEditor({ themeId }: { themeId?: string }) {
           return;
         }
 
-        const toneStops = extractToneStops(theme.tone);
-
         setForm({
           accent_color: theme.accent_color || emptyTheme.accent_color,
           description_courte: theme.description_courte ?? "",
           description_longue: theme.description_longue ?? "",
-          gradient_end: theme.gradient_end ?? toneStops.gradient_end,
-          gradient_middle: theme.gradient_middle ?? toneStops.gradient_middle,
-          gradient_start: theme.gradient_start ?? toneStops.gradient_start,
+          gradient_end: theme.gradient_end ?? emptyTheme.gradient_end,
+          gradient_middle: theme.gradient_middle ?? emptyTheme.gradient_middle,
+          gradient_start: theme.gradient_start ?? emptyTheme.gradient_start,
           id: theme.id,
           keywords: (theme.keywords ?? []).join(", "),
           name: theme.name,
@@ -339,8 +361,8 @@ export default function ThemeEditor({ themeId }: { themeId?: string }) {
               <div className="mt-5 grid gap-4 md:grid-cols-3">
                 {[
                   ["gradient_start", "Couleur principale"],
-                  ["gradient_end", "Couleur secondaire"],
-                  ["accent_color", "Couleur d'accent"],
+                  ["gradient_middle", "Couleur secondaire"],
+                  ["gradient_end", "Couleur d'accent"],
                 ].map(([field, label]) => (
                   <label
                     key={field}
@@ -349,10 +371,10 @@ export default function ThemeEditor({ themeId }: { themeId?: string }) {
                     {label}
                     <input
                       type="color"
-                      value={form[field as "gradient_start" | "gradient_end" | "accent_color"]}
+                      value={form[field as "gradient_start" | "gradient_middle" | "gradient_end"]}
                       onChange={(event) =>
                         updateColor(
-                          field as "gradient_start" | "gradient_end" | "accent_color",
+                          field as "gradient_start" | "gradient_middle" | "gradient_end",
                           event.target.value,
                         )
                       }
@@ -360,6 +382,41 @@ export default function ThemeEditor({ themeId }: { themeId?: string }) {
                     />
                   </label>
                 ))}
+              </div>
+            </section>
+
+            <section className="grid gap-5">
+              <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">
+                <p className="font-medium text-gray-800">
+                  Prévisualisation du thème
+                </p>
+                <div className="mt-4 overflow-hidden rounded-2xl border border-white/40 shadow-sm">
+                  <div
+                    className="min-h-44 p-5 text-white"
+                    style={getThemeGradientStyle(previewTheme)}
+                  >
+                    <span
+                      className="inline-flex rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em]"
+                      style={{
+                        backgroundColor: `${form.accent_color}22`,
+                        border: `1px solid ${form.accent_color}55`,
+                      }}
+                    >
+                      {form.name || "Thème"}
+                    </span>
+                    <ThemeMotif
+                      motif={form.visual_motif}
+                      className="mt-6 h-14 w-14 text-white/35"
+                    />
+                    <h3 className="mt-7 max-w-xs text-2xl font-semibold leading-tight">
+                      {form.name || "Exemple de carte Grumm."}
+                    </h3>
+                    <p className="mt-3 max-w-sm text-sm leading-6 text-white/72">
+                      {form.description_courte ||
+                        "Le contraste doit rester lisible sur le fond choisi."}
+                    </p>
+                  </div>
+                </div>
               </div>
             </section>
 
@@ -467,41 +524,6 @@ export default function ThemeEditor({ themeId }: { themeId?: string }) {
                       onChange={uploadThemeImage}
                     />
                   </label>
-                </div>
-              </div>
-            </section>
-
-            <section className="grid gap-5">
-              <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">
-                <p className="font-medium text-gray-800">
-                  Prévisualisation du thème
-                </p>
-                <div className="mt-4 overflow-hidden rounded-2xl border border-white/40 shadow-sm">
-                  <div
-                    className="min-h-44 p-5 text-white"
-                    style={getThemeGradientStyle(previewTheme)}
-                  >
-                    <span
-                      className="inline-flex rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em]"
-                      style={{
-                        backgroundColor: `${form.accent_color}22`,
-                        border: `1px solid ${form.accent_color}55`,
-                      }}
-                    >
-                      {form.name || "Thème"}
-                    </span>
-                    <ThemeMotif
-                      motif={form.visual_motif}
-                      className="mt-6 h-14 w-14 text-white/35"
-                    />
-                    <h3 className="mt-7 max-w-xs text-2xl font-semibold leading-tight">
-                      {form.name || "Exemple de carte Grumm."}
-                    </h3>
-                    <p className="mt-3 max-w-sm text-sm leading-6 text-white/72">
-                      {form.description_courte ||
-                        "Le contraste doit rester lisible sur le fond choisi."}
-                    </p>
-                  </div>
                 </div>
               </div>
             </section>

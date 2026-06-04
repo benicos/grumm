@@ -2242,8 +2242,8 @@ export async function saveAdminCategory(input: {
     slug,
     theme_image_url: input.theme_image_url?.trim() || null,
     tone:
-      input.tone.trim() ||
-      "from-[#0b1424] via-[#132744] to-[#f0a95a]",
+      input.tone?.trim() ||
+      `linear-gradient(135deg, ${input.gradient_start || "#0b1424"}, ${input.gradient_middle || "#132744"}, ${input.gradient_end || "#f0a95a"})`,
     visual_motif: input.visual_motif || null,
   };
 
