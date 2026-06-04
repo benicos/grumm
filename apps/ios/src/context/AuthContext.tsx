@@ -17,7 +17,13 @@ type AuthContextValue = {
   session: Session | null;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
-  signUp: (email: string, password: string, username: string, learningGoal: LearningGoal) => Promise<void>;
+  signUp: (
+    email: string,
+    password: string,
+    username: string,
+    learningGoal: LearningGoal,
+    dailyGoal?: number,
+  ) => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -284,10 +290,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setSession(null);
         setProfile(null);
       },
-      signUp: async (email, password, usernameInput, learningGoalInput) => {
+      signUp: async (email, password, usernameInput, learningGoalInput, dailyGoalInput) => {
         const supabase = getSupabaseClient();
         const username = normalizeUsername(usernameInput);
         const learningGoal = normalizeLearningGoal(learningGoalInput ?? DEFAULT_LEARNING_GOAL);
+        const dailyGoal = Math.max(
+          mobileConfig.dailyGoalMin,
+          Math.min(mobileConfig.dailyGoalMax, dailyGoalInput ?? mobileConfig.dailyGoal),
+        );
         const usernameMessage = getUsernameValidationMessage(username);
 
         if (usernameMessage) {
@@ -315,6 +325,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             options: {
               data: {
                 learning_goal: learningGoal,
+                daily_goal: dailyGoal,
                 username,
               },
             },
@@ -329,7 +340,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const { error: profileError } = await withSupabaseTimeout(
             supabase
               .from("profiles")
-              .upsert({ id: data.user.id, learning_goal: learningGoal, username }, { onConflict: "id" }),
+              .upsert(
+                { daily_goal: dailyGoal, id: data.user.id, learning_goal: learningGoal, username },
+                { onConflict: "id" },
+              ),
           );
 
           if (profileError) {

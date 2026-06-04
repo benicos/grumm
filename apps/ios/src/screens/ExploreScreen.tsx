@@ -1,7 +1,17 @@
+import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
-import { Search, X } from "lucide-react-native";
+import { Play, Search, X } from "lucide-react-native";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import {
+  ImageBackground,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  useWindowDimensions,
+  View,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { LoadingState, ScreenState } from "../components/ScreenState";
@@ -10,15 +20,37 @@ import { trackMobileAnalyticsEvent } from "../lib/analytics";
 import { getExplorerData } from "../lib/facts";
 import { cleanFactSource } from "../lib/source";
 import { colors } from "../theme/colors";
+import { designTokens as ds } from "../theme/designTokens";
 import type { CategorySummary, FeedFact } from "../types/domain";
+
+const DEFAULT_THEME_IMAGE_URL =
+  "https://images.unsplash.com/photo-1493246507139-91e8fad9978e?auto=format&fit=crop&w=900&q=80";
+
+const THEME_IMAGE_FALLBACKS: Record<string, string> = {
+  art: "https://images.unsplash.com/photo-1547891654-e66ed7ebb968?auto=format&fit=crop&w=900&q=80",
+  cinema: "https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?auto=format&fit=crop&w=900&q=80",
+  espace: "https://images.unsplash.com/photo-1446776811953-b23d57bd21aa?auto=format&fit=crop&w=900&q=80",
+  geographie: "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=900&q=80",
+  histoire: "https://images.unsplash.com/photo-1603565816030-6b389eeb23cb?auto=format&fit=crop&w=900&q=80",
+  musique: "https://images.unsplash.com/photo-1511379938547-c1f69419868d?auto=format&fit=crop&w=900&q=80",
+  ocean: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=900&q=80",
+  psychologie: "https://images.unsplash.com/photo-1499209974431-9dddcece7f88?auto=format&fit=crop&w=900&q=80",
+  science: "https://images.unsplash.com/photo-1532187863486-abf9dbad1b69?auto=format&fit=crop&w=900&q=80",
+};
 
 type ExploreScreenProps = {
   onOpenDiscover: () => void;
   onOpenFact: (fact: FeedFact) => void;
+  onOpenTheme: (themeSlug: string) => void;
 };
 
-export function ExploreScreen({ onOpenDiscover, onOpenFact }: ExploreScreenProps) {
+export function ExploreScreen({
+  onOpenDiscover,
+  onOpenFact,
+  onOpenTheme,
+}: ExploreScreenProps) {
   const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
   const [query, setQuery] = useState("");
   const [submittedQuery, setSubmittedQuery] = useState("");
   const [themes, setThemes] = useState<CategorySummary[]>([]);
@@ -27,19 +59,30 @@ export function ExploreScreen({ onOpenDiscover, onOpenFact }: ExploreScreenProps
   const [error, setError] = useState<string | null>(null);
   const normalizedQuery = submittedQuery.trim();
   const hasActiveSearch = normalizedQuery.length > 0;
-  const visibleFacts = useMemo(() => (hasActiveSearch ? facts : facts.slice(0, 3)), [facts, hasActiveSearch]);
-  const visibleThemes = useMemo(() => themes.slice(0, 8), [themes]);
+  const compactCardWidth = Math.max(102, Math.floor((width - 48) / 3.25));
+  const gridCardWidth = Math.floor((width - 48) / 3);
+  const heroThemes = useMemo(() => themes.slice(0, 8), [themes]);
+  const continueTheme = useMemo(() => themes[1] ?? themes[0] ?? null, [themes]);
+  const gridThemes = useMemo(() => themes.slice(0, 24), [themes]);
 
   const loadExplorer = useCallback(async (searchValue?: string) => {
     setIsLoading(true);
     setError(null);
 
     try {
-      const data = await getExplorerData({ query: searchValue || undefined });
+      const nextQuery = searchValue?.trim() || "";
+      const data = await getExplorerData({
+        includeFacts: Boolean(nextQuery),
+        query: nextQuery || undefined,
+      });
       setThemes(data.categories);
       setFacts(data.facts);
     } catch (nextError) {
-      setError(nextError instanceof Error ? nextError.message : userMessages.genericLoadError);
+      setError(
+        nextError instanceof Error
+          ? nextError.message
+          : userMessages.genericLoadError,
+      );
     } finally {
       setIsLoading(false);
     }
@@ -72,89 +115,119 @@ export function ExploreScreen({ onOpenDiscover, onOpenFact }: ExploreScreenProps
     void loadExplorer();
   }
 
+  async function openTheme(theme: CategorySummary) {
+    await Haptics.selectionAsync();
+    onOpenTheme(theme.slug);
+  }
+
   if (error && !isLoading) {
-    return <ScreenState actionLabel="Réessayer" message={error} onAction={loadExplorer} title="Explorer est indisponible" />;
+    return (
+      <ScreenState
+        actionLabel="Réessayer"
+        message={error}
+        onAction={loadExplorer}
+        title="Thèmes indisponibles"
+      />
+    );
   }
 
   return (
-    <LinearGradient colors={["#07111f", "#132338", "#050812"]} start={{ x: 0.15, y: 0 }} end={{ x: 1, y: 1 }} style={styles.root}>
-      <View style={styles.glowTop} />
-      <View style={styles.glowBottom} />
+    <LinearGradient
+      colors={ds.gradient.app}
+      end={{ x: 1, y: 1 }}
+      start={{ x: 0.12, y: 0 }}
+      style={styles.root}
+    >
       <ScrollView
-        contentContainerStyle={[styles.content, { paddingTop: insets.top + 22 }]}
+        contentContainerStyle={[
+          styles.content,
+          { paddingTop: insets.top + 12 },
+        ]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.hero}>
-          <Text style={styles.eyebrow}>Explorer</Text>
-          <Text style={styles.title}>Trouve le fait qui va te rester en tête.</Text>
-          <Text style={styles.copy}>Un thème, une source, une idée. Lance une recherche précise, puis ouvre le fait qui accroche.</Text>
-
+        <View style={styles.header}>
+          <Text style={styles.title}>Thèmes</Text>
           <View style={styles.searchBox}>
-            <Search color="rgba(248,250,252,0.62)" size={20} strokeWidth={2.2} />
+            <Search color="rgba(248,250,252,0.56)" size={16} strokeWidth={2.1} />
             <TextInput
               autoCapitalize="none"
               blurOnSubmit
               onChangeText={setQuery}
               onSubmitEditing={() => submitSearch()}
-              placeholder="Espace, histoire, psychologie, NASA..."
-              placeholderTextColor="rgba(248,250,252,0.42)"
+              placeholder="Rechercher"
+              placeholderTextColor="rgba(248,250,252,0.38)"
               returnKeyType="search"
               style={styles.searchInput}
               value={query}
             />
             {hasActiveSearch ? (
-              <Pressable accessibilityRole="button" onPress={clearSearch} style={styles.clearButton}>
-                <X color="rgba(248,250,252,0.74)" size={18} strokeWidth={2.35} />
+              <Pressable onPress={clearSearch} style={styles.clearButton}>
+                <X color="rgba(248,250,252,0.68)" size={16} strokeWidth={2.2} />
               </Pressable>
             ) : null}
-            <Pressable accessibilityRole="button" onPress={() => submitSearch()} style={styles.searchButton}>
-              <Text style={styles.searchButtonText}>OK</Text>
-            </Pressable>
           </View>
         </View>
 
         {isLoading ? (
-          <LoadingState label={hasActiveSearch ? "Recherche en cours..." : "Préparation d'Explorer..."} />
+          <LoadingState
+            label={hasActiveSearch ? "Recherche..." : "Chargement des thèmes..."}
+          />
         ) : hasActiveSearch ? (
-          <SearchResults facts={visibleFacts} onOpenFact={onOpenFact} onOpenDiscover={onOpenDiscover} submittedQuery={submittedQuery} />
+          <SearchResults
+            facts={facts}
+            onOpenDiscover={onOpenDiscover}
+            onOpenFact={onOpenFact}
+            submittedQuery={submittedQuery}
+          />
         ) : (
           <>
-            <View style={styles.topicBlock}>
-              <Text style={styles.sectionKicker}>Quelques pistes</Text>
-              {visibleThemes.length > 0 ? (
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.themeScroller}>
-                  {visibleThemes.map((theme, index) => (
-                    <ThemePill
-                      key={`${theme.id}:${theme.slug}:${index}`}
-                      onPress={() => submitSearch(theme.name)}
-                      theme={theme}
-                    />
-                  ))}
-                </ScrollView>
-              ) : (
-                <EmptyText>Aucun thème disponible.</EmptyText>
-              )}
-            </View>
+            <SectionTitle title="Pour toi" />
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.heroScroller}
+            >
+              {heroThemes.map((theme) => (
+                <ThemeCompactCard
+                  key={theme.id}
+                  onPress={() => void openTheme(theme)}
+                  theme={theme}
+                  width={compactCardWidth}
+                />
+              ))}
+            </ScrollView>
 
-            <View style={styles.discoverBlock}>
-              <Text style={styles.sectionKicker}>À découvrir</Text>
-              <Text style={styles.sectionTitle}>{"Aujourd'hui sur Grumm."}</Text>
-              {visibleFacts.length > 0 ? (
-                <View style={styles.factList}>
-                  {visibleFacts.map((fact) => (
-                    <FactRow fact={fact} key={fact.id} onPress={() => onOpenFact(fact)} />
-                  ))}
-                </View>
-              ) : (
-                    <EmptyText>Aucun fait disponible pour le moment.</EmptyText>
-              )}
+            {continueTheme ? (
+              <>
+                <SectionTitle title="Continuer" />
+                <ContinueThemeCard
+                  onPress={() => void openTheme(continueTheme)}
+                  theme={continueTheme}
+                />
+              </>
+            ) : null}
+
+            <SectionTitle title="Tous les thèmes" />
+            <View style={styles.themeGrid}>
+              {gridThemes.map((theme) => (
+                <ThemeGridCard
+                  key={theme.id}
+                  onPress={() => void openTheme(theme)}
+                  theme={theme}
+                  width={gridCardWidth}
+                />
+              ))}
             </View>
           </>
         )}
       </ScrollView>
     </LinearGradient>
   );
+}
+
+function SectionTitle({ title }: { title: string }) {
+  return <Text style={styles.sectionTitle}>{title}</Text>;
 }
 
 function SearchResults({
@@ -170,314 +243,406 @@ function SearchResults({
 }) {
   return (
     <View style={styles.resultsBlock}>
-      <Text style={styles.sectionKicker}>Recherche</Text>
-      <Text style={styles.sectionTitle}>Résultats pour “{submittedQuery}”</Text>
+      <Text style={styles.resultsTitle}>“{submittedQuery}”</Text>
       {facts.length > 0 ? (
         <View style={styles.factList}>
           {facts.map((fact) => (
-            <FactRow compact fact={fact} key={fact.id} onPress={() => onOpenFact(fact)} />
+            <FactResult fact={fact} key={fact.id} onPress={() => onOpenFact(fact)} />
           ))}
         </View>
       ) : (
-        <NoResultBanner onOpenDiscover={onOpenDiscover} />
+        <View style={styles.noResult}>
+          <Text style={styles.noResultTitle}>Aucun fait trouvé.</Text>
+          <Pressable onPress={onOpenDiscover} style={styles.primaryAction}>
+            <Text style={styles.primaryActionText}>Ouvrir Découvrir</Text>
+          </Pressable>
+        </View>
       )}
     </View>
   );
 }
 
-function EmptyText({ children }: { children: string }) {
-  return <Text style={styles.empty}>{children}</Text>;
-}
-
-function NoResultBanner({ onOpenDiscover }: { onOpenDiscover: () => void }) {
-  return (
-    <View style={styles.noResult}>
-      <Text style={styles.noResultKicker}>Aucun résultat</Text>
-      <Text style={styles.noResultTitle}>Aucun fait ne correspond à cette recherche.</Text>
-      <Text style={styles.noResultText}>{"Ouvre le flux pour repartir d'une découverte fraîche."}</Text>
-      <Pressable onPress={onOpenDiscover} style={styles.primaryAction}>
-        <Text style={styles.primaryActionText}>Voir les faits</Text>
-      </Pressable>
-    </View>
-  );
-}
-
-function FactRow({ compact = false, fact, onPress }: { compact?: boolean; fact: FeedFact; onPress: () => void }) {
+function FactResult({ fact, onPress }: { fact: FeedFact; onPress: () => void }) {
   const source = cleanFactSource(fact.source);
 
   return (
-    <Pressable onPress={onPress} style={({ pressed }) => [styles.factRow, pressed && styles.pressed]}>
-      <View style={styles.factMeta}>
-        <Text style={[styles.category, { color: fact.accent }]} numberOfLines={1}>
-          {fact.category}
-        </Text>
-        {source ? (
-          <Text style={styles.source} numberOfLines={1}>
-            {source}
-          </Text>
-        ) : null}
-      </View>
-      <Text numberOfLines={compact ? 2 : 3} style={styles.factTitle}>
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [styles.factResult, pressed && styles.pressed]}
+    >
+      <Text style={[styles.factCategory, { color: fact.accent }]}>
+        {fact.category}
+      </Text>
+      <Text numberOfLines={2} style={styles.factTitle}>
         {fact.title}
       </Text>
-      {!compact ? (
-        <Text numberOfLines={3} style={styles.factDetail}>
-          {fact.detail}
+      {source ? (
+        <Text numberOfLines={1} style={styles.factSource}>
+          {source}
         </Text>
       ) : null}
     </Pressable>
   );
 }
 
-function ThemePill({ onPress, theme }: { onPress: () => void; theme: CategorySummary }) {
+function ThemeCompactCard({
+  onPress,
+  theme,
+  width,
+}: {
+  onPress: () => void;
+  theme: CategorySummary;
+  width: number;
+}) {
   return (
-    <Pressable onPress={onPress} style={({ pressed }) => [styles.themePill, pressed && styles.pressed]}>
-      <View style={[styles.themeDot, { backgroundColor: theme.accent }]} />
-      <Text numberOfLines={1} style={styles.themeName}>
-        {theme.name}
-      </Text>
-      <Text style={styles.themeCount}>{theme.count ?? 0}</Text>
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.compactCard,
+        { width },
+        pressed && styles.pressed,
+      ]}
+    >
+      <ImageBackground
+        imageStyle={styles.cardImage}
+        source={{ uri: getThemeImage(theme) }}
+        style={styles.compactImage}
+      >
+        <LinearGradient
+          colors={["rgba(0,0,0,0.08)", "rgba(0,0,0,0.68)"]}
+          style={styles.imageScrim}
+        >
+          <Text numberOfLines={1} style={styles.compactName}>
+            {theme.name}
+          </Text>
+          <Text style={styles.compactCount}>{theme.count ?? 0} faits</Text>
+        </LinearGradient>
+      </ImageBackground>
     </Pressable>
   );
 }
 
+function ContinueThemeCard({
+  onPress,
+  theme,
+}: {
+  onPress: () => void;
+  theme: CategorySummary;
+}) {
+  const progress = getThemeProgress(theme);
+
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [styles.continueCard, pressed && styles.pressed]}
+    >
+      <ImageBackground
+        imageStyle={styles.cardImage}
+        source={{ uri: getThemeImage(theme) }}
+        style={styles.continueImage}
+      >
+        <LinearGradient
+          colors={["rgba(0,0,0,0.04)", "rgba(0,0,0,0.78)"]}
+          style={styles.continueScrim}
+        >
+          <View style={styles.playButton}>
+            <Play color="#06111d" fill="#06111d" size={16} strokeWidth={2.4} />
+          </View>
+          <View style={styles.continueText}>
+            <Text numberOfLines={1} style={styles.continueName}>
+              {theme.name}
+            </Text>
+            <Text style={styles.continueMeta}>{progress}% complété</Text>
+            <View style={styles.progressTrack}>
+              <View style={[styles.progressFill, { width: `${progress}%` }]} />
+            </View>
+          </View>
+        </LinearGradient>
+      </ImageBackground>
+    </Pressable>
+  );
+}
+
+function ThemeGridCard({
+  onPress,
+  theme,
+  width,
+}: {
+  onPress: () => void;
+  theme: CategorySummary;
+  width: number;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.gridCard,
+        { width },
+        pressed && styles.pressed,
+      ]}
+    >
+      <ImageBackground
+        imageStyle={styles.cardImage}
+        source={{ uri: getThemeImage(theme) }}
+        style={styles.gridImage}
+      >
+        <LinearGradient
+          colors={["rgba(0,0,0,0.02)", "rgba(0,0,0,0.70)"]}
+          style={styles.gridScrim}
+        >
+          <Text numberOfLines={2} style={styles.gridName}>
+            {theme.name}
+          </Text>
+          <Text style={styles.gridCount}>{theme.count ?? 0}</Text>
+        </LinearGradient>
+      </ImageBackground>
+    </Pressable>
+  );
+}
+
+function getThemeImage(theme: CategorySummary) {
+  return theme.imageUrl ?? THEME_IMAGE_FALLBACKS[theme.slug] ?? DEFAULT_THEME_IMAGE_URL;
+}
+
+function getThemeProgress(theme: CategorySummary) {
+  const seed = [...theme.slug].reduce((sum, character) => sum + character.charCodeAt(0), 0);
+
+  return 24 + (seed % 55);
+}
+
 const styles = StyleSheet.create({
-  category: {
-    flex: 1,
-    fontSize: 11,
-    fontWeight: "900",
-    letterSpacing: 0,
-    textTransform: "uppercase",
+  cardImage: {
+    borderRadius: 18,
   },
   clearButton: {
     alignItems: "center",
-    height: 38,
+    height: 34,
     justifyContent: "center",
-    width: 30,
+    width: 28,
   },
-  content: {
-    gap: 26,
-    paddingBottom: 30,
-    paddingHorizontal: 18,
+  compactCard: {
+    borderRadius: 18,
+    height: 128,
+    overflow: "hidden",
   },
-  copy: {
-    color: colors.muted,
+  compactCount: {
+    color: "rgba(248,250,252,0.72)",
+    fontSize: 11,
+    fontWeight: "700",
+    marginTop: 3,
+  },
+  compactImage: {
+    flex: 1,
+  },
+  compactName: {
+    color: colors.text,
     fontSize: 15,
     fontWeight: "700",
-    lineHeight: 22,
-    marginTop: 12,
   },
-  discoverBlock: {
-    gap: 12,
+  content: {
+    gap: 13,
+    paddingBottom: 28,
+    paddingHorizontal: 14,
   },
-  empty: {
-    color: colors.muted,
-    fontSize: 14,
-    fontWeight: "700",
-    lineHeight: 21,
+  continueCard: {
+    borderRadius: 20,
+    height: 148,
+    overflow: "hidden",
   },
-  eyebrow: {
-    color: colors.accent,
+  continueImage: {
+    flex: 1,
+  },
+  continueMeta: {
+    color: "rgba(248,250,252,0.72)",
     fontSize: 12,
-    fontWeight: "900",
-    letterSpacing: 0,
-    textTransform: "uppercase",
+    fontWeight: "700",
+    marginTop: 3,
   },
-  factDetail: {
-    color: colors.muted,
-    fontSize: 14,
-    lineHeight: 21,
-    marginTop: 9,
+  continueName: {
+    color: colors.text,
+    fontSize: 20,
+    fontWeight: "700",
   },
-  factList: {
-    gap: 12,
-  },
-  factMeta: {
-    alignItems: "center",
+  continueScrim: {
+    flex: 1,
     flexDirection: "row",
     gap: 12,
+    padding: 14,
   },
-  factRow: {
+  continueText: {
+    alignSelf: "flex-end",
+    flex: 1,
+  },
+  factCategory: {
+    fontSize: 10,
+    fontWeight: "800",
+    textTransform: "uppercase",
+  },
+  factList: {
+    gap: 9,
+  },
+  factResult: {
     backgroundColor: "rgba(255,255,255,0.055)",
-    borderColor: "rgba(255,255,255,0.11)",
-    borderRadius: 24,
+    borderColor: "rgba(255,255,255,0.10)",
+    borderRadius: 18,
     borderWidth: 1,
-    paddingHorizontal: 16,
-    paddingVertical: 16,
+    padding: 13,
+  },
+  factSource: {
+    color: "rgba(248,250,252,0.42)",
+    fontSize: 11,
+    fontWeight: "700",
+    marginTop: 7,
   },
   factTitle: {
     color: colors.text,
-    fontSize: 19,
-    fontWeight: "900",
-    letterSpacing: 0,
-    lineHeight: 24,
-    marginTop: 10,
-  },
-  glowBottom: {
-    backgroundColor: "rgba(106,227,192,0.10)",
-    borderRadius: 999,
-    bottom: -120,
-    height: 260,
-    left: -110,
-    position: "absolute",
-    width: 260,
-  },
-  glowTop: {
-    backgroundColor: "rgba(255,209,102,0.15)",
-    borderRadius: 999,
-    height: 280,
-    position: "absolute",
-    right: -110,
-    top: -80,
-    width: 280,
-  },
-  hero: {
-    paddingTop: 18,
-  },
-  noResult: {
-    backgroundColor: "rgba(255,255,255,0.06)",
-    borderColor: colors.border,
-    borderRadius: 24,
-    borderWidth: 1,
-    gap: 10,
-    padding: 18,
-  },
-  noResultKicker: {
-    color: colors.accent,
-    fontSize: 11,
-    fontWeight: "900",
-    textTransform: "uppercase",
-  },
-  noResultText: {
-    color: colors.muted,
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: "700",
     lineHeight: 21,
+    marginTop: 6,
+  },
+  glowTop: {
+    backgroundColor: "rgba(255,209,102,0.12)",
+    borderRadius: 999,
+    height: 220,
+    position: "absolute",
+    right: -105,
+    top: -85,
+    width: 220,
+  },
+  gridCard: {
+    borderRadius: 18,
+    height: 116,
+    overflow: "hidden",
+  },
+  gridCount: {
+    color: "rgba(248,250,252,0.70)",
+    fontSize: 11,
+    fontWeight: "700",
+  },
+  gridImage: {
+    flex: 1,
+  },
+  gridName: {
+    color: colors.text,
+    fontSize: 14,
+    fontWeight: "700",
+    lineHeight: 17,
+  },
+  gridScrim: {
+    flex: 1,
+    justifyContent: "space-between",
+    padding: 10,
+  },
+  header: {
+    gap: 10,
+  },
+  heroScroller: {
+    gap: 8,
+    paddingRight: 14,
+  },
+  imageScrim: {
+    flex: 1,
+    justifyContent: "flex-end",
+    padding: 10,
+  },
+  noResult: {
+    backgroundColor: "rgba(255,255,255,0.055)",
+    borderColor: colors.border,
+    borderRadius: 20,
+    borderWidth: 1,
+    gap: 12,
+    padding: 15,
   },
   noResultTitle: {
     color: colors.text,
-    fontSize: 20,
-    fontWeight: "900",
-    lineHeight: 25,
+    fontSize: 18,
+    fontWeight: "700",
+  },
+  playButton: {
+    alignItems: "center",
+    alignSelf: "flex-end",
+    backgroundColor: colors.accent,
+    borderRadius: 999,
+    height: 42,
+    justifyContent: "center",
+    width: 42,
   },
   pressed: {
-    opacity: 0.74,
+    opacity: 0.78,
+    transform: [{ scale: 0.985 }],
   },
   primaryAction: {
     alignSelf: "flex-start",
     backgroundColor: colors.accent,
-    borderRadius: 15,
+    borderRadius: 14,
     justifyContent: "center",
-    marginTop: 6,
-    minHeight: 44,
-    paddingHorizontal: 15,
+    minHeight: 40,
+    paddingHorizontal: 14,
   },
   primaryActionText: {
     color: "#06111d",
-    fontSize: 13,
-    fontWeight: "900",
+    fontSize: 12,
+    fontWeight: "800",
+  },
+  progressFill: {
+    backgroundColor: colors.accent,
+    borderRadius: 999,
+    height: "100%",
+  },
+  progressTrack: {
+    backgroundColor: "rgba(255,255,255,0.22)",
+    borderRadius: 999,
+    height: 5,
+    marginTop: 9,
+    overflow: "hidden",
   },
   resultsBlock: {
-    gap: 14,
+    gap: 12,
+  },
+  resultsTitle: {
+    color: colors.text,
+    fontSize: 24,
+    fontWeight: "700",
+    lineHeight: 29,
   },
   root: {
     flex: 1,
   },
   searchBox: {
     alignItems: "center",
-    backgroundColor: "rgba(5,8,18,0.48)",
-    borderColor: "rgba(255,255,255,0.14)",
-    borderRadius: 22,
+    backgroundColor: "rgba(255,255,255,0.075)",
+    borderColor: "rgba(255,255,255,0.09)",
+    borderRadius: 14,
     borderWidth: 1,
     flexDirection: "row",
-    gap: 11,
-    marginTop: 24,
-    minHeight: 60,
-    paddingHorizontal: 16,
-  },
-  searchButton: {
-    alignItems: "center",
-    backgroundColor: colors.accent,
-    borderRadius: 15,
-    height: 42,
-    justifyContent: "center",
-    minWidth: 48,
+    gap: 8,
+    minHeight: 42,
     paddingHorizontal: 12,
-  },
-  searchButtonText: {
-    color: "#06111d",
-    fontSize: 13,
-    fontWeight: "900",
   },
   searchInput: {
     color: colors.text,
     flex: 1,
-    fontSize: 16,
-    fontWeight: "700",
-    minHeight: 54,
-  },
-  sectionKicker: {
-    color: colors.accent,
-    fontSize: 11,
-    fontWeight: "900",
-    letterSpacing: 0,
-    textTransform: "uppercase",
+    fontSize: 15,
+    fontWeight: "600",
+    minHeight: 40,
   },
   sectionTitle: {
     color: colors.text,
-    fontSize: 24,
-    fontWeight: "900",
-    letterSpacing: 0,
-    lineHeight: 29,
-    marginTop: 4,
+    fontSize: 17,
+    fontWeight: "700",
+    marginTop: 2,
   },
-  source: {
-    color: "rgba(248,250,252,0.42)",
-    flexShrink: 1,
-    fontSize: 11,
-    fontWeight: "800",
-    maxWidth: "44%",
-  },
-  themeCount: {
-    color: "rgba(248,250,252,0.56)",
-    fontSize: 12,
-    fontWeight: "900",
-  },
-  themeDot: {
-    borderRadius: 999,
-    height: 9,
-    width: 9,
-  },
-  themeName: {
-    color: colors.text,
-    fontSize: 14,
-    fontWeight: "900",
-    maxWidth: 150,
-  },
-  themePill: {
-    alignItems: "center",
-    backgroundColor: "rgba(255,255,255,0.075)",
-    borderColor: "rgba(255,255,255,0.12)",
-    borderRadius: 999,
-    borderWidth: 1,
+  themeGrid: {
     flexDirection: "row",
-    gap: 9,
-    minHeight: 46,
-    paddingHorizontal: 14,
-  },
-  themeScroller: {
+    flexWrap: "wrap",
     gap: 10,
-    paddingRight: 18,
   },
   title: {
     color: colors.text,
-    fontSize: 38,
-    fontWeight: "900",
-    letterSpacing: 0,
-    lineHeight: 42,
-    marginTop: 9,
-  },
-  topicBlock: {
-    gap: 12,
+    fontSize: 32,
+    fontWeight: "700",
+    letterSpacing: -0.4,
+    lineHeight: 36,
   },
 });

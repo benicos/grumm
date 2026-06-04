@@ -22,6 +22,7 @@ export type CategorySummary = {
   accent: string;
   count?: number;
   id: string;
+  imageUrl: string | null;
   name: string;
   slug: string;
   tone: string;
@@ -94,6 +95,12 @@ export type ProfileSummary = SessionProfile & {
   uniqueViewsCount: number;
 };
 
+export type QuizStatsSummary = {
+  averageScore: number | null;
+  bestScore: number | null;
+  sessionsCount: number;
+};
+
 export type ExplorerData = {
   categories: CategorySummary[];
   facts: FeedFact[];
@@ -103,6 +110,7 @@ export type ExplorerData = {
 export type ThemeViewStat = {
   accent: string;
   count: number;
+  imageUrl: string | null;
   name: string;
   percent: number;
   slug: string;

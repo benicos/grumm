@@ -1,10 +1,9 @@
-import { LinearGradient } from "expo-linear-gradient";
 import { Bookmark, ChevronLeft, ExternalLink, Heart, Share2, type LucideIcon } from "lucide-react-native";
 import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { colors } from "../theme/colors";
 import { cleanFactSource } from "../lib/source";
+import { designTokens as ds } from "../theme/designTokens";
 import type { FactActions, FeedFact } from "../types/domain";
 import { SwipeBackView } from "./SwipeBackView";
 
@@ -17,16 +16,6 @@ type FactDetailViewProps = {
   onToggleSave: () => void;
 };
 
-function getGradientColors(fact: FeedFact): [string, string, string] {
-  const hexColors = fact.tone.match(/#[0-9a-fA-F]{3,8}/g);
-
-  if (hexColors && hexColors.length >= 2) {
-    return [hexColors[0], hexColors[1], hexColors[2] ?? "#050812"];
-  }
-
-  return ["#07111f", fact.accent, "#050812"];
-}
-
 export function FactDetailView({ actions, fact, onBack, onShare, onToggleLike, onToggleSave }: FactDetailViewProps) {
   const insets = useSafeAreaInsets();
   const source = cleanFactSource(fact.source);
@@ -34,15 +23,13 @@ export function FactDetailView({ actions, fact, onBack, onShare, onToggleLike, o
 
   return (
     <SwipeBackView onBack={onBack} style={styles.root}>
-    <LinearGradient colors={getGradientColors(fact)} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.root}>
-      <View style={styles.scrim} />
       <ScrollView contentContainerStyle={[styles.content, { paddingTop: insets.top + 14 }]} showsVerticalScrollIndicator={false}>
         <Pressable accessibilityRole="button" onPress={onBack} style={styles.backButton}>
-          <ChevronLeft color={colors.text} size={20} strokeWidth={2.4} />
-          <Text style={styles.backText}>Enregistrés</Text>
+          <ChevronLeft color={ds.color.text} size={20} strokeWidth={2.4} />
+          <Text style={styles.backText}>Retour</Text>
         </Pressable>
 
-        <View style={[styles.category, { borderColor: `${fact.accent}73` }]}>
+        <View style={[styles.category, { borderColor: `${fact.accent}66` }]}>
           <Text style={[styles.categoryText, { color: fact.accent }]} numberOfLines={1}>
             {fact.category}
           </Text>
@@ -51,32 +38,38 @@ export function FactDetailView({ actions, fact, onBack, onShare, onToggleLike, o
         <Text style={styles.title}>{fact.title}</Text>
         <Text style={styles.detail}>{fact.detail}</Text>
 
-        {fact.longContent ? (
-          <View style={styles.longContent}>
-            <Text style={styles.longContentLabel}>En savoir plus</Text>
-            <Text style={styles.longContentText}>{fact.longContent}</Text>
-          </View>
+        {fact.hook ? (
+          <>
+            <Text style={styles.sectionTitle}>À retenir</Text>
+            <View style={styles.card}>
+              <Text style={styles.hook}>{fact.hook}</Text>
+            </View>
+          </>
         ) : null}
 
-        {fact.hook ? (
-          <View style={styles.takeaway}>
-            <Text style={styles.takeawayLabel}>À retenir</Text>
-            <Text style={styles.hook}>{fact.hook}</Text>
-          </View>
+        {fact.longContent ? (
+          <>
+            <Text style={styles.sectionTitle}>En savoir plus</Text>
+            <View style={styles.card}>
+              <Text style={styles.longContentText}>{fact.longContent}</Text>
+            </View>
+          </>
         ) : null}
 
         {source ? (
-          <View style={styles.sourceBlock}>
-            <Text style={styles.sourceLabel}>Source</Text>
-            {sourceUrl ? (
-              <Pressable onPress={() => Linking.openURL(sourceUrl)} style={styles.sourceLink}>
+          <>
+            <Text style={styles.sectionTitle}>Source</Text>
+            <View style={styles.card}>
+              {sourceUrl ? (
+                <Pressable onPress={() => Linking.openURL(sourceUrl)} style={styles.sourceLink}>
+                  <Text style={styles.sourceText}>{source}</Text>
+                  <ExternalLink color={ds.color.muted} size={15} strokeWidth={2.2} />
+                </Pressable>
+              ) : (
                 <Text style={styles.sourceText}>{source}</Text>
-                <ExternalLink color="rgba(248,250,252,0.72)" size={15} strokeWidth={2.2} />
-              </Pressable>
-            ) : (
-              <Text style={styles.sourceText}>{source}</Text>
-            )}
-          </View>
+              )}
+            </View>
+          </>
         ) : null}
 
         <View style={styles.actions}>
@@ -85,7 +78,6 @@ export function FactDetailView({ actions, fact, onBack, onShare, onToggleLike, o
           <ActionButton Icon={Share2} label="Partager" onPress={onShare} />
         </View>
       </ScrollView>
-    </LinearGradient>
     </SwipeBackView>
   );
 }
@@ -103,7 +95,7 @@ function ActionButton({
 }) {
   return (
     <Pressable onPress={onPress} style={({ pressed }) => [styles.actionButton, active && styles.actionButtonActive, pressed && styles.pressed]}>
-      <Icon color={active ? "#06111d" : colors.text} fill={active ? colors.accent : "transparent"} size={22} strokeWidth={2.2} />
+      <Icon color={active ? "#06111d" : ds.color.text} fill={active ? ds.color.goal : "transparent"} size={21} strokeWidth={2.2} />
       <Text style={[styles.actionLabel, active && styles.actionLabelActive]}>{label}</Text>
     </Pressable>
   );
@@ -112,122 +104,104 @@ function ActionButton({
 const styles = StyleSheet.create({
   actionButton: {
     alignItems: "center",
-    backgroundColor: "rgba(255,255,255,0.09)",
-    borderColor: "rgba(255,255,255,0.14)",
-    borderRadius: 20,
+    backgroundColor: ds.color.card,
+    borderColor: ds.color.stroke,
+    borderRadius: ds.radius.control,
     borderWidth: 1,
     flex: 1,
     gap: 6,
     justifyContent: "center",
-    minHeight: 68,
+    minHeight: 64,
   },
   actionButtonActive: {
-    backgroundColor: colors.accent,
-    borderColor: "rgba(255,255,255,0.38)",
+    backgroundColor: ds.color.goal,
+    borderColor: "rgba(255,255,255,0.28)",
   },
   actionLabel: {
-    color: "rgba(248,250,252,0.74)",
-    fontSize: 12,
-    fontWeight: "900",
+    color: ds.color.muted,
+    fontSize: ds.typography.caption,
+    fontWeight: ds.weight.semibold,
   },
   actionLabelActive: {
     color: "#06111d",
   },
   actions: {
     flexDirection: "row",
-    gap: 10,
+    gap: ds.space.sm,
+    marginTop: ds.space.sm,
   },
   backButton: {
     alignItems: "center",
     alignSelf: "flex-start",
-    backgroundColor: "rgba(5,8,18,0.36)",
-    borderColor: "rgba(255,255,255,0.12)",
-    borderRadius: 999,
+    backgroundColor: ds.color.card,
+    borderColor: ds.color.stroke,
+    borderRadius: ds.radius.full,
     borderWidth: 1,
     flexDirection: "row",
     gap: 6,
-    minHeight: 42,
-    paddingHorizontal: 13,
+    minHeight: 40,
+    paddingHorizontal: 12,
   },
   backText: {
-    color: colors.text,
+    color: ds.color.text,
     fontSize: 13,
-    fontWeight: "900",
+    fontWeight: ds.weight.semibold,
+  },
+  card: {
+    backgroundColor: ds.color.card,
+    borderColor: ds.color.stroke,
+    borderRadius: ds.radius.card,
+    borderWidth: 1,
+    padding: ds.space.md,
   },
   category: {
     alignSelf: "flex-start",
-    backgroundColor: "rgba(5,8,18,0.36)",
-    borderRadius: 999,
+    backgroundColor: ds.color.card,
+    borderRadius: ds.radius.full,
     borderWidth: 1,
-    marginTop: 20,
+    marginTop: ds.space.md,
     maxWidth: "78%",
-    paddingHorizontal: 14,
+    paddingHorizontal: 13,
     paddingVertical: 8,
   },
   categoryText: {
-    fontSize: 11,
-    fontWeight: "900",
+    fontSize: ds.typography.small,
+    fontWeight: ds.weight.bold,
     textTransform: "uppercase",
   },
   content: {
-    gap: 22,
-    paddingBottom: 28,
-    paddingHorizontal: 20,
+    gap: ds.space.md,
+    paddingBottom: 30,
+    paddingHorizontal: ds.space.gutter,
   },
   detail: {
-    color: "rgba(248,250,252,0.80)",
+    color: ds.color.muted,
     fontSize: 17,
     lineHeight: 27,
   },
   hook: {
-    color: colors.text,
+    color: ds.color.text,
     fontSize: 17,
-    fontWeight: "800",
+    fontWeight: ds.weight.semibold,
     lineHeight: 25,
-    marginTop: 7,
-  },
-  longContent: {
-    backgroundColor: "rgba(5,8,18,0.24)",
-    borderColor: "rgba(255,255,255,0.12)",
-    borderRadius: 22,
-    borderWidth: 1,
-    padding: 18,
-  },
-  longContentLabel: {
-    color: colors.accent,
-    fontSize: 11,
-    fontWeight: "900",
-    textTransform: "uppercase",
   },
   longContentText: {
     color: "rgba(248,250,252,0.82)",
     fontSize: 16,
     lineHeight: 27,
-    marginTop: 10,
   },
   pressed: {
-    opacity: 0.76,
+    opacity: 0.78,
   },
   root: {
+    backgroundColor: ds.color.background,
     flex: 1,
   },
-  scrim: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.34)",
-  },
-  sourceBlock: {
-    backgroundColor: "rgba(5,8,18,0.34)",
-    borderColor: "rgba(255,255,255,0.12)",
-    borderRadius: 20,
-    borderWidth: 1,
-    gap: 8,
-    padding: 16,
-  },
-  sourceLabel: {
-    color: "rgba(248,250,252,0.46)",
-    fontSize: 11,
-    fontWeight: "900",
-    textTransform: "uppercase",
+  sectionTitle: {
+    color: ds.color.text,
+    fontSize: ds.typography.section,
+    fontWeight: ds.weight.semibold,
+    marginTop: ds.space.xs,
   },
   sourceLink: {
     alignItems: "center",
@@ -235,30 +209,16 @@ const styles = StyleSheet.create({
     gap: 7,
   },
   sourceText: {
-    color: "rgba(248,250,252,0.76)",
+    color: ds.color.muted,
     flexShrink: 1,
     fontSize: 14,
-    fontWeight: "800",
+    fontWeight: ds.weight.medium,
     lineHeight: 20,
   },
-  takeaway: {
-    backgroundColor: "rgba(255,255,255,0.08)",
-    borderColor: "rgba(255,255,255,0.13)",
-    borderRadius: 22,
-    borderWidth: 1,
-    padding: 18,
-  },
-  takeawayLabel: {
-    color: colors.accent,
-    fontSize: 11,
-    fontWeight: "900",
-    textTransform: "uppercase",
-  },
   title: {
-    color: colors.text,
-    fontSize: 38,
-    fontWeight: "900",
-    letterSpacing: 0,
-    lineHeight: 42,
+    color: ds.color.text,
+    fontSize: 34,
+    fontWeight: ds.weight.bold,
+    lineHeight: 39,
   },
 });

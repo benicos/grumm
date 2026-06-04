@@ -55,10 +55,21 @@ export default function AdminThemesPage() {
           label: "Thème",
           render: (theme) => (
             <div className="flex items-center gap-3">
-              <span
-                className="h-9 w-9 rounded-lg border border-gray-200"
-                style={{ backgroundColor: theme.accent_color }}
-              />
+              <span className="relative h-10 w-10 overflow-hidden rounded-lg border border-gray-200 bg-gray-100">
+                {theme.theme_image_url ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    alt=""
+                    src={theme.theme_image_url}
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <span
+                    className="block h-full w-full"
+                    style={{ backgroundColor: theme.accent_color }}
+                  />
+                )}
+              </span>
               <span className="font-medium text-gray-800">{theme.name}</span>
             </div>
           ),

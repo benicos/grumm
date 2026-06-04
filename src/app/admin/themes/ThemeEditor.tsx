@@ -1,9 +1,10 @@
 "use client";
 
-import type { FormEvent } from "react";
+import type { ChangeEvent, FormEvent } from "react";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getAdminCategory, saveAdminCategory } from "@/lib/admin";
+import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import {
   getThemeGradientStyle,
   themeMotifLabels,
@@ -31,6 +32,7 @@ type ThemeFormState = {
   name: string;
   seo_description: string;
   seo_title: string;
+  theme_image_url: string;
   visual_motif: ThemeVisualMotif;
 };
 
@@ -51,6 +53,7 @@ const emptyTheme: ThemeFormState = {
   name: "",
   seo_description: "",
   seo_title: "",
+  theme_image_url: "",
   visual_motif: "constellation",
 };
 
@@ -93,6 +96,8 @@ export default function ThemeEditor({ themeId }: { themeId?: string }) {
   const [message, setMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(Boolean(themeId));
   const [busy, setBusy] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [imagePreviewError, setImagePreviewError] = useState(false);
   const editing = Boolean(themeId);
   const previewTheme = {
     ...form,
@@ -150,6 +155,7 @@ export default function ThemeEditor({ themeId }: { themeId?: string }) {
           name: theme.name,
           seo_description: theme.seo_description ?? "",
           seo_title: theme.seo_title ?? "",
+          theme_image_url: theme.theme_image_url ?? "",
           visual_motif:
             (theme.visual_motif as ThemeVisualMotif | null) ??
             emptyTheme.visual_motif,
@@ -194,6 +200,7 @@ export default function ThemeEditor({ themeId }: { themeId?: string }) {
       name: form.name,
       seo_description: form.seo_description || null,
       seo_title: form.seo_title || null,
+      theme_image_url: form.theme_image_url || null,
       tone: toneFromStops(form),
       visual_motif: form.visual_motif,
     });
@@ -210,6 +217,68 @@ export default function ThemeEditor({ themeId }: { themeId?: string }) {
 
     if (!editing) {
       setForm(emptyTheme);
+    }
+  }
+
+  async function uploadThemeImage(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+
+    if (!file) {
+      return;
+    }
+
+    setError(null);
+    setMessage(null);
+
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+      setError("Format invalide. Utilise JPG, PNG ou WEBP.");
+      event.target.value = "";
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setError("L'image ne doit pas dépasser 5 Mo.");
+      event.target.value = "";
+      return;
+    }
+
+    const supabase = createSupabaseBrowserClient();
+
+    if (!supabase) {
+      setError("Supabase n'est pas configuré pour l'upload.");
+      event.target.value = "";
+      return;
+    }
+
+    setUploadingImage(true);
+
+    try {
+      const extension = file.name.split(".").pop()?.toLowerCase() || "webp";
+      const safeName = (form.name || "theme").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "theme";
+      const path = `${safeName}-${crypto.randomUUID()}.${extension}`;
+      const { error: uploadError } = await supabase.storage
+        .from("theme-images")
+        .upload(path, file, {
+          cacheControl: "31536000",
+          contentType: file.type,
+          upsert: false,
+        });
+
+      if (uploadError) {
+        setError(uploadError.message);
+        return;
+      }
+
+      const { data } = supabase.storage.from("theme-images").getPublicUrl(path);
+      setImagePreviewError(false);
+      setForm((current) => ({
+        ...current,
+        theme_image_url: data.publicUrl,
+      }));
+      setMessage("Image importée.");
+    } finally {
+      setUploadingImage(false);
+      event.target.value = "";
     }
   }
 
@@ -326,6 +395,79 @@ export default function ThemeEditor({ themeId }: { themeId?: string }) {
                     </button>
                   );
                 })}
+              </div>
+            </section>
+
+            <section className="rounded-2xl border border-gray-200 bg-white p-4">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                <div className="max-w-xl">
+                  <div className="flex items-center gap-2 text-sm font-medium text-gray-800">
+                    Illustration du thème
+                    <AdminHelpTooltip text="Image utilisée dans l'app iOS pour les cartes de thèmes. Formats acceptés : JPG, PNG, WEBP, 5 Mo maximum." />
+                  </div>
+                  <p className="mt-1 text-xs leading-5 text-gray-500">
+                    Colle une URL ou importe une image depuis ton ordinateur.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setImagePreviewError(false);
+                    setForm((current) => ({ ...current, theme_image_url: "" }));
+                  }}
+                  className="inline-flex h-10 items-center justify-center rounded-lg border border-gray-200 bg-white px-3 text-xs font-medium text-gray-600 transition hover:bg-gray-50"
+                >
+                  Supprimer l&apos;image
+                </button>
+              </div>
+
+              <div className="mt-4 grid gap-4 lg:grid-cols-[220px_1fr]">
+                <div className="overflow-hidden rounded-2xl border border-gray-200 bg-gray-100">
+                  {form.theme_image_url && !imagePreviewError ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      alt={`Aperçu ${form.name || "du thème"}`}
+                      src={form.theme_image_url}
+                      onError={() => setImagePreviewError(true)}
+                      className="h-36 w-full object-cover"
+                    />
+                  ) : (
+                    <div className="grid h-36 place-items-center bg-[linear-gradient(135deg,#111C2D,#132238)] px-6 text-center text-xs font-medium text-white/70">
+                      Fallback image thème
+                    </div>
+                  )}
+                </div>
+
+                <div className="grid gap-4">
+                  <AdminField
+                    help="URL publique ou signée. Maximum 1000 caractères."
+                    label="URL de l'image"
+                    type="url"
+                    value={form.theme_image_url}
+                    onChange={(theme_image_url) => {
+                      setImagePreviewError(false);
+                      setForm((current) => ({
+                        ...current,
+                        theme_image_url: theme_image_url.slice(0, 1000),
+                      }));
+                    }}
+                  />
+                  <label className="flex min-h-28 cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed border-gray-300 bg-gray-50 px-4 py-5 text-center text-sm text-gray-600 transition hover:border-[#465fff]/50 hover:bg-[#f5f7ff]">
+                    <span className="font-medium text-gray-800">
+                      {uploadingImage ? "Import en cours..." : "Importer une image"}
+                    </span>
+                    <span className="mt-1 text-xs text-gray-500">
+                      JPG, PNG ou WEBP · 5 Mo max
+                    </span>
+                    <input
+                      accept="image/jpeg,image/png,image/webp"
+                      className="sr-only"
+                      disabled={uploadingImage}
+                      type="file"
+                      onChange={uploadThemeImage}
+                    />
+                  </label>
+                </div>
               </div>
             </section>
 

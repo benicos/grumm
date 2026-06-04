@@ -125,10 +125,21 @@ export default function AdminThemeDetailPage() {
         <AdminCard className="p-6">
           <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
             <div className="flex min-w-0 items-center gap-4">
-              <span
-                className="h-16 w-16 shrink-0 rounded-2xl border border-gray-200"
-                style={{ backgroundColor: theme.accent_color }}
-              />
+              <span className="h-16 w-16 shrink-0 overflow-hidden rounded-2xl border border-gray-200 bg-gray-100">
+                {theme.theme_image_url ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    alt=""
+                    src={theme.theme_image_url}
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <span
+                    className="block h-full w-full"
+                    style={{ backgroundColor: theme.accent_color }}
+                  />
+                )}
+              </span>
               <div className="min-w-0">
                 <h2 className="break-words text-2xl font-semibold text-gray-800">
                   {theme.name}
@@ -182,6 +193,11 @@ export default function AdminThemeDetailPage() {
               label="Motif"
               technicalName="visual_motif"
               value={theme.visual_motif ?? "-"}
+            />
+            <DetailItem
+              label="Illustration du thème"
+              technicalName="theme_image_url"
+              value={theme.theme_image_url ?? "-"}
             />
             <DetailItem
               label="Couleur d'accent"

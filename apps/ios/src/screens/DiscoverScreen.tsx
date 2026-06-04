@@ -1,10 +1,11 @@
 import * as Haptics from "expo-haptics";
 import { Flame } from "lucide-react-native";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Animated, AppState, FlatList, Pressable, StyleSheet, Text, View, type LayoutChangeEvent, type ViewToken } from "react-native";
+import { Animated, AppState, FlatList, InteractionManager, Pressable, StyleSheet, Text, View, type LayoutChangeEvent, type ViewToken } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { FactCard } from "../components/FactCard";
+import { FactDetailView } from "../components/FactDetailView";
 import { GoalCelebration } from "../components/GoalCelebration";
 import { LoadingState, ScreenState } from "../components/ScreenState";
 import { mobileConfig, userMessages } from "../config/app";
@@ -25,9 +26,10 @@ import type { FactActions, FeedFact } from "../types/domain";
 type DiscoverScreenProps = {
   initialFact?: FeedFact | null;
   onRequireAuth: () => void;
+  themeSlug?: string | null;
 };
 
-export function DiscoverScreen({ initialFact, onRequireAuth }: DiscoverScreenProps) {
+export function DiscoverScreen({ initialFact, onRequireAuth, themeSlug }: DiscoverScreenProps) {
   const { profile, session } = useAuth();
   const { shareFactImage, shareStoryNode } = useFactImageShare();
   const [facts, setFacts] = useState<FeedFact[]>([]);
@@ -43,6 +45,7 @@ export function DiscoverScreen({ initialFact, onRequireAuth }: DiscoverScreenPro
     message: string;
     visible: boolean;
   }>({ completedGoals: 0, message: "Premier pas.", visible: false });
+  const [selectedFact, setSelectedFact] = useState<FeedFact | null>(null);
   const recordedIds = useRef(new Set<string>());
   const celebrationShownRef = useRef(false);
   const factReadTokenRef = useRef<MobileFactReadToken | null>(null);
@@ -88,6 +91,7 @@ export function DiscoverScreen({ initialFact, onRequireAuth }: DiscoverScreenPro
         excludeIds: initialFact ? [initialFact.id] : [],
         learningGoal,
         limit: mobileConfig.feedBatchSize,
+        themeSlug,
       });
       const mergedFacts = initialFact
         ? [initialFact, ...nextFacts.filter((fact) => fact.id !== initialFact.id)]
@@ -97,13 +101,17 @@ export function DiscoverScreen({ initialFact, onRequireAuth }: DiscoverScreenPro
         .map((fact) => fact.id);
       setFacts(mergedFacts);
       setCurrentIndex(0);
-      mergeActions(await getFactActions(standardFactIds));
+      InteractionManager.runAfterInteractions(() => {
+        void getFactActions(standardFactIds)
+          .then(mergeActions)
+          .catch(() => undefined);
+      });
     } catch (nextError) {
       setError(nextError instanceof Error ? nextError.message : userMessages.genericLoadError);
     } finally {
       setIsLoading(false);
     }
-  }, [initialFact, learningGoal, mergeActions]);
+  }, [initialFact, learningGoal, mergeActions, themeSlug]);
 
   const loadMore = useCallback(async () => {
     if (isLoadingMore || facts.length === 0) {
@@ -117,6 +125,7 @@ export function DiscoverScreen({ initialFact, onRequireAuth }: DiscoverScreenPro
         excludeIds: facts.map((fact) => fact.id),
         learningGoal,
         limit: mobileConfig.feedBatchSize,
+        themeSlug,
       });
       const recycledFacts =
         nextFacts.length > 0
@@ -125,6 +134,7 @@ export function DiscoverScreen({ initialFact, onRequireAuth }: DiscoverScreenPro
               excludeIds: [],
               learningGoal,
               limit: mobileConfig.feedBatchSize,
+              themeSlug,
             });
       const uniqueFacts = recycledFacts.filter((fact) => !facts.some((current) => current.id === fact.id));
       const factsToAppend = uniqueFacts.length > 0 ? uniqueFacts : recycledFacts;
@@ -132,11 +142,15 @@ export function DiscoverScreen({ initialFact, onRequireAuth }: DiscoverScreenPro
         .filter((fact) => !isCommercialCollaborationFact(fact))
         .map((fact) => fact.id);
       setFacts((current) => [...current, ...factsToAppend]);
-      mergeActions(await getFactActions(standardFactIds));
+      InteractionManager.runAfterInteractions(() => {
+        void getFactActions(standardFactIds)
+          .then(mergeActions)
+          .catch(() => undefined);
+      });
     } finally {
       setIsLoadingMore(false);
     }
-  }, [facts, isLoadingMore, learningGoal, mergeActions]);
+  }, [facts, isLoadingMore, learningGoal, mergeActions, themeSlug]);
 
   useEffect(() => {
     const frame = requestAnimationFrame(() => {
@@ -144,20 +158,24 @@ export function DiscoverScreen({ initialFact, onRequireAuth }: DiscoverScreenPro
     });
 
     return () => cancelAnimationFrame(frame);
-  }, [initialFactId, loadInitial, session?.user.id]);
+  }, [initialFactId, loadInitial, session?.user.id, themeSlug]);
 
   useEffect(() => {
     if (!session) {
       return;
     }
 
-    getTodayDailyProgress(profile?.dailyGoal)
-      .then((result) => {
-        if (result.ok) {
-          setTodayCount(result.viewedTodayCount);
-        }
-      })
-      .catch(() => undefined);
+    const task = InteractionManager.runAfterInteractions(() => {
+      void getTodayDailyProgress(profile?.dailyGoal)
+        .then((result) => {
+          if (result.ok) {
+            setTodayCount(result.viewedTodayCount);
+          }
+        })
+        .catch(() => undefined);
+    });
+
+    return () => task.cancel();
   }, [profile?.dailyGoal, session]);
 
   useEffect(() => {
@@ -172,8 +190,8 @@ export function DiscoverScreen({ initialFact, onRequireAuth }: DiscoverScreenPro
     }
 
     recordedIds.current.add(fact.id);
-    recordFactView(fact.id, profile?.dailyGoal)
-      .then(async (result) => {
+    const task = InteractionManager.runAfterInteractions(() => {
+      void recordFactView(fact.id, profile?.dailyGoal).then(async (result) => {
         if (!result.ok) {
           return;
         }
@@ -196,6 +214,10 @@ export function DiscoverScreen({ initialFact, onRequireAuth }: DiscoverScreenPro
         }, 1900);
       })
       .catch(() => undefined);
+
+    });
+
+    return () => task.cancel();
   }, [activeFactId, facts, profile?.dailyGoal]);
 
   useEffect(() => {
@@ -212,8 +234,8 @@ export function DiscoverScreen({ initialFact, onRequireAuth }: DiscoverScreenPro
       };
     }
 
-    startMobileFactRead(activeFactId)
-      .then((token) => {
+    const task = InteractionManager.runAfterInteractions(() => {
+      void startMobileFactRead(activeFactId).then((token) => {
         if (cancelled) {
           void finishMobileFactRead(token);
           return;
@@ -222,9 +244,11 @@ export function DiscoverScreen({ initialFact, onRequireAuth }: DiscoverScreenPro
         factReadTokenRef.current = token;
       })
       .catch(() => undefined);
+    });
 
     return () => {
       cancelled = true;
+      task.cancel();
     };
   }, [activeFactId, facts]);
 
@@ -317,6 +341,22 @@ export function DiscoverScreen({ initialFact, onRequireAuth }: DiscoverScreenPro
     return <ScreenState actionLabel="Actualiser" message={userMessages.emptyFeed} onAction={loadInitial} title="Aucun fait disponible" />;
   }
 
+  if (selectedFact) {
+    return (
+      <FactDetailView
+        actions={actions[selectedFact.id] ?? { liked: false, saved: false }}
+        fact={selectedFact}
+        onBack={() => setSelectedFact(null)}
+        onShare={() => {
+          markMobileFactReadInteraction(factReadTokenRef.current);
+          void shareFactImage(selectedFact);
+        }}
+        onToggleLike={() => void handleToggleLike(selectedFact)}
+        onToggleSave={() => void handleToggleSave(selectedFact)}
+      />
+    );
+  }
+
   return (
     <View onLayout={handleLayout} style={styles.wrap}>
       <FlatList
@@ -359,6 +399,10 @@ export function DiscoverScreen({ initialFact, onRequireAuth }: DiscoverScreenPro
             }}
             onToggleLike={() => void handleToggleLike(item)}
             onToggleSave={() => void handleToggleSave(item)}
+            onView={() => {
+              markMobileFactReadInteraction(factReadTokenRef.current);
+              setSelectedFact(item);
+            }}
           />
         )}
         showsVerticalScrollIndicator={false}

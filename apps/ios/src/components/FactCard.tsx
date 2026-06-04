@@ -1,5 +1,5 @@
 import { LinearGradient } from "expo-linear-gradient";
-import { Bookmark, ExternalLink, Heart, Share2, type LucideIcon } from "lucide-react-native";
+import { Bookmark, ExternalLink, Eye, Heart, Share2, type LucideIcon } from "lucide-react-native";
 import { Linking, Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -16,6 +16,7 @@ type FactCardProps = {
   onSourcePress?: () => void;
   onToggleLike: () => void;
   onToggleSave: () => void;
+  onView: () => void;
 };
 
 function getGradientColors(fact: FeedFact): [string, string, string] {
@@ -28,7 +29,7 @@ function getGradientColors(fact: FeedFact): [string, string, string] {
   return ["#07111f", fact.accent, "#050812"];
 }
 
-export function FactCard({ actions, fact, height, onShare, onSourcePress, onToggleLike, onToggleSave }: FactCardProps) {
+export function FactCard({ actions, fact, height, onShare, onSourcePress, onToggleLike, onToggleSave, onView }: FactCardProps) {
   const insets = useSafeAreaInsets();
   const source = cleanFactSource(fact.source);
   const sourceUrl = fact.sourceUrl?.trim();
@@ -75,6 +76,7 @@ export function FactCard({ actions, fact, height, onShare, onSourcePress, onTogg
               <View style={styles.actions}>
                 <ActionButton accent={fact.accent} active={actions.liked} Icon={Heart} label="Aimer" onPress={onToggleLike} />
                 <ActionButton accent={fact.accent} active={actions.saved} Icon={Bookmark} label="Enregistrer" onPress={onToggleSave} />
+                <ActionButton accent={fact.accent} Icon={Eye} label="Voir" onPress={onView} />
                 <ActionButton accent={fact.accent} Icon={Share2} label="Partager" onPress={onShare} />
               </View>
             )}

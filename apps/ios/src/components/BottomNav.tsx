@@ -1,11 +1,18 @@
 import { LinearGradient } from "expo-linear-gradient";
-import { Bookmark, Compass, Sparkles, UserRound, type LucideIcon } from "lucide-react-native";
+import {
+  Brain,
+  Compass,
+  Sparkles,
+  UserRound,
+  type LucideIcon,
+} from "lucide-react-native";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { colors } from "../theme/colors";
+import { GrummLogo } from "./GrummLogo";
 
-export type MobileTab = "discover" | "explore" | "saved" | "profile";
+export type MobileTab = "discover" | "explore" | "quizz" | "profile";
 
 export type NavVariant =
   | "minimal-premium"
@@ -19,8 +26,8 @@ const NAV_VARIANT: NavVariant = "gradient-indicator";
 
 const tabs: { key: MobileTab; label: string; Icon: LucideIcon }[] = [
   { key: "discover", label: "Découvrir", Icon: Sparkles },
-  { key: "explore", label: "Explorer", Icon: Compass },
-  { key: "saved", label: "Enregistrés", Icon: Bookmark },
+  { key: "explore", label: "Thèmes", Icon: Compass },
+  { key: "quizz", label: "Quizz", Icon: Brain },
   { key: "profile", label: "Profil", Icon: UserRound },
 ];
 
@@ -30,31 +37,58 @@ type BottomNavProps = {
   variant?: NavVariant;
 };
 
-export function BottomNav({ activeTab, onChange, variant = NAV_VARIANT }: BottomNavProps) {
-  const orderedTabs = variant === "tiktok-like"
-    ? [tabs[1], tabs[0], tabs[2], tabs[3]]
-    : tabs;
+export function BottomNav({
+  activeTab,
+  onChange,
+  variant = NAV_VARIANT,
+}: BottomNavProps) {
+  const orderedTabs =
+    variant === "tiktok-like" ? [tabs[1], tabs[0], tabs[2], tabs[3]] : tabs;
   const wrapContent = (
     <View style={[styles.wrap, styles[`${variant}Wrap`]]}>
-      {orderedTabs.map((tab) => (
-        <NavItem
-          active={activeTab === tab.key}
-          key={tab.key}
-          onPress={() => onChange(tab.key)}
-          tab={tab}
-          variant={variant}
-        />
-      ))}
+      <View style={styles.sideItems}>
+        {orderedTabs.slice(0, 2).map((tab) => (
+          <NavItem
+            active={activeTab === tab.key}
+            key={tab.key}
+            onPress={() => onChange(tab.key)}
+            tab={tab}
+            variant={variant}
+          />
+        ))}
+      </View>
+      <Pressable
+        accessibilityLabel="Retour à Découvrir"
+        accessibilityRole="button"
+        onPress={() => onChange("discover")}
+        style={({ pressed }) => [styles.logoButton, pressed && styles.pressed]}
+      >
+        <GrummLogo size={38} />
+      </Pressable>
+      <View style={styles.sideItems}>
+        {orderedTabs.slice(2).map((tab) => (
+          <NavItem
+            active={activeTab === tab.key}
+            key={tab.key}
+            onPress={() => onChange(tab.key)}
+            tab={tab}
+            variant={variant}
+          />
+        ))}
+      </View>
     </View>
   );
 
   return (
-    <SafeAreaView edges={["bottom"]} style={[styles.safeArea, styles[`${variant}SafeArea`]]}>
+    <SafeAreaView
+      edges={["bottom"]}
+      style={[styles.safeArea, styles[`${variant}SafeArea`]]}
+    >
       {variant === "glass-compact" ? (
         <LinearGradient
           colors={["rgba(255,255,255,0.08)", "rgba(255,255,255,0.035)"]}
-          start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
+          start={{ x: 0, y: 0 }}
           style={styles.glassShell}
         >
           {wrapContent}
@@ -97,7 +131,9 @@ function NavItem({
         pressed && styles.pressed,
       ]}
     >
-      {active && (isMinimalPremium || variant === "glass-compact") ? <View style={styles.dotIndicator} /> : null}
+      {active && (isMinimalPremium || variant === "glass-compact") ? (
+        <View style={styles.dotIndicator} />
+      ) : null}
       {!isTextFirst ? (
         <Icon
           color={active ? colors.text : muted}
@@ -105,7 +141,11 @@ function NavItem({
           strokeWidth={active ? 2.55 : 2.05}
         />
       ) : (
-        <Icon color={active ? colors.text : "rgba(241,245,249,0.34)"} size={15} strokeWidth={1.9} />
+        <Icon
+          color={active ? colors.text : "rgba(241,245,249,0.34)"}
+          size={15}
+          strokeWidth={1.9}
+        />
       )}
       <Text
         numberOfLines={1}
@@ -120,8 +160,8 @@ function NavItem({
       {active && isGradientIndicator ? (
         <LinearGradient
           colors={["#ffd166", "#6ae3c0"]}
-          start={{ x: 0, y: 0.5 }}
           end={{ x: 1, y: 0.5 }}
+          start={{ x: 0, y: 0.5 }}
           style={styles.gradientIndicator}
         />
       ) : null}
@@ -131,13 +171,23 @@ function NavItem({
 
 const styles = StyleSheet.create({
   safeArea: {
-    backgroundColor: colors.background,
+    backgroundColor: "rgba(5,8,18,0.98)",
   },
   wrap: {
     alignItems: "center",
     flexDirection: "row",
     justifyContent: "space-between",
     overflow: "visible",
+  },
+  sideItems: {
+    flex: 1,
+    flexDirection: "row",
+  },
+  logoButton: {
+    alignItems: "center",
+    justifyContent: "center",
+    marginHorizontal: 2,
+    width: 48,
   },
   item: {
     alignItems: "center",
@@ -244,7 +294,7 @@ const styles = StyleSheet.create({
   "glass-compactItemActive": {
     shadowColor: "#f4ead5",
     shadowOffset: { height: 4, width: 0 },
-    shadowOpacity: 0.10,
+    shadowOpacity: 0.1,
     shadowRadius: 10,
   },
   "glass-compactLabel": {
@@ -280,7 +330,7 @@ const styles = StyleSheet.create({
   },
   "gradient-indicatorWrap": {
     backgroundColor: "transparent",
-    paddingHorizontal: 12,
+    paddingHorizontal: 8,
     paddingTop: 4,
   },
   "gradient-indicatorItem": {

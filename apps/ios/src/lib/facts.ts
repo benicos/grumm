@@ -8,6 +8,7 @@ import type {
   FactActions,
   FeedFact,
   ProfileSummary,
+  QuizStatsSummary,
   RelatedFactRow,
   ThemeViewStat,
 } from "../types/domain";
@@ -56,12 +57,14 @@ type ViewedFactRow = {
         categories:
           | {
               accent_color: string;
+              theme_image_url?: string | null;
               name: string;
               slug: string;
               tone: string;
             }
           | {
               accent_color: string;
+              theme_image_url?: string | null;
               name: string;
               slug: string;
               tone: string;
@@ -76,6 +79,7 @@ type CategoryRow = {
   id: string;
   name: string;
   slug: string;
+  theme_image_url: string | null;
   tone: string;
 };
 
@@ -222,6 +226,7 @@ function mapCategory(category: CategoryRow): CategorySummary {
   return {
     accent: category.accent_color,
     id: category.id,
+    imageUrl: cleanOptionalText(category.theme_image_url),
     name: category.name,
     slug: category.slug,
     tone: category.tone,
@@ -244,6 +249,7 @@ function getTopViewedThemes(rows: ViewedFactRow[]): ThemeViewStat[] {
     themesBySlug.set(category.slug, {
       accent: category.accent_color || "#ffd166",
       count: (current?.count ?? 0) + 1,
+      imageUrl: cleanOptionalText(category.theme_image_url),
       name: category.name,
       slug: category.slug,
     });
@@ -314,9 +320,10 @@ export async function getFeedFacts(options?: {
   excludeIds?: string[];
   learningGoal?: LearningGoal | null;
   limit?: number;
+  themeSlug?: string | null;
 }) {
   const canUseCache = !options?.excludeIds?.length;
-  const cacheKey = `feed:${options?.limit ?? mobileConfig.feedBatchSize}:${options?.learningGoal ?? "default"}`;
+  const cacheKey = `feed:${options?.limit ?? mobileConfig.feedBatchSize}:${options?.learningGoal ?? "default"}:${options?.themeSlug ?? "all"}`;
   const cachedFacts = canUseCache ? getCached(feedCache, cacheKey) : null;
 
   if (cachedFacts) {
@@ -329,7 +336,7 @@ export async function getFeedFacts(options?: {
       p_debug: false,
       p_limit: options?.limit ?? mobileConfig.feedBatchSize,
       p_session_id: getFeedSessionId(),
-      p_theme_slug: null,
+      p_theme_slug: options?.themeSlug ?? null,
       p_user_id: null,
     }),
   );
@@ -346,7 +353,7 @@ export async function getFeedFacts(options?: {
         p_exclude_ids: options?.excludeIds ?? [],
         p_learning_goal: options?.learningGoal ?? null,
         p_limit: options?.limit ?? mobileConfig.feedBatchSize,
-        p_theme_slug: null,
+        p_theme_slug: options?.themeSlug ?? null,
       }),
     );
 
@@ -370,10 +377,65 @@ export async function getFeedFacts(options?: {
   return facts;
 }
 
-export async function getExplorerData(options?: { query?: string }): Promise<ExplorerData> {
+export async function getQuizStatsSummary(): Promise<QuizStatsSummary> {
+  const supabase = getSupabaseClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return {
+      averageScore: null,
+      bestScore: null,
+      sessionsCount: 0,
+    };
+  }
+
+  const { data, error } = await withSupabaseTimeout(
+    supabase
+      .from("quiz_sessions")
+      .select("score,total_questions")
+      .eq("user_id", user.id)
+      .eq("quiz_type", "general_quizz")
+      .not("completed_at", "is", null)
+      .order("created_at", { ascending: false })
+      .limit(20),
+  );
+
+  if (error) {
+    return {
+      averageScore: null,
+      bestScore: null,
+      sessionsCount: 0,
+    };
+  }
+
+  const rows = (data ?? []) as { score: number | null; total_questions: number | null }[];
+  const percentages = rows
+    .map((row) =>
+      row.total_questions && row.total_questions > 0 && typeof row.score === "number"
+        ? Math.round((row.score / row.total_questions) * 100)
+        : null,
+    )
+    .filter((value): value is number => typeof value === "number");
+
+  return {
+    averageScore: percentages.length
+      ? Math.round(percentages.reduce((sum, value) => sum + value, 0) / percentages.length)
+      : null,
+    bestScore: percentages.length ? Math.max(...percentages) : null,
+    sessionsCount: rows.length,
+  };
+}
+
+export async function getExplorerData(options?: {
+  includeFacts?: boolean;
+  query?: string;
+}): Promise<ExplorerData> {
   const supabase = getSupabaseClient();
   const query = options?.query?.trim().replace(/[%,_]/g, " ").replace(/\s+/g, " ") ?? "";
-  const cacheKey = `explorer:${query || "default"}`;
+  const includeFacts = options?.includeFacts ?? Boolean(query);
+  const cacheKey = `explorer:${query || "default"}:${includeFacts ? "facts" : "themes"}`;
   const cachedData = getCached(explorerCache, cacheKey);
 
   if (cachedData) {
@@ -391,49 +453,27 @@ export async function getExplorerData(options?: { query?: string }): Promise<Exp
     throw new Error(userMessages.genericLoadError);
   }
 
-  const factsResult = query
+  const factsResult = includeFacts
     ? await withSupabaseTimeout(
         supabase.rpc("search_published_facts", {
           p_limit: 24,
           p_query: query,
         }),
       )
-    : await withSupabaseTimeout(
-        supabase.rpc("get_discover_feed", {
-          p_exclude_ids: [],
-          p_limit: 12,
-          p_theme_slug: null,
-        }),
-      );
+    : null;
 
-  if (factsResult.error) {
+  if (factsResult?.error) {
     throw new Error(userMessages.genericLoadError);
   }
-
-  const recentFactsResult = await withSupabaseTimeout(
-    supabase
-      .from("facts")
-      .select("id,slug,title,hook,content,long_content,source,source_url,tone,accent_color,categories(name,slug,tone,accent_color)")
-      .eq("status", "published")
-      .order("published_at", { ascending: false, nullsFirst: false })
-      .order("created_at", { ascending: false })
-      .limit(8),
-  );
-
-  const recentFacts = recentFactsResult.error
-    ? []
-    : ((recentFactsResult.data ?? []) as RelatedFactRow["facts"][])
-        .map((fact) => (fact ? mapRelatedFact({ fact_id: fact.id, facts: fact }) : null))
-        .filter((fact): fact is FeedFact => Boolean(fact));
 
   const explorerData = {
     categories: filterCommercialCollaborationCategories(
       ((themesResult.data ?? []) as ExplorerThemeRpcRow[]).map(mapExplorerTheme),
     ),
     facts: filterCommercialCollaborationFacts(
-      ((factsResult.data ?? []) as FeedRpcRow[]).map(mapFeedFact),
+      ((factsResult?.data ?? []) as FeedRpcRow[]).map(mapFeedFact),
     ),
-    recentFacts: filterCommercialCollaborationFacts(recentFacts),
+    recentFacts: [],
   };
 
   setCached(explorerCache, cacheKey, explorerData);
@@ -692,16 +732,19 @@ export async function getProfileSummary(): Promise<ProfileSummary> {
     savedFactsResult,
     viewedThemesResult,
   ] = await Promise.all([
-    withSupabaseTimeout(supabase.from("profiles").select("username,daily_goal,learning_goal,role,created_at").eq("id", user.id).maybeSingle()),
-    withSupabaseTimeout(supabase.from("likes").select("id", { count: "exact", head: true }).eq("user_id", user.id)),
-    withSupabaseTimeout(supabase.from("saves").select("id", { count: "exact", head: true }).eq("user_id", user.id)),
-    withSupabaseTimeout(supabase.from("user_fact_views").select("id", { count: "exact", head: true }).eq("user_id", user.id)),
+    withSupabaseTimeout(supabase.from("profiles").select("username,daily_goal,learning_goal,role,created_at").eq("id", user.id).maybeSingle(), userMessages.genericLoadError, undefined, "profile:read profile"),
+    withSupabaseTimeout(supabase.from("likes").select("id", { count: "exact", head: true }).eq("user_id", user.id), userMessages.genericLoadError, undefined, "profile:count likes"),
+    withSupabaseTimeout(supabase.from("saves").select("id", { count: "exact", head: true }).eq("user_id", user.id), userMessages.genericLoadError, undefined, "profile:count saves"),
+    withSupabaseTimeout(supabase.from("user_fact_views").select("id", { count: "exact", head: true }).eq("user_id", user.id), userMessages.genericLoadError, undefined, "profile:count views"),
     withSupabaseTimeout(
       supabase
         .from("user_daily_progress")
         .select("progress_date,facts_read_count,goal_completed")
         .eq("user_id", user.id)
         .order("progress_date", { ascending: false }),
+      userMessages.genericLoadError,
+      undefined,
+      "profile:read daily progress",
     ),
     withSupabaseTimeout(
       supabase
@@ -709,14 +752,20 @@ export async function getProfileSummary(): Promise<ProfileSummary> {
         .select("id,slug,name,required_goals,description,badge,display_order")
         .order("required_goals", { ascending: true })
         .order("display_order", { ascending: true }),
+      userMessages.genericLoadError,
+      undefined,
+      "profile:read grades",
     ),
-    withSupabaseTimeout(supabase.from("likes").select(relatedFactSelect).eq("user_id", user.id).order("created_at", { ascending: false }).limit(8)),
-    withSupabaseTimeout(supabase.from("saves").select(relatedFactSelect).eq("user_id", user.id).order("created_at", { ascending: false }).limit(8)),
+    withSupabaseTimeout(supabase.from("likes").select(relatedFactSelect).eq("user_id", user.id).order("created_at", { ascending: false }).limit(8), userMessages.genericLoadError, undefined, "profile:read liked facts"),
+    withSupabaseTimeout(supabase.from("saves").select(relatedFactSelect).eq("user_id", user.id).order("created_at", { ascending: false }).limit(8), userMessages.genericLoadError, undefined, "profile:read saved facts"),
     withSupabaseTimeout(
       supabase
         .from("user_fact_views")
-        .select("fact_id,facts(categories(name,slug,tone,accent_color))")
+        .select("fact_id,facts(categories(name,slug,tone,accent_color,theme_image_url))")
         .eq("user_id", user.id),
+      userMessages.genericLoadError,
+      undefined,
+      "profile:read top themes",
     ),
   ]);
 

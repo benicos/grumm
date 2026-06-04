@@ -2190,6 +2190,7 @@ export async function saveAdminCategory(input: {
   name: string;
   seo_description?: string | null;
   seo_title?: string | null;
+  theme_image_url?: string | null;
   tone: string;
   visual_motif?: string | null;
 }): Promise<AdminMutationResult> {
@@ -2239,6 +2240,7 @@ export async function saveAdminCategory(input: {
     seo_description: input.seo_description?.trim() || null,
     seo_title: input.seo_title?.trim() || null,
     slug,
+    theme_image_url: input.theme_image_url?.trim() || null,
     tone:
       input.tone.trim() ||
       "from-[#0b1424] via-[#132744] to-[#f0a95a]",

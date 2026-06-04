@@ -47,7 +47,12 @@ export async function withSupabaseTimeout<T>(
   promise: PromiseLike<T>,
   message: string = userMessages.genericLoadError,
   timeoutMs = SUPABASE_TIMEOUT_MS,
+  perfLabel?: string,
 ): Promise<T> {
+  if (__DEV__ && perfLabel) {
+    console.time(`[Supabase] ${perfLabel}`);
+  }
+
   return new Promise((resolve, reject) => {
     const timeout = setTimeout(() => {
       const error = new Error(message);
@@ -67,6 +72,11 @@ export async function withSupabaseTimeout<T>(
         });
         reject(error);
       })
-      .finally(() => clearTimeout(timeout));
+      .finally(() => {
+        clearTimeout(timeout);
+        if (__DEV__ && perfLabel) {
+          console.timeEnd(`[Supabase] ${perfLabel}`);
+        }
+      });
   });
 }

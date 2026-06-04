@@ -22,6 +22,7 @@ export type Database = {
           seo_description: string | null;
           keywords: string[] | null;
           visual_motif: string | null;
+          theme_image_url: string | null;
           gradient_start: string | null;
           gradient_middle: string | null;
           gradient_end: string | null;
@@ -40,6 +41,7 @@ export type Database = {
           seo_description?: string | null;
           keywords?: string[] | null;
           visual_motif?: string | null;
+          theme_image_url?: string | null;
           gradient_start?: string | null;
           gradient_middle?: string | null;
           gradient_end?: string | null;
@@ -58,6 +60,7 @@ export type Database = {
           seo_description?: string | null;
           keywords?: string[] | null;
           visual_motif?: string | null;
+          theme_image_url?: string | null;
           gradient_start?: string | null;
           gradient_middle?: string | null;
           gradient_end?: string | null;
@@ -808,6 +811,7 @@ export type Database = {
           slug: string;
           tone: string;
           accent_color: string;
+          theme_image_url: string | null;
           published_facts_count: number;
         }[];
       };
