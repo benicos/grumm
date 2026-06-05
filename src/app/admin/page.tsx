@@ -8,6 +8,7 @@ import {
   getAdminDashboardData,
   getAdminFeedDebugRows,
   type AdminAnalyticsData,
+  type AdminAnalyticsFunnel,
   type AdminAnalyticsMetric,
   type AdminDashboardData,
   type AdminFeedDebugRow,
@@ -190,6 +191,78 @@ function SectionHeading({
   );
 }
 
+function formatPercent(value: number) {
+  return `${value}%`;
+}
+
+function FunnelCard({
+  description,
+  funnel,
+  title,
+}: {
+  description: string;
+  funnel: AdminAnalyticsFunnel;
+  title: string;
+}) {
+  const maxValue = Math.max(1, ...funnel.steps.map((step) => step.value));
+
+  return (
+    <AdminCard className="p-5">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h3 className="text-lg font-semibold text-gray-800">{title}</h3>
+          <p className="mt-1 text-sm text-gray-500">{description}</p>
+        </div>
+        <div className="grid grid-cols-2 gap-2 text-right text-xs">
+          <div className="rounded-xl bg-green-50 px-3 py-2 text-green-700">
+            <span className="block font-semibold">
+              {formatPercent(funnel.completionRate)}
+            </span>
+            <span>conversion</span>
+          </div>
+          <div className="rounded-xl bg-amber-50 px-3 py-2 text-amber-700">
+            <span className="block font-semibold">
+              {formatPercent(funnel.abandonmentRate)}
+            </span>
+            <span>abandon</span>
+          </div>
+        </div>
+      </div>
+      <ol className="mt-5 space-y-3">
+        {funnel.steps.map((step, index) => {
+          const width = Math.max(4, (step.value / maxValue) * 100);
+
+          return (
+            <li key={step.id} className="rounded-2xl border border-gray-100 p-3">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold text-gray-800">
+                    {index + 1}. {step.label}
+                  </p>
+                  <p className="mt-1 text-xs text-gray-500">
+                    {index === 0
+                      ? "Point d'entrée"
+                      : `${formatPercent(step.conversionRate)} depuis l'étape précédente · ${formatPercent(step.dropoffRate)} abandon`}
+                  </p>
+                </div>
+                <span className="text-lg font-bold text-gray-800">
+                  {step.value.toLocaleString("fr-FR")}
+                </span>
+              </div>
+              <div className="mt-3 h-2 overflow-hidden rounded-full bg-gray-100">
+                <div
+                  className="h-full rounded-full bg-[#465fff]"
+                  style={{ width: `${width}%` }}
+                />
+              </div>
+            </li>
+          );
+        })}
+      </ol>
+    </AdminCard>
+  );
+}
+
 function formatHealthPercent(value: number | null) {
   return value === null ? "-" : `${value}%`;
 }
@@ -369,6 +442,57 @@ export default function AdminDashboardPage() {
                 value={analytics.overview.goalsCompletedToday.current.toLocaleString(
                   "fr-FR",
                 )}
+              />
+            </div>
+          </section>
+
+          <section className="mt-7">
+            <SectionHeading
+              title="Funnels produit"
+              description="Conversion et abandon sur les parcours prioritaires des 14 derniers jours."
+            />
+            <div className="grid gap-6 xl:grid-cols-2">
+              <FunnelCard
+                title="Funnel principal"
+                description="De la home à l'inscription, avec les premières interactions."
+                funnel={analytics.funnels.main}
+              />
+              <FunnelCard
+                title="Funnel quiz"
+                description="Ouverture, démarrage, réponse et complétion des quiz."
+                funnel={analytics.funnels.quiz}
+              />
+              <FunnelCard
+                title="Funnel rétention"
+                description="Cohortes simples depuis l'inscription vers J1, J7 et J30."
+                funnel={analytics.funnels.retention}
+              />
+              <FunnelCard
+                title="Funnel gamification"
+                description="Profil, avatar, objectif, grade et retour lendemain."
+                funnel={analytics.funnels.gamification}
+              />
+            </div>
+            <div className="mt-6 grid gap-6 xl:grid-cols-2">
+              <AdminLineChart
+                title="Évolution funnel principal"
+                description="Conversion finale quotidienne inscription / homepage."
+                points={analytics.funnels.main.series}
+              />
+              <AdminLineChart
+                title="Évolution quiz"
+                description="Conversion finale quotidienne quiz terminé / quiz ouvert."
+                points={analytics.funnels.quiz.series}
+              />
+              <AdminLineChart
+                title="Évolution rétention"
+                description="Conversion finale quotidienne retour J30 / inscription."
+                points={analytics.funnels.retention.series}
+              />
+              <AdminLineChart
+                title="Évolution gamification"
+                description="Conversion finale quotidienne retour lendemain / profil ouvert."
+                points={analytics.funnels.gamification.series}
               />
             </div>
           </section>

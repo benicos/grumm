@@ -117,6 +117,12 @@ export type AdminAnalyticsMetric = {
 };
 
 export type AdminAnalyticsData = {
+  funnels: {
+    gamification: AdminAnalyticsFunnel;
+    main: AdminAnalyticsFunnel;
+    quiz: AdminAnalyticsFunnel;
+    retention: AdminAnalyticsFunnel;
+  };
   overview: {
     activeUsersToday: AdminAnalyticsMetric;
     averageReadSecondsToday: AdminAnalyticsMetric;
@@ -141,6 +147,21 @@ export type AdminAnalyticsData = {
     d1ReturnRate: number | null;
     d7ReturnRate: number | null;
   };
+};
+
+export type AdminAnalyticsFunnel = {
+  abandonmentRate: number;
+  completionRate: number;
+  series: AdminDashboardSeriesPoint[];
+  steps: AdminAnalyticsFunnelStep[];
+};
+
+export type AdminAnalyticsFunnelStep = {
+  conversionRate: number;
+  dropoffRate: number;
+  id: string;
+  label: string;
+  value: number;
 };
 
 export type AdminAnalyticsFactStat = {
@@ -738,6 +759,119 @@ function countRowsByDay<T>(
   return buildDailySeries(current, previous, currentStart, days);
 }
 
+function buildFunnelSeries(
+  events: AnalyticsEventRow[],
+  firstEventName: string,
+  finalEventName: string,
+  currentStart: Date,
+  days: number,
+) {
+  const previousStart = new Date(currentStart);
+  previousStart.setUTCDate(previousStart.getUTCDate() - days);
+  const currentFirst = new Map<string, Set<string>>();
+  const currentFinal = new Map<string, Set<string>>();
+  const previousFirst = new Map<string, Set<string>>();
+  const previousFinal = new Map<string, Set<string>>();
+
+  events.forEach((event) => {
+    if (event.event_name !== firstEventName && event.event_name !== finalEventName) {
+      return;
+    }
+
+    const identity = getAnalyticsIdentity(event);
+
+    if (!identity) {
+      return;
+    }
+
+    const time = new Date(event.created_at).getTime();
+    const key = getLocalDayKey(event.created_at);
+    const target =
+      time >= currentStart.getTime()
+        ? event.event_name === firstEventName
+          ? currentFirst
+          : currentFinal
+        : time >= previousStart.getTime()
+          ? event.event_name === firstEventName
+            ? previousFirst
+            : previousFinal
+          : null;
+
+    if (!target) {
+      return;
+    }
+
+    target.set(key, new Set([...(target.get(key) ?? []), identity]));
+  });
+
+  const current = new Map<string, number>();
+  const previous = new Map<string, number>();
+
+  new Set([...currentFirst.keys(), ...currentFinal.keys()]).forEach((key) => {
+    current.set(key, percent(currentFinal.get(key)?.size ?? 0, currentFirst.get(key)?.size ?? 0));
+  });
+  new Set([...previousFirst.keys(), ...previousFinal.keys()]).forEach((key) => {
+    previous.set(key, percent(previousFinal.get(key)?.size ?? 0, previousFirst.get(key)?.size ?? 0));
+  });
+
+  return buildDailySeries(current, previous, currentStart, days);
+}
+
+function buildFunnel(
+  events: AnalyticsEventRow[],
+  steps: { id: string; label: string }[],
+  dashboardWindow: ReturnType<typeof getDashboardWindow>,
+): AdminAnalyticsFunnel {
+  const currentEvents = events.filter(
+    (event) => new Date(event.created_at).getTime() >= dashboardWindow.currentStart.getTime(),
+  );
+  const identitiesByEvent = new Map<string, Set<string>>();
+
+  currentEvents.forEach((event) => {
+    const identity = getAnalyticsIdentity(event);
+
+    if (!identity) {
+      return;
+    }
+
+    identitiesByEvent.set(
+      event.event_name,
+      new Set([...(identitiesByEvent.get(event.event_name) ?? []), identity]),
+    );
+  });
+
+  const funnelSteps = steps.map((step, index) => {
+    const value = identitiesByEvent.get(step.id)?.size ?? 0;
+    const previousValue =
+      index > 0 ? identitiesByEvent.get(steps[index - 1].id)?.size ?? 0 : value;
+    const conversionRate = index === 0 ? 100 : percent(value, previousValue);
+
+    return {
+      conversionRate,
+      dropoffRate: index === 0 ? 0 : Math.max(0, 100 - conversionRate),
+      id: step.id,
+      label: step.label,
+      value,
+    } satisfies AdminAnalyticsFunnelStep;
+  });
+  const firstValue = funnelSteps[0]?.value ?? 0;
+  const finalValue = funnelSteps[funnelSteps.length - 1]?.value ?? 0;
+  const completionRate = percent(finalValue, firstValue);
+
+  return {
+    abandonmentRate: Math.max(0, 100 - completionRate),
+    completionRate,
+    series: buildFunnelSeries(
+      events,
+      steps[0]?.id ?? "",
+      steps[steps.length - 1]?.id ?? "",
+      dashboardWindow.currentStart,
+      dashboardWindow.days,
+    ),
+    steps: funnelSteps,
+  };
+}
+
 function countVisitorsByDay(
   sessions: AnalyticsSessionRow[],
   currentStart: Date,
@@ -1153,8 +1287,57 @@ export async function getAdminAnalyticsData(): Promise<AdminAnalyticsData> {
     (session) =>
       new Date(session.started_at).getTime() >= dashboardWindow.currentStart.getTime(),
   );
+  const mainFunnel = buildFunnel(
+    events,
+    [
+      { id: "homepage_view", label: "Homepage" },
+      { id: "discover_opened", label: "Discover" },
+      { id: "first_fact_read", label: "Premier fait lu" },
+      { id: "first_like", label: "Premier like" },
+      { id: "first_save", label: "Premier save" },
+      { id: "signup_completed", label: "Inscription" },
+    ],
+    dashboardWindow,
+  );
+  const quizFunnel = buildFunnel(
+    events,
+    [
+      { id: "quiz_page_view", label: "Quiz ouvert" },
+      { id: "quiz_started", label: "Quiz démarré" },
+      { id: "quiz_question_answered", label: "Question répondue" },
+      { id: "quiz_completed", label: "Quiz terminé" },
+    ],
+    dashboardWindow,
+  );
+  const retentionFunnel = buildFunnel(
+    events,
+    [
+      { id: "signup_completed", label: "Inscription" },
+      { id: "returned_day_1", label: "Retour J1" },
+      { id: "returned_day_7", label: "Retour J7" },
+      { id: "returned_day_30", label: "Retour J30" },
+    ],
+    dashboardWindow,
+  );
+  const gamificationFunnel = buildFunnel(
+    events,
+    [
+      { id: "profile_opened", label: "Profil ouvert" },
+      { id: "avatar_viewed", label: "Avatar consulté" },
+      { id: "daily_goal_completed", label: "Objectif validé" },
+      { id: "grade_up", label: "Grade gagné" },
+      { id: "returned_next_day", label: "Retour lendemain" },
+    ],
+    dashboardWindow,
+  );
 
   return {
+    funnels: {
+      gamification: gamificationFunnel,
+      main: mainFunnel,
+      quiz: quizFunnel,
+      retention: retentionFunnel,
+    },
     overview: {
       activeUsersToday: getMetricComparison(
         countVisitorsOnDay(sessions, today),
