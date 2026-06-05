@@ -10,6 +10,7 @@ import {
   type ThemeDisplayData,
 } from "@/lib/themeDisplay";
 import ThemeMotif from "./ThemeMotif";
+import ThemeIcon from "./ThemeIcon";
 
 type ThemeProgress = {
   discovered: number;
@@ -62,9 +63,15 @@ export default function ThemeCard({
       />
       <ThemeMotif
         motif={theme.visual_motif}
-        className="absolute left-6 top-6 h-16 w-16 opacity-70"
+        className="absolute left-6 top-6 h-16 w-16 opacity-35"
         style={{ color: accent } as CSSProperties}
       />
+      <span
+        className="absolute left-6 top-6 grid h-14 w-14 place-items-center rounded-2xl border border-white/14 bg-black/20 shadow-[0_18px_45px_rgba(0,0,0,0.28)] backdrop-blur"
+        style={{ color: accent }}
+      >
+        <ThemeIcon iconName={theme.theme_icon} className="h-7 w-7" />
+      </span>
       <div className="relative flex h-full flex-col">
         <div className="flex items-start justify-end gap-4">
           <span className="rounded-full border border-white/12 bg-black/22 px-3 py-1.5 text-xs font-extrabold uppercase tracking-[0.14em] text-white/72 backdrop-blur-xl">

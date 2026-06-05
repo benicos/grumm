@@ -2,7 +2,7 @@
 
 import { Inter } from "next/font/google";
 import Link from "next/link";
-import { Compass, Search, Shuffle } from "lucide-react";
+import { Search, Shuffle } from "lucide-react";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { trackAnalyticsEvent } from "@/lib/analytics/web";
 import {
@@ -14,12 +14,10 @@ import {
 } from "@/lib/facts";
 import { getUserThemeProgress } from "@/lib/profile";
 import { AppState } from "./AppState";
-import {
-  premiumTitleGradientClassName,
-} from "./buttonStyles";
 import Footer from "./Footer";
 import HeroBackground from "./HeroBackground";
 import Navbar from "./Navbar";
+import PageHero from "./PageHero";
 import ThemeCard from "./ThemeCard";
 import { useAuth } from "../auth/AuthProvider";
 
@@ -238,21 +236,13 @@ export default function ExplorerExperience() {
       <Navbar />
 
       <main className="relative z-10 mx-auto w-full max-w-[1180px] px-5 py-8 sm:px-6 sm:py-10 lg:px-8">
-        <section className="mx-auto flex max-w-4xl flex-col items-center pb-10 pt-8 text-center">
-          <p className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.055] px-3 py-1 text-sm/6 font-semibold text-white/62 backdrop-blur-xl">
-            <Compass className="h-4 w-4" />
-            Explorer
-          </p>
-          <h1
-            className={`${premiumTitleGradientClassName} mt-5 max-w-3xl text-[clamp(2.25rem,5.8vw,4.35rem)] font-black leading-[0.98] tracking-[-0.045em]`}
-          >
-            Que veux-tu apprendre aujourd&apos;hui ?
-          </h1>
-          <p className="mt-6 max-w-2xl text-base font-semibold leading-8 text-white/62 sm:text-lg">
-            Trouve un thème, une époque, une oeuvre ou une idée, puis laisse
-            Grumm. t&apos;ouvrir la bonne porte.
-          </p>
+        <PageHero
+          eyebrow="Explorer"
+          title="Que veux-tu apprendre aujourd'hui ?"
+          description="Trouve un thème, une époque, une œuvre ou une idée, puis laisse Grumm. t'ouvrir la bonne porte."
+        />
 
+        <section className="mx-auto flex max-w-3xl flex-col items-center pb-10 text-center">
           <form
             onSubmit={submitSearch}
             className="mt-9 flex w-full max-w-3xl flex-col gap-3 rounded-[24px] border border-white/12 bg-white/[0.085] px-3 py-3 shadow-[0_28px_90px_rgba(0,0,0,0.34)] backdrop-blur-2xl transition focus-within:border-[#f4ead5]/50 sm:flex-row sm:items-center sm:px-5"

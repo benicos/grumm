@@ -14,6 +14,7 @@ export type ThemeDisplayData = {
   keywords?: string[] | null;
   name: string;
   slug: string;
+  theme_icon?: string | null;
   tone?: string | null;
   visual_motif?: string | null;
 };

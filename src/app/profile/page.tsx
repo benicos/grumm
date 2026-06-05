@@ -3,7 +3,23 @@
 import { Inter } from "next/font/google";
 import Image from "next/image";
 import Link from "next/link";
-import { Brain, Info, Layers3, Mail, Pencil, Target, Trophy, X } from "lucide-react";
+import {
+  BookMarked,
+  Brain,
+  Check,
+  CheckCircle2,
+  ChevronRight,
+  Flame,
+  Info,
+  Layers3,
+  Mail,
+  Pencil,
+  Play,
+  Sparkles,
+  Target,
+  Trophy,
+  X,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 import { trackAnalyticsEvent } from "@/lib/analytics/web";
 import { getBadgeInfo } from "@/lib/badges";
@@ -18,7 +34,7 @@ import { premiumPrimaryCtaClassName } from "../components/buttonStyles";
 import GradeIcon from "../components/GradeIcon";
 import HeroBackground from "../components/HeroBackground";
 import Navbar from "../components/Navbar";
-import ThemeMotif from "../components/ThemeMotif";
+import ThemeIcon from "../components/ThemeIcon";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -108,7 +124,7 @@ function ProgressPanel({ profile }: { profile: UserProfileSummary }) {
                   isReached ? "bg-[#ffd166]" : "bg-white/20"
                 }`}
               />
-              <span className="truncate">{grade.name}</span>
+              <span className="whitespace-normal break-words leading-4">{grade.name}</span>
             </div>
           );
         })}
@@ -198,8 +214,8 @@ function ThemeInsightsPanel({ profile }: { profile: UserProfileSummary }) {
                     className="absolute inset-1 rounded-full border border-white/10 bg-black/18 backdrop-blur-[2px]"
                     aria-hidden="true"
                   />
-                  <ThemeMotif
-                    motif={theme.visualMotif}
+                  <ThemeIcon
+                    iconName={theme.themeIcon}
                     className="relative h-[42%] w-[42%] drop-shadow-[0_10px_18px_rgba(0,0,0,0.38)]"
                     style={{ color: "#ffffff" }}
                   />
@@ -211,7 +227,29 @@ function ThemeInsightsPanel({ profile }: { profile: UserProfileSummary }) {
             })}
           </div>
 
-          <div className="grid gap-3">
+          <div className="flex gap-2 overflow-x-auto pb-1 lg:hidden">
+            {themes.slice(0, 4).map((theme) => (
+              <Link
+                key={`${theme.slug}-compact`}
+                href={`/theme/${theme.slug}`}
+                className="inline-flex min-w-max items-center gap-2 rounded-full border border-white/10 bg-black/18 px-3 py-2 text-xs font-extrabold text-white/70"
+              >
+                <span
+                  className="h-2.5 w-2.5 rounded-full"
+                  style={{ backgroundColor: theme.accent }}
+                />
+                {theme.name}
+                <span className="text-white/38">{theme.count}</span>
+              </Link>
+            ))}
+            {themes.length > 4 ? (
+              <span className="inline-flex min-w-max items-center rounded-full border border-white/10 bg-black/18 px-3 py-2 text-xs font-extrabold text-white/45">
+                +{themes.length - 4}
+              </span>
+            ) : null}
+          </div>
+
+          <div className="hidden gap-3 lg:grid">
             {themes.map((theme) => (
               <Link
                 key={theme.slug}
@@ -246,19 +284,22 @@ function ThemeInsightsPanel({ profile }: { profile: UserProfileSummary }) {
 function MemoryChallengePanel({ profile }: { profile: UserProfileSummary }) {
   const stats = profile.memoryStats;
   const isUnlocked = stats.revisableFacts >= MIN_MEMORY_FACTS;
-  const lastScore =
-    stats.lastScore !== null && stats.lastTotal !== null
-      ? `${stats.lastScore}/${stats.lastTotal}`
-      : "";
-  const average =
-    stats.averageScorePercent !== null ? `${stats.averageScorePercent}%` : "";
-  const currentStreak =
-    stats.currentStreakDays > 0 ? `${stats.currentStreakDays} jours` : "";
+  const bestSignal =
+    stats.bestStreakDays > 0
+      ? `${stats.bestStreakDays} j de série`
+      : `${stats.revisableFacts} faits prêts`;
 
   return (
-    <section className="mt-6 overflow-hidden rounded-[30px] border border-white/10 bg-[radial-gradient(circle_at_82%_18%,rgba(106,227,192,0.14),transparent_28%),linear-gradient(145deg,rgba(255,255,255,0.078),rgba(255,255,255,0.028))] p-5 shadow-[0_30px_100px_rgba(0,0,0,0.26)] backdrop-blur-xl sm:p-6">
-      <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-        <div className="max-w-2xl">
+    <section className="mt-6 overflow-hidden rounded-[30px] border border-white/10 bg-[radial-gradient(circle_at_84%_12%,rgba(106,227,192,0.22),transparent_28%),radial-gradient(circle_at_12%_84%,rgba(167,139,250,0.18),transparent_30%),linear-gradient(145deg,rgba(255,255,255,0.082),rgba(255,255,255,0.028))] p-5 shadow-[0_30px_100px_rgba(0,0,0,0.26)] backdrop-blur-xl sm:p-6">
+      <div className="grid gap-6 lg:grid-cols-[auto_minmax(0,1fr)_auto] lg:items-center">
+        <div className="relative grid h-24 w-24 place-items-center rounded-[28px] border border-[#6ae3c0]/20 bg-[#6ae3c0]/10 text-[#6ae3c0] shadow-[0_0_70px_rgba(106,227,192,0.14)]">
+          <Brain className="h-12 w-12" aria-hidden="true" />
+          <span className="absolute -right-2 -top-2 grid h-9 w-9 place-items-center rounded-full border border-white/12 bg-black/35 text-[#ffd166] backdrop-blur-xl">
+            <Sparkles className="h-4 w-4" aria-hidden="true" />
+          </span>
+        </div>
+
+        <div className="min-w-0">
           <p className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-[0.22em] text-[#6ae3c0]">
             <Brain className="h-4 w-4" aria-hidden="true" />
             Défi mémoire
@@ -266,60 +307,47 @@ function MemoryChallengePanel({ profile }: { profile: UserProfileSummary }) {
           <h2 className="mt-3 text-3xl font-black tracking-[-0.055em] text-white sm:text-4xl">
             Révise ce que tu as déjà lu.
           </h2>
-          <p className="mt-3 text-sm font-semibold leading-7 text-white/62">
-            Une courte session de 3 à 5 questions, uniquement à partir des
-            faits que tu as déjà découverts.
+          <p className="mt-3 max-w-2xl text-sm font-semibold leading-7 text-white/62">
+            Une session courte, personnalisée, construite à partir de tes faits lus.
           </p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/18 px-3 py-1.5 text-xs font-black text-white/68">
+              <BookMarked className="h-3.5 w-3.5 text-[#6ae3c0]" aria-hidden="true" />
+              {stats.revisableFacts} faits révisables
+            </span>
+            <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/18 px-3 py-1.5 text-xs font-black text-white/68">
+              <Flame className="h-3.5 w-3.5 text-[#ff9f43]" aria-hidden="true" />
+              {bestSignal}
+            </span>
+          </div>
         </div>
 
-        <div className="grid min-w-[260px] gap-2 text-sm">
-          <div className="flex items-center justify-between rounded-[16px] border border-white/10 bg-black/16 px-4 py-3">
-            <span className="font-semibold text-white/50">Faits révisables</span>
-            <span className="font-black text-white">{stats.revisableFacts}</span>
-          </div>
-          <div className="flex items-center justify-between rounded-[16px] border border-white/10 bg-black/16 px-4 py-3">
-            <span className="font-semibold text-white/50">Dernier score</span>
-            <span className="font-black text-white">{lastScore}</span>
-          </div>
-          <div className="flex items-center justify-between rounded-[16px] border border-white/10 bg-black/16 px-4 py-3">
-            <span className="font-semibold text-white/50">Moyenne</span>
-            <span className="font-black text-white">{average}</span>
-          </div>
-          <div className="flex items-center justify-between rounded-[16px] border border-white/10 bg-black/16 px-4 py-3">
-            <span className="font-semibold text-white/50">Série actuelle</span>
-            <span className="font-black text-white">{currentStreak}</span>
-          </div>
+        <div className="flex flex-col gap-3 lg:min-w-[210px]">
+          <Link
+            href={isUnlocked ? "/quiz/memoire" : "/decouvrir"}
+            className={
+              isUnlocked
+                ? `${premiumPrimaryCtaClassName} justify-center`
+                : "inline-flex justify-center rounded-full border border-white/12 px-5 py-3 text-sm font-black text-white/70 transition hover:border-white/24 hover:text-white"
+            }
+          >
+            {isUnlocked ? (
+              <>
+                <Play className="mr-2 h-4 w-4" aria-hidden="true" />
+                Lancer le défi
+              </>
+            ) : (
+              "Lire quelques faits"
+            )}
+          </Link>
+          <p className="text-center text-xs font-semibold leading-5 text-white/45 lg:text-left">
+            {isUnlocked
+              ? stats.challengesCompleted > 0
+                ? `${stats.challengesCompleted} défi${stats.challengesCompleted > 1 ? "s" : ""} terminé${stats.challengesCompleted > 1 ? "s" : ""}.`
+                : "Ton premier défi est prêt."
+              : `Encore ${Math.max(MIN_MEMORY_FACTS - stats.revisableFacts, 0)} faits à lire pour le débloquer.`}
+          </p>
         </div>
-      </div>
-
-      <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        {isUnlocked ? (
-          <p className="text-sm font-semibold text-white/56">
-            {stats.challengesCompleted > 0
-              ? `${stats.challengesCompleted} défi${
-                  stats.challengesCompleted > 1 ? "s" : ""
-                } terminé${stats.challengesCompleted > 1 ? "s" : ""}.`
-              : "Ton premier défi est prêt."}{" "}
-            {stats.bestStreakDays > 0
-              ? `Meilleure série : ${stats.bestStreakDays} jours.`
-              : ""}
-          </p>
-        ) : (
-          <p className="text-sm font-semibold text-white/56">
-            Lis encore quelques faits pour débloquer ton premier défi mémoire.
-          </p>
-        )}
-
-        <Link
-          href={isUnlocked ? "/quiz/memoire" : "/decouvrir"}
-          className={
-            isUnlocked
-              ? `${premiumPrimaryCtaClassName} justify-center`
-              : "inline-flex justify-center rounded-full border border-white/12 px-5 py-3 text-sm font-black text-white/70 transition hover:border-white/24 hover:text-white"
-          }
-        >
-          {isUnlocked ? "Lancer le défi" : "Lire quelques faits"}
-        </Link>
       </div>
     </section>
   );
@@ -361,6 +389,56 @@ function QuickAccessPanel() {
           Chercher un sujet
         </h2>
       </Link>
+    </section>
+  );
+}
+
+function SavedFactsPanel({ profile }: { profile: UserProfileSummary }) {
+  const savedFacts = profile.savedFacts.slice(0, 3);
+
+  return (
+    <section className="mt-6 rounded-[28px] border border-white/10 bg-[linear-gradient(145deg,rgba(255,255,255,0.06),rgba(255,255,255,0.022))] p-5 shadow-[0_24px_80px_rgba(0,0,0,0.18)] backdrop-blur-xl">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <p className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-[0.2em] text-[#f4ead5]">
+            <BookMarked className="h-4 w-4" aria-hidden="true" />
+            Bibliothèque
+          </p>
+          <h2 className="mt-2 text-2xl font-black tracking-[-0.045em] text-white">
+            Tes faits enregistrés
+          </h2>
+        </div>
+        <span className="rounded-full border border-white/10 bg-black/18 px-3 py-1.5 text-xs font-black text-white/52">
+          {profile.savedCount} fait{profile.savedCount > 1 ? "s" : ""}
+        </span>
+      </div>
+
+      {savedFacts.length > 0 ? (
+        <div className="mt-5 grid gap-3 md:grid-cols-3">
+          {savedFacts.map((fact) => (
+            <Link
+              key={fact.id}
+              href={`/fait/${fact.slug}`}
+              className="group rounded-[20px] border border-white/10 bg-black/16 p-4 transition hover:-translate-y-0.5 hover:border-white/20 hover:bg-white/[0.045]"
+            >
+              <p className="text-xs font-black uppercase tracking-[0.16em] text-white/38">
+                {fact.category}
+              </p>
+              <h3 className="mt-3 line-clamp-2 text-base font-extrabold leading-5 text-white">
+                {fact.title}
+              </h3>
+              <span className="mt-4 inline-flex items-center text-xs font-black text-[#f4ead5]">
+                Relire
+                <ChevronRight className="ml-1 h-3.5 w-3.5 transition group-hover:translate-x-0.5" aria-hidden="true" />
+              </span>
+            </Link>
+          ))}
+        </div>
+      ) : (
+        <div className="mt-5 rounded-[20px] border border-white/10 bg-black/16 p-4 text-sm font-semibold leading-6 text-white/54">
+          Enregistre quelques faits depuis le flux pour construire ta bibliothèque.
+        </div>
+      )}
     </section>
   );
 }
@@ -500,12 +578,20 @@ function ProfileContent() {
   const remainingDailyFacts = profile
     ? Math.max(profile.dailyGoal - profile.todayReadCount, 0)
     : 0;
+  const isDailyGoalCompleted = profile
+    ? profile.todayReadCount >= profile.dailyGoal
+    : false;
   const dailyProgressMessage =
     !profile || profile.todayReadCount <= 0
       ? "Commence ta série du jour."
       : remainingDailyFacts <= 0
-        ? "Objectif validé aujourd'hui."
+        ? `${profile.todayReadCount} fait${profile.todayReadCount > 1 ? "s" : ""} lu${profile.todayReadCount > 1 ? "s" : ""} aujourd'hui.`
         : `Plus que ${remainingDailyFacts} fait${remainingDailyFacts > 1 ? "s" : ""} pour valider ton objectif.`;
+  const weekLabels = ["L", "M", "M", "J", "V", "S", "D"];
+  const todayIndex = (new Date().getDay() + 6) % 7;
+  const completedWeekDays = profile
+    ? Math.min(profile.currentStreakDays, todayIndex + 1)
+    : 0;
 
   return (
     <div
@@ -523,13 +609,13 @@ function ProfileContent() {
             <section className="mb-7">
               <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
                 <div className="flex min-w-0 items-center gap-4">
-                  <div className="h-28 w-28 shrink-0 overflow-hidden rounded-[32px] border-2 border-[#ffd166]/28 bg-white/[0.06] shadow-[0_0_0_1px_rgba(255,255,255,0.08),0_22px_78px_rgba(0,0,0,0.30),0_0_54px_rgba(255,209,102,0.16)]">
+                  <div className="h-32 w-32 shrink-0 overflow-hidden rounded-[34px] border-[3px] border-[#ffd166]/30 bg-white/[0.06] shadow-[0_0_0_1px_rgba(255,255,255,0.08),0_24px_84px_rgba(0,0,0,0.32),0_0_64px_rgba(255,209,102,0.18)]">
                     {/* Les avatars sont liés au rang, pas modifiables par l'utilisateur. */}
                     <Image
                       alt=""
-                      height={112}
+                      height={128}
                       src={avatarSrc}
-                      width={112}
+                      width={128}
                       onError={(event) => {
                         event.currentTarget.onerror = null;
                         event.currentTarget.src = "/avatar/avatar.png";
@@ -550,13 +636,13 @@ function ProfileContent() {
                     <button
                       type="button"
                       onClick={() => setIsGradeModalOpen(true)}
-                      className="mt-3 inline-flex max-w-full items-center gap-3 rounded-full border border-[#ffd166]/18 bg-[#ffd166]/10 px-3 py-2 text-[#ffe2a3] transition hover:border-[#ffd166]/36 hover:bg-[#ffd166]/16"
+                      className="mt-3 inline-flex max-w-full items-center gap-3 rounded-[18px] border border-[#ffd166]/18 bg-[#ffd166]/10 px-3 py-2 text-left text-[#ffe2a3] transition hover:border-[#ffd166]/36 hover:bg-[#ffd166]/16"
                     >
                       <GradeIcon
                         badge={gradeBadge}
                         className="h-5 w-5 shrink-0 text-[#ffd166]"
                       />
-                      <span className="truncate text-sm font-black text-white">
+                      <span className="whitespace-normal break-words text-sm font-black leading-5 text-white">
                         {gradeTitle}
                       </span>
                       <Info className="h-3.5 w-3.5 shrink-0 text-[#ffd166]/70" aria-hidden="true" />
@@ -576,8 +662,12 @@ function ProfileContent() {
               <div className="mt-7 w-full rounded-[24px] border border-white/10 bg-[linear-gradient(135deg,rgba(255,255,255,0.07),rgba(255,255,255,0.026))] p-4 shadow-[0_18px_70px_rgba(0,0,0,0.18)] backdrop-blur-xl">
                 <div className="flex items-center justify-between gap-4 text-sm font-bold">
                   <span className="flex items-center gap-2 text-white/70">
-                    <Target className="h-4 w-4 text-[#ffd166]" aria-hidden="true" />
-                    Objectif du jour : {profile.todayReadCount} / {profile.dailyGoal} faits
+                    {isDailyGoalCompleted ? (
+                      <CheckCircle2 className="h-4 w-4 text-[#6ae3c0]" aria-hidden="true" />
+                    ) : (
+                      <Target className="h-4 w-4 text-[#ffd166]" aria-hidden="true" />
+                    )}
+                    Objectif du jour : {isDailyGoalCompleted ? "Validé !" : `${profile.todayReadCount} / ${profile.dailyGoal} faits`}
                   </span>
                   <span className="hidden text-white/48 sm:inline">
                     {Math.round(dailyProgressPercent)}%
@@ -592,6 +682,35 @@ function ProfileContent() {
                 <p className="mt-3 text-sm font-semibold leading-6 text-white/52">
                   {dailyProgressMessage}
                 </p>
+                <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+                  <span className="inline-flex items-center gap-2 rounded-full border border-[#ff9f43]/18 bg-[#ff9f43]/10 px-3 py-1.5 text-xs font-black text-[#ffd7ad]">
+                    <Flame className="h-3.5 w-3.5" aria-hidden="true" />
+                    Série actuelle : {profile.currentStreakDays} jour{profile.currentStreakDays > 1 ? "s" : ""}
+                  </span>
+                  <div className="flex items-center gap-1.5">
+                    {weekLabels.map((label, index) => {
+                      const isDone =
+                        index <= todayIndex &&
+                        index >= todayIndex - completedWeekDays + 1;
+                      const isToday = index === todayIndex;
+
+                      return (
+                        <span
+                          key={`${label}-${index}`}
+                          className={`grid h-8 w-8 place-items-center rounded-full border text-[11px] font-black ${
+                            isDone
+                              ? "border-[#6ae3c0]/36 bg-[#6ae3c0]/18 text-[#c9fff1]"
+                              : isToday
+                                ? "border-[#ffd166]/34 bg-[#ffd166]/10 text-[#ffe2a3]"
+                                : "border-white/10 bg-black/14 text-white/38"
+                          }`}
+                        >
+                          {isDone ? <Check className="h-3.5 w-3.5" aria-hidden="true" /> : label}
+                        </span>
+                      );
+                    })}
+                  </div>
+                </div>
               </div>
 
             </section>
@@ -608,7 +727,7 @@ function ProfileContent() {
                   className="absolute inset-0 cursor-default"
                   onClick={() => setIsGradeModalOpen(false)}
                 />
-                <div className="grade-modal relative w-full max-w-[560px]">
+                <div className="grade-modal relative max-h-[86vh] w-full max-w-[560px] overflow-y-auto pr-1">
                   <button
                     type="button"
                     aria-label="Fermer la progression"
@@ -622,6 +741,7 @@ function ProfileContent() {
               </div>
             ) : null}
             <MemoryChallengePanel profile={profile} />
+            <SavedFactsPanel profile={profile} />
             <ThemeInsightsPanel profile={profile} />
             <QuickAccessPanel />
             <SuccessPanel profile={profile} />

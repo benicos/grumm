@@ -9,6 +9,7 @@ import {
   getAdminGrade,
   type AdminGrade,
 } from "@/lib/admin";
+import GradeIcon from "../../../components/GradeIcon";
 import { AdminBackLink } from "../../forms";
 import {
   AdminAttributeList,
@@ -112,9 +113,14 @@ export default function AdminGradeDetailPage() {
       ) : (
         <AdminCard className="p-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-            <p className="max-w-3xl text-sm text-gray-500">
-                  {grade.description ?? "Aucune description renseignée."}
-            </p>
+            <div className="flex items-start gap-4">
+              <span className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl border border-gray-200 bg-gray-50 text-[#465fff]">
+                <GradeIcon badge={grade.badge} className="h-7 w-7" />
+              </span>
+              <p className="max-w-3xl text-sm text-gray-500">
+                {grade.description ?? "Aucune description renseign?e."}
+              </p>
+            </div>
             <button
               type="button"
               onClick={removeGrade}
@@ -137,7 +143,16 @@ export default function AdminGradeDetailPage() {
               label="Description"
               value={grade.description ?? "-"}
             />
-            <AdminAttributeRow label="Badge" value={grade.badge ?? "-"} />
+            <AdminAttributeRow
+              label="Ic?ne"
+              technicalName="badge"
+              value={
+                <span className="inline-flex items-center gap-2">
+                  <GradeIcon badge={grade.badge} className="h-4 w-4" />
+                  <span>{grade.badge ?? "-"}</span>
+                </span>
+              }
+            />
             <AdminAttributeRow
               label="Objectifs requis"
               technicalName="required_goals"

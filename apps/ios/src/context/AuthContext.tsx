@@ -7,7 +7,12 @@ import type { SessionProfile } from "../types/domain";
 import { trackMobileAnalyticsEvent } from "../lib/analytics";
 import { DEFAULT_LEARNING_GOAL, normalizeLearningGoal, type LearningGoal } from "../lib/learning";
 import { getUsernameValidationMessage, normalizeUsername } from "../lib/slug";
-import { clearSupabaseAuthStorage, getSupabaseClient, withSupabaseTimeout } from "../lib/supabase";
+import {
+  clearSupabaseAuthStorage,
+  getSupabaseClient,
+  isInvalidRefreshTokenError,
+  withSupabaseTimeout,
+} from "../lib/supabase";
 
 type AuthContextValue = {
   error: string | null;
@@ -27,12 +32,6 @@ type AuthContextValue = {
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
-
-function isInvalidRefreshTokenError(error: unknown) {
-  const message = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
-
-  return message.includes("invalid refresh token") || message.includes("refresh token not found");
-}
 
 function getAuthErrorMessage(error: unknown) {
   const message = error instanceof Error ? error.message.toLowerCase() : "";
@@ -61,10 +60,7 @@ function getAuthErrorMessage(error: unknown) {
 }
 
 async function recoverFromInvalidSession() {
-  const supabase = getSupabaseClient();
-
   await clearSupabaseAuthStorage();
-  await supabase.auth.signOut({ scope: "local" }).catch(() => undefined);
 }
 
 async function resolveProfile(session: Session | null): Promise<SessionProfile | null> {

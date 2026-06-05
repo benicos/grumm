@@ -6,6 +6,7 @@ import {
   getAdminCategories,
   type AdminCategory,
 } from "@/lib/admin";
+import ThemeIcon from "../../components/ThemeIcon";
 import AdminListingPage from "../AdminListingPage";
 
 function getThemePreviewBackground(theme: AdminCategory) {
@@ -87,10 +88,20 @@ export default function AdminThemesPage() {
                   />
                 ) : (
                   <span
-                    className="block h-full w-full"
+                    className="grid h-full w-full place-items-center"
                     style={{ background: getThemePreviewBackground(theme) }}
-                  />
+                  >
+                    <ThemeIcon iconName={theme.theme_icon} className="h-5 w-5 text-white" />
+                  </span>
                 )}
+                {theme.theme_image_url ? (
+                  <span
+                    className="absolute bottom-0.5 right-0.5 grid h-5 w-5 place-items-center rounded-md bg-black/42 backdrop-blur"
+                    style={{ color: theme.accent_color }}
+                  >
+                    <ThemeIcon iconName={theme.theme_icon} className="h-3 w-3" />
+                  </span>
+                ) : null}
               </span>
               <span className="min-w-0">
                 <span className="block font-medium text-gray-800">{theme.name}</span>

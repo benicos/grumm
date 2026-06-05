@@ -19,6 +19,13 @@ export async function clearSupabaseAuthStorage() {
   }
 }
 
+export function isInvalidRefreshTokenError(error: unknown) {
+  const message =
+    error instanceof Error ? error.message.toLowerCase() : String(error ?? "").toLowerCase();
+
+  return message.includes("invalid refresh token") || message.includes("refresh token not found");
+}
+
 export function getSupabaseClient() {
   if (mobileSupabaseClient) {
     return mobileSupabaseClient;
@@ -66,10 +73,12 @@ export async function withSupabaseTimeout<T>(
     Promise.resolve(promise)
       .then(resolve)
       .catch((error) => {
-        logStructuredError(error, {
-          operation: "supabase request",
-          source: "Supabase",
-        });
+        if (!isInvalidRefreshTokenError(error)) {
+          logStructuredError(error, {
+            operation: "supabase request",
+            source: "Supabase",
+          });
+        }
         reject(error);
       })
       .finally(() => {

@@ -64,6 +64,7 @@ export type SeoTheme = Pick<
       | "keywords"
       | "seo_description"
       | "seo_title"
+      | "theme_icon"
       | "visual_motif"
     >
   > & {
@@ -71,7 +72,7 @@ export type SeoTheme = Pick<
 };
 
 const PUBLISHED_FACT_SELECT =
-  "id,category_id,slug,title,hook,content,long_content,source,source_url,seo_title,seo_description,event_day,event_month,event_year,published_at,updated_at,categories(id,name,slug,tone,accent_color,description_courte,description_longue,keywords,visual_motif,gradient_start,gradient_middle,gradient_end)";
+  "id,category_id,slug,title,hook,content,long_content,source,source_url,seo_title,seo_description,event_day,event_month,event_year,published_at,updated_at,categories(id,name,slug,tone,accent_color,description_courte,description_longue,keywords,visual_motif,theme_icon,gradient_start,gradient_middle,gradient_end)";
 
 export function createSupabaseMetadataClient() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -316,7 +317,7 @@ export async function getPublicThemesForSeo() {
 
   const { data } = await supabase
     .from("categories")
-    .select("id,name,slug,tone,accent_color,description_courte,description_longue,seo_title,seo_description,keywords,visual_motif,gradient_start,gradient_middle,gradient_end,updated_at")
+    .select("id,name,slug,tone,accent_color,description_courte,description_longue,seo_title,seo_description,keywords,visual_motif,theme_icon,gradient_start,gradient_middle,gradient_end,updated_at")
     .order("name", { ascending: true });
 
   const themes = ((data ?? []) as SeoTheme[]).filter(

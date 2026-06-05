@@ -75,7 +75,6 @@ async function getSafeSession(
 
     if (isInvalidRefreshTokenError(result.error)) {
       clearSupabaseAuthStorage();
-      await supabase.auth.signOut({ scope: "local" }).catch(() => undefined);
 
       return { data: { session: null }, error: null };
     }
@@ -84,7 +83,6 @@ async function getSafeSession(
   } catch (error) {
     if (isInvalidRefreshTokenError(error)) {
       clearSupabaseAuthStorage();
-      await supabase.auth.signOut({ scope: "local" }).catch(() => undefined);
     }
 
     return { data: { session: null }, error: null };

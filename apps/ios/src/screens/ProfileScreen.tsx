@@ -1,6 +1,6 @@
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
-import { BookOpen, Bookmark, Bot, Brain, Check, ChevronLeft, Flame, Heart, Layers3, Pencil, Star, Trophy, X, Zap, type LucideIcon } from "lucide-react-native";
+import { BookOpen, Bookmark, Bot, Brain, Calendar, Check, ChevronLeft, Compass, Flame, Heart, Pencil, Target, X, Zap, type LucideIcon } from "lucide-react-native";
 import { useCallback, useEffect, useState } from "react";
 import { ImageBackground, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -11,6 +11,7 @@ import { GradeIcon } from "../components/GradeIcon";
 import { LoadingState } from "../components/ScreenState";
 import { SwipeBackView } from "../components/SwipeBackView";
 import { GrummButton } from "../components/GrummButton";
+import { ThemeIcon } from "../components/ThemeIcon";
 import { mobileConfig, userMessages } from "../config/app";
 import { useAuth } from "../context/AuthContext";
 import { trackMobileAnalyticsEvent } from "../lib/analytics";
@@ -92,7 +93,8 @@ export function ProfileScreen({ onOpenMemoryChallenge }: { onOpenMemoryChallenge
   const gradeProgress = Math.min(100, Math.round(((readCount % gradeStep) / gradeStep) * 100));
   const nextGradeRemaining = gradeStep - (readCount % gradeStep || gradeStep);
   const bestScore = quizStats?.bestScore ?? null;
-  const weekProgress = [true, completedGoals > 0, todayReadCount > 0, false, false, false, false];
+  const weekProgress = [completedGoals > 3, completedGoals > 2, completedGoals > 1, completedGoals > 0, todayReadCount >= dailyGoal, false, false];
+  const todayIndex = (new Date().getDay() + 6) % 7;
 
   async function replayCelebration() {
     setCelebration(true);
@@ -161,7 +163,11 @@ export function ProfileScreen({ onOpenMemoryChallenge }: { onOpenMemoryChallenge
             <Text style={styles.dailyCount}>
               {todayReadCount}/{dailyGoal}
             </Text>
-            <WeekDots progress={weekProgress} />
+            <View style={styles.streakLine}>
+              <Flame color={ds.color.orange} size={16} strokeWidth={2.35} />
+              <Text style={styles.streakLineText}>Série actuelle : {summary?.streakCount ?? 0} jours</Text>
+            </View>
+            <WeekDots progress={weekProgress} todayIndex={todayIndex} />
             {canReplayCelebration ? (
               <Pressable onPress={() => void replayCelebration()} style={styles.replayButton}>
                 <Flame color={ds.color.orange} size={17} strokeWidth={2.25} />
@@ -174,9 +180,9 @@ export function ProfileScreen({ onOpenMemoryChallenge }: { onOpenMemoryChallenge
         <Text style={styles.sectionTitle}>Statistiques</Text>
         <View style={styles.metricGrid}>
           <MetricPill Icon={BookOpen} color={ds.color.discovery} label="Faits lus" value={readCount} />
-          <MetricPill Icon={Flame} color={ds.color.orange} label="Jours actifs" value={completedGoals} />
-          <MetricPill Icon={Trophy} color={ds.color.progress} label="Score quiz" value={bestScore ? `${bestScore}%` : "—"} />
-          <MetricPill Icon={Layers3} color={ds.color.action} label="Thèmes" value={summary?.topThemes.length ?? 0} />
+          <MetricPill Icon={Calendar} color={ds.color.success} label="Jours actifs" value={completedGoals} />
+          <MetricPill Icon={Target} color={ds.color.progress} label="Score quiz" value={bestScore ? `${bestScore}%` : "—"} />
+          <MetricPill Icon={Compass} color={ds.color.orange} label="Thèmes" value={summary?.topThemes.length ?? 0} />
         </View>
 
         <ThemeSection themes={summary?.topThemes ?? []} />
@@ -458,16 +464,23 @@ function ProgressRing({ percent }: { percent: number }) {
   );
 }
 
-function WeekDots({ progress }: { progress: boolean[] }) {
+function WeekDots({ progress, todayIndex }: { progress: boolean[]; todayIndex: number }) {
   const labels = ["L", "M", "M", "J", "V", "S", "D"];
 
   return (
     <View style={styles.weekRow}>
-      {labels.map((label, index) => (
-        <View key={`${label}-${index}`} style={[styles.weekDot, progress[index] && styles.weekDotActive]}>
-          <Text style={[styles.weekLabel, progress[index] && styles.weekLabelActive]}>{label}</Text>
-        </View>
-      ))}
+      {labels.map((label, index) => {
+        const done = progress[index];
+        const isToday = index === todayIndex;
+
+        return (
+          <View key={`${label}-${index}`} style={[styles.weekDot, done && styles.weekDotActive, isToday && styles.weekDotToday]}>
+            <Text style={[styles.weekLabel, done && styles.weekLabelActive, isToday && !done && styles.weekLabelToday]}>
+              {done ? "✓" : label}
+            </Text>
+          </View>
+        );
+      })}
     </View>
   );
 }
@@ -504,7 +517,7 @@ function ThemeSection({ themes }: { themes: ProfileSummary["topThemes"] }) {
                   <View style={[styles.themeAura, { backgroundColor: theme.accent }]} />
                 )}
                 <View style={[styles.themeIllustration, { backgroundColor: theme.accent }]}>
-                  <Star color="#06111d" size={18} strokeWidth={2.5} />
+                  <ThemeIcon color="#06111d" name={theme.themeIcon} size={18} strokeWidth={2.5} />
                 </View>
                 <Text numberOfLines={1} style={styles.themeMiniName}>{theme.name}</Text>
                 <View style={styles.themeMiniFooter}>
@@ -1022,9 +1035,9 @@ const styles = StyleSheet.create({
   robotAvatar: {
     alignItems: "center",
     backgroundColor: "rgba(167,139,250,0.22)",
-    borderColor: "rgba(255,255,255,0.16)",
+    borderColor: ds.color.progress,
     borderRadius: 26,
-    borderWidth: 1,
+    borderWidth: 2,
     height: ds.size.profileAvatar,
     justifyContent: "center",
     overflow: "hidden",
@@ -1056,6 +1069,17 @@ const styles = StyleSheet.create({
     gap: 8,
     opacity: 0.82,
     paddingTop: 2,
+  },
+  streakLine: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: ds.space.xs,
+    marginTop: ds.space.xs,
+  },
+  streakLineText: {
+    color: ds.color.orange,
+    fontSize: ds.typography.caption,
+    fontWeight: ds.weight.semibold,
   },
   success: {
     alignItems: "center",
@@ -1253,6 +1277,9 @@ const styles = StyleSheet.create({
     backgroundColor: ds.color.goal,
     borderColor: "rgba(255,209,102,0.64)",
   },
+  weekDotToday: {
+    borderColor: ds.color.goal,
+  },
   weekLabel: {
     color: ds.color.muted,
     fontSize: 10,
@@ -1260,6 +1287,9 @@ const styles = StyleSheet.create({
   },
   weekLabelActive: {
     color: "#06111d",
+  },
+  weekLabelToday: {
+    color: ds.color.goal,
   },
   weekRow: {
     flexDirection: "row",

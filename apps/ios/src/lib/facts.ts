@@ -57,6 +57,7 @@ type ViewedFactRow = {
         categories:
           | {
               accent_color: string;
+              theme_icon?: string | null;
               theme_image_url?: string | null;
               name: string;
               slug: string;
@@ -64,6 +65,7 @@ type ViewedFactRow = {
             }
           | {
               accent_color: string;
+              theme_icon?: string | null;
               theme_image_url?: string | null;
               name: string;
               slug: string;
@@ -79,6 +81,7 @@ type CategoryRow = {
   id: string;
   name: string;
   slug: string;
+  theme_icon: string | null;
   theme_image_url: string | null;
   tone: string;
 };
@@ -229,6 +232,7 @@ function mapCategory(category: CategoryRow): CategorySummary {
     imageUrl: cleanOptionalText(category.theme_image_url),
     name: category.name,
     slug: category.slug,
+    themeIcon: cleanOptionalText(category.theme_icon),
     tone: category.tone,
   };
 }
@@ -252,6 +256,7 @@ function getTopViewedThemes(rows: ViewedFactRow[]): ThemeViewStat[] {
       imageUrl: cleanOptionalText(category.theme_image_url),
       name: category.name,
       slug: category.slug,
+      themeIcon: cleanOptionalText(category.theme_icon),
     });
   });
 
@@ -761,7 +766,7 @@ export async function getProfileSummary(): Promise<ProfileSummary> {
     withSupabaseTimeout(
       supabase
         .from("user_fact_views")
-        .select("fact_id,facts(categories(name,slug,tone,accent_color,theme_image_url))")
+        .select("fact_id,facts(categories(name,slug,tone,accent_color,theme_icon,theme_image_url))")
         .eq("user_id", user.id),
       userMessages.genericLoadError,
       undefined,

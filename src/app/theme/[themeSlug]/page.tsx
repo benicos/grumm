@@ -16,6 +16,7 @@ import {
 import Footer from "../../components/Footer";
 import HeroBackground from "../../components/HeroBackground";
 import Navbar from "../../components/Navbar";
+import ThemeIcon from "../../components/ThemeIcon";
 import ThemeMotif from "../../components/ThemeMotif";
 import {
   premiumPrimaryCtaClassName,
@@ -100,6 +101,12 @@ export default async function ThemeLandingPage({ params }: ThemePageProps) {
           <p className="relative text-sm font-bold uppercase tracking-[0.18em] text-white/58">
             Thème culturel
           </p>
+          <div
+            className="relative mt-6 grid h-16 w-16 place-items-center rounded-2xl border border-white/14 bg-black/22 shadow-[0_20px_60px_rgba(0,0,0,0.28)] backdrop-blur"
+            style={{ color: accent }}
+          >
+            <ThemeIcon iconName={theme.theme_icon} className="h-8 w-8" />
+          </div>
           <h1
             className={`${premiumTitleGradientClassName} relative mt-5 max-w-3xl text-[clamp(2.5rem,5.8vw,4.8rem)] font-extrabold leading-[0.98]`}
           >

@@ -5,6 +5,7 @@ import { deleteAdminGrade, getAdminGrades, type AdminGrade } from "@/lib/admin";
 import AdminListingPage, {
   type AdminListingFilterValues,
 } from "../AdminListingPage";
+import GradeIcon from "../../components/GradeIcon";
 
 function loadGrades({
   page,
@@ -73,9 +74,14 @@ export default function AdminGradesPage() {
           key: "grade",
           label: "Grade",
           render: (grade) => (
-            <div>
-              <p className="font-medium text-gray-800">{grade.name}</p>
-              <p className="mt-1 text-xs text-gray-500">{grade.slug}</p>
+            <div className="flex items-center gap-3">
+              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-gray-200 bg-gray-50 text-[#465fff]">
+                <GradeIcon badge={grade.badge} className="h-5 w-5" />
+              </span>
+              <div>
+                <p className="font-medium text-gray-800">{grade.name}</p>
+                <p className="mt-1 text-xs text-gray-500">{grade.slug}</p>
+              </div>
             </div>
           ),
         },

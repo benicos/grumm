@@ -3,9 +3,9 @@
 import type { FormEvent } from "react";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { gradeIconOptions } from "@/config/app";
 import { getAdminGrade, saveAdminGrade } from "@/lib/admin";
-import { AdminBackLink, AdminField, adminFieldClassName } from "../forms";
+import { AdminBackLink, AdminField } from "../forms";
+import IconPicker from "../components/IconPicker";
 import {
   AdminButton,
   AdminCard,
@@ -183,29 +183,13 @@ export default function GradeEditor({ gradeId }: { gradeId?: string }) {
                 }
               />
             </div>
-            <label className="block text-sm font-medium text-gray-700">
-              Icône
-              <span className="ml-1 text-red-500" aria-label="obligatoire">
-                *
-              </span>
-              <select
-                required
-                value={form.badge}
-                onChange={(event) =>
-                  setForm((current) => ({
-                    ...current,
-                    badge: event.target.value,
-                  }))
-                }
-                className={adminFieldClassName}
-              >
-                {gradeIconOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <IconPicker
+              accent="#ffd166"
+              help="Icône Lucide utilisée pour représenter ce grade dans le profil et les vues de progression."
+              label="Icône du grade"
+              value={form.badge}
+              onChange={(badge) => setForm((current) => ({ ...current, badge }))}
+            />
             <AdminField
               label="Description"
               textarea

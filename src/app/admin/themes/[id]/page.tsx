@@ -9,6 +9,7 @@ import {
   getAdminCategory,
   type AdminCategory,
 } from "@/lib/admin";
+import ThemeIcon from "../../../components/ThemeIcon";
 import { AdminBackLink } from "../../forms";
 import {
   AdminAttributeList,
@@ -125,7 +126,7 @@ export default function AdminThemeDetailPage() {
         <AdminCard className="p-6">
           <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
             <div className="flex min-w-0 items-center gap-4">
-              <span className="h-16 w-16 shrink-0 overflow-hidden rounded-2xl border border-gray-200 bg-gray-100">
+              <span className="relative h-16 w-16 shrink-0 overflow-hidden rounded-2xl border border-gray-200 bg-gray-100">
                 {theme.theme_image_url ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
@@ -135,10 +136,20 @@ export default function AdminThemeDetailPage() {
                   />
                 ) : (
                   <span
-                    className="block h-full w-full"
+                    className="grid h-full w-full place-items-center"
                     style={{ backgroundColor: theme.accent_color }}
-                  />
+                  >
+                    <ThemeIcon iconName={theme.theme_icon} className="h-7 w-7 text-white" />
+                  </span>
                 )}
+                {theme.theme_image_url ? (
+                  <span
+                    className="absolute bottom-1 right-1 grid h-7 w-7 place-items-center rounded-lg border border-white/40 bg-black/36 text-white backdrop-blur"
+                    style={{ color: theme.accent_color }}
+                  >
+                    <ThemeIcon iconName={theme.theme_icon} className="h-4 w-4" />
+                  </span>
+                ) : null}
               </span>
               <div className="min-w-0">
                 <h2 className="break-words text-2xl font-semibold text-gray-800">
@@ -193,6 +204,16 @@ export default function AdminThemeDetailPage() {
               label="Motif"
               technicalName="visual_motif"
               value={theme.visual_motif ?? "-"}
+            />
+            <DetailItem
+              label="Icône"
+              technicalName="theme_icon"
+              value={
+                <span className="inline-flex items-center gap-2">
+                  <ThemeIcon iconName={theme.theme_icon} className="h-5 w-5" />
+                  <span className="sr-only">{theme.theme_icon ?? "Aucune icône"}</span>
+                </span>
+              }
             />
             <DetailItem
               label="Illustration du thème"

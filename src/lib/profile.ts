@@ -46,6 +46,7 @@ type RelatedFactRow = {
               slug: string;
               tone: string;
               accent_color: string;
+              theme_icon?: string | null;
               visual_motif?: string | null;
             }
           | {
@@ -53,6 +54,7 @@ type RelatedFactRow = {
               slug: string;
               tone: string;
               accent_color: string;
+              theme_icon?: string | null;
               visual_motif?: string | null;
             }[]
           | null;
@@ -70,6 +72,7 @@ type ViewedFactRow = {
               slug: string;
               tone: string;
               accent_color: string;
+              theme_icon?: string | null;
               visual_motif?: string | null;
             }
           | {
@@ -77,6 +80,7 @@ type ViewedFactRow = {
               slug: string;
               tone: string;
               accent_color: string;
+              theme_icon?: string | null;
               visual_motif?: string | null;
             }[]
           | null;
@@ -90,6 +94,7 @@ export type ThemeViewStat = {
   name: string;
   percent: number;
   slug: string;
+  themeIcon: string | null;
   visualMotif: string | null;
 };
 
@@ -104,6 +109,7 @@ export type UserProfileSummary = {
   savedCount: number;
   uniqueViewsCount: number;
   completedDailyGoals: number;
+  currentStreakDays: number;
   grades: GradeDefinition[];
   todayReadCount: number;
   likedFacts: FeedFact[];
@@ -132,6 +138,31 @@ function categoryFromRelation(fact: NonNullable<RelatedFactRow["facts"]>) {
   return Array.isArray(fact.categories)
     ? fact.categories[0]
     : fact.categories;
+}
+
+function getCurrentDailyGoalStreak(
+  rows: { goal_completed: boolean; progress_date: string }[],
+) {
+  const completedDates = new Set(
+    rows
+      .filter((row) => row.goal_completed)
+      .map((row) => row.progress_date),
+  );
+  const cursor = new Date();
+  let streak = 0;
+
+  while (true) {
+    const key = cursor.toISOString().slice(0, 10);
+
+    if (!completedDates.has(key)) {
+      break;
+    }
+
+    streak += 1;
+    cursor.setDate(cursor.getDate() - 1);
+  }
+
+  return streak;
 }
 
 function mapRelatedFact(row: RelatedFactRow): FeedFact | null {
@@ -194,9 +225,9 @@ function getProfileErrorMessage(error: unknown) {
 }
 
 const RELATED_FACT_SELECT =
-  "fact_id,facts(id,slug,title,hook,content,difficulty_level,long_content,source,source_url,tone,accent_color,categories(name,slug,tone,accent_color,visual_motif))";
+  "fact_id,facts(id,slug,title,hook,content,difficulty_level,long_content,source,source_url,tone,accent_color,categories(name,slug,tone,accent_color,theme_icon,visual_motif))";
 const VIEWED_FACT_SELECT =
-  "fact_id,facts(categories(name,slug,tone,accent_color,visual_motif))";
+  "fact_id,facts(categories(name,slug,tone,accent_color,theme_icon,visual_motif))";
 
 function getTopViewedThemes(rows: ViewedFactRow[]): ThemeViewStat[] {
   const themesBySlug = new Map<string, Omit<ThemeViewStat, "percent">>();
@@ -223,6 +254,7 @@ function getTopViewedThemes(rows: ViewedFactRow[]): ThemeViewStat[] {
       count: (current?.count ?? 0) + 1,
       name: category.name,
       slug: category.slug,
+      themeIcon: category.theme_icon ?? current?.themeIcon ?? null,
       visualMotif: category.visual_motif ?? current?.visualMotif ?? null,
     });
   });
@@ -414,6 +446,7 @@ export async function getUserProfileSummary(): Promise<UserProfileSummary> {
     savedCount: savedFacts.length,
     uniqueViewsCount: uniqueViews.size,
     completedDailyGoals: dailyRows.filter((row) => row.goal_completed).length,
+    currentStreakDays: getCurrentDailyGoalStreak(dailyRows),
     grades,
     todayReadCount: todayRow?.facts_read_count ?? 0,
     likedFacts,

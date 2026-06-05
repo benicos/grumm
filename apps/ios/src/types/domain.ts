@@ -25,6 +25,7 @@ export type CategorySummary = {
   imageUrl: string | null;
   name: string;
   slug: string;
+  themeIcon: string | null;
   tone: string;
 };
 
@@ -114,4 +115,5 @@ export type ThemeViewStat = {
   name: string;
   percent: number;
   slug: string;
+  themeIcon: string | null;
 };

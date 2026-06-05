@@ -23,8 +23,9 @@ export const designTokens = {
     action: ["#153341", "#132238"] as const,
     discovery: ["#172B4A", "#132238"] as const,
     goal: ["#332713", "#132238"] as const,
-    memory: ["#2A1D42", "#3A2035", "#422313"] as const,
+    memory: ["#0C2F34", "#123A45", "#164E58"] as const,
     profile: ["#171E35", "#111C2D"] as const,
+    quiz: ["#261C44", "#332447", "#3F2634"] as const,
   },
   icon: {
     lg: 30,
@@ -51,7 +52,7 @@ export const designTokens = {
   size: {
     compactCard: 72,
     iconBubble: 52,
-    profileAvatar: 74,
+    profileAvatar: 86,
     quizHero: 174,
   },
   space: {

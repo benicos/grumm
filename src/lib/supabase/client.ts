@@ -55,9 +55,14 @@ export function clearMalformedSupabaseAuthStorage() {
       }
 
       try {
-        const parsed = JSON.parse(value) as { refresh_token?: unknown };
+        const parsed = JSON.parse(value) as {
+          currentSession?: { refresh_token?: unknown };
+          refresh_token?: unknown;
+        };
+        const refreshToken =
+          parsed.currentSession?.refresh_token ?? parsed.refresh_token;
 
-        if (typeof parsed.refresh_token !== "string" || !parsed.refresh_token) {
+        if (typeof refreshToken !== "string" || !refreshToken) {
           window.localStorage.removeItem(key);
         }
       } catch {

@@ -4,11 +4,11 @@ import Link from "next/link";
 import { buildDefaultMetadata } from "@/lib/serverMetadata";
 import {
   premiumPrimaryCtaClassName,
-  premiumTitleGradientClassName,
 } from "../components/buttonStyles";
 import Footer from "../components/Footer";
 import HeroBackground from "../components/HeroBackground";
 import Navbar from "../components/Navbar";
+import PageHero from "../components/PageHero";
 
 export const metadata: Metadata = buildDefaultMetadata({
   canonicalPath: "/quiz",
@@ -20,24 +20,24 @@ export const metadata: Metadata = buildDefaultMetadata({
 const quizEntries = [
   {
     Icon: Zap,
-    accent: "#6ae3c0",
+    accent: "#a78bfa",
     cta: "Lancer le quiz général",
     description:
       "Lance une série rapide de questions variées et vois ce que tu retiens vraiment.",
     href: "/quiz/general#quiz-container",
     kicker: "Quiz général",
-    tone: "from-[#6ae3c0]/20 via-[#143f57]/16 to-transparent",
+    tone: "from-[#a78bfa]/20 via-[#ff9f43]/10 to-transparent",
     title: "Envie de tester ta culture générale ?",
   },
   {
     Icon: Brain,
-    accent: "#a78bfa",
+    accent: "#6ae3c0",
     cta: "Lancer le défi mémoire",
     description:
       "Revois les faits que tu as déjà lus avec une session personnalisée, courte et ciblée.",
     href: "/quiz/memoire#quiz-container",
     kicker: "Défi mémoire",
-    tone: "from-[#a78bfa]/20 via-[#465fff]/12 to-transparent",
+    tone: "from-[#6ae3c0]/20 via-[#143f57]/16 to-transparent",
     title: "Envie de réviser ce que tu as déjà lu ?",
   },
 ] as const;
@@ -48,21 +48,12 @@ export default function QuizHubPage() {
       <HeroBackground />
       <Navbar />
       <main className="relative z-10 mx-auto flex min-h-[calc(100vh-92px)] w-full max-w-[1120px] flex-col justify-center px-5 py-12 sm:px-6 lg:px-8">
-        <section className="mx-auto max-w-3xl text-center">
-          <p className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-[0.24em] text-[#f4ead5]/58">
-            <Trophy className="h-4 w-4" aria-hidden="true" />
-            Grumm Quiz
-          </p>
-          <p
-            className={`${premiumTitleGradientClassName} mx-auto mt-4 max-w-xl text-xl font-black leading-tight tracking-[-0.035em] sm:text-2xl`}
-          >
-            Mémorise ce que tu découvres.
-          </p>
-          <p className="mx-auto mt-4 max-w-2xl text-sm font-semibold leading-7 text-white/58 sm:text-base">
-            Deux formats courts pour transformer les faits lus en repères qui
-            restent.
-          </p>
-        </section>
+        <PageHero
+          Icon={Trophy}
+          eyebrow="Grumm Quiz"
+          title="Mémorise ce que tu découvres."
+          description="Deux formats courts pour transformer les faits lus en repères qui restent."
+        />
 
         <section className="mx-auto mt-10 grid w-full max-w-5xl gap-4">
           {quizEntries.map(({ Icon, accent, cta, description, href, kicker, title, tone }) => (

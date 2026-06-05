@@ -4,17 +4,12 @@ import type { ChangeEvent, FormEvent } from "react";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getAdminCategory, saveAdminCategory } from "@/lib/admin";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
-import { themeIconOptions } from "@/lib/icons";
-import {
-  getThemeGradientStyle,
-  themeMotifLabels,
-  themeMotifOptions,
-  type ThemeVisualMotif,
-} from "@/lib/themeDisplay";
-import ThemeMotif from "../../components/ThemeMotif";
+import { normalizeThemeIconName } from "@/lib/icons";
+import { getThemeGradientStyle } from "@/lib/themeDisplay";
+import ThemeIcon from "../../components/ThemeIcon";
 import { AdminBackLink, AdminField, AdminHelpTooltip } from "../forms";
+import IconPicker from "../components/IconPicker";
 import {
   AdminButton,
   AdminCard,
@@ -36,7 +31,6 @@ type ThemeFormState = {
   seo_title: string;
   theme_icon: string;
   theme_image_url: string;
-  visual_motif: ThemeVisualMotif;
 };
 
 type GradientPreset = {
@@ -58,7 +52,6 @@ const emptyTheme: ThemeFormState = {
   seo_title: "",
   theme_icon: "star",
   theme_image_url: "",
-  visual_motif: "constellation",
 };
 
 const gradientPresets: GradientPreset[] = [
@@ -97,7 +90,6 @@ export default function ThemeEditor({ themeId }: { themeId?: string }) {
     slug: "preview",
     tone: toneFromStops(form),
   };
-
   function updateColor(field: keyof Pick<ThemeFormState, "gradient_start" | "gradient_middle" | "gradient_end" | "accent_color">, value: string) {
     setForm((current) => ({ ...current, [field]: value }));
   }
@@ -145,11 +137,8 @@ export default function ThemeEditor({ themeId }: { themeId?: string }) {
           name: theme.name,
           seo_description: theme.seo_description ?? "",
           seo_title: theme.seo_title ?? "",
-          theme_icon: theme.theme_icon ?? emptyTheme.theme_icon,
+          theme_icon: normalizeThemeIconName(theme.theme_icon ?? emptyTheme.theme_icon),
           theme_image_url: theme.theme_image_url ?? "",
-          visual_motif:
-            (theme.visual_motif as ThemeVisualMotif | null) ??
-            emptyTheme.visual_motif,
         });
       } catch (loadError) {
         if (mounted) {
@@ -191,10 +180,9 @@ export default function ThemeEditor({ themeId }: { themeId?: string }) {
       name: form.name,
       seo_description: form.seo_description || null,
       seo_title: form.seo_title || null,
-      theme_icon: form.theme_icon || null,
+      theme_icon: normalizeThemeIconName(form.theme_icon || emptyTheme.theme_icon),
       theme_image_url: form.theme_image_url || null,
       tone: toneFromStops(form),
-      visual_motif: form.visual_motif,
     });
 
     setBusy(false);
@@ -375,10 +363,12 @@ export default function ThemeEditor({ themeId }: { themeId?: string }) {
                     >
                       {form.name || "Thème"}
                     </span>
-                    <ThemeMotif
-                      motif={form.visual_motif}
-                      className="mt-6 h-14 w-14 text-white/35"
-                    />
+                    <div
+                      className="mt-6 grid h-16 w-16 place-items-center rounded-2xl border border-white/18 bg-black/20 shadow-[0_18px_45px_rgba(0,0,0,0.28)] backdrop-blur"
+                      style={{ color: form.accent_color }}
+                    >
+                      <ThemeIcon iconName={form.theme_icon} className="h-8 w-8" />
+                    </div>
                     <h3 className="mt-7 max-w-xs text-2xl font-semibold leading-tight">
                       {form.name || "Exemple de carte Grumm."}
                     </h3>
@@ -391,73 +381,15 @@ export default function ThemeEditor({ themeId }: { themeId?: string }) {
               </div>
             </section>
 
-            <section className="rounded-2xl border border-gray-200 bg-white p-4">
-              <div className="flex items-center gap-2 text-sm font-medium text-gray-800">
-                Motif graphique
-                <AdminHelpTooltip text="Motif décoratif utilisé dans les cards publiques du thème." />
-              </div>
-              <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {themeMotifOptions.map((motif) => {
-                  const selected = form.visual_motif === motif;
-
-                  return (
-                    <button
-                      key={motif}
-                      type="button"
-                      onClick={() =>
-                        setForm((current) => ({
-                          ...current,
-                          visual_motif: motif,
-                        }))
-                      }
-                      className={`flex items-center gap-3 rounded-xl border px-3 py-3 text-left text-sm transition ${
-                        selected
-                          ? "border-[#465fff] bg-[#f5f7ff] text-[#1d2adf]"
-                          : "border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50"
-                      }`}
-                    >
-                      <ThemeMotif motif={motif} className="h-8 w-8 shrink-0" />
-                      <span className="font-medium">
-                        {themeMotifLabels[motif]}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            </section>
-
-            <section className="rounded-2xl border border-gray-200 bg-white p-4">
-              <div className="flex items-center gap-2 text-sm font-medium text-gray-800">
-                Icône du thème
-                <AdminHelpTooltip text="Icône Font Awesome utilisée pour identifier le thème dans les interfaces." />
-              </div>
-              <div className="mt-4 grid gap-2 sm:grid-cols-3 lg:grid-cols-4">
-                {themeIconOptions.map((option) => {
-                  const selected = form.theme_icon === option.name;
-
-                  return (
-                    <button
-                      key={option.name}
-                      type="button"
-                      onClick={() =>
-                        setForm((current) => ({
-                          ...current,
-                          theme_icon: option.name,
-                        }))
-                      }
-                      className={`flex items-center gap-3 rounded-xl border px-3 py-3 text-left text-sm transition ${
-                        selected
-                          ? "border-[#465fff] bg-[#f5f7ff] text-[#1d2adf]"
-                          : "border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50"
-                      }`}
-                    >
-                      <FontAwesomeIcon icon={option.icon} className="h-4 w-4 shrink-0" />
-                      <span className="font-medium">{option.label}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </section>
+            <IconPicker
+              accent={form.accent_color}
+              help="Icône Lucide utilisée pour identifier visuellement le thème dans les interfaces publiques."
+              label="Icône du thème"
+              value={form.theme_icon}
+              onChange={(theme_icon) =>
+                setForm((current) => ({ ...current, theme_icon }))
+              }
+            />
 
             <section className="rounded-2xl border border-gray-200 bg-white p-4">
               <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">

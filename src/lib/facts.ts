@@ -67,6 +67,7 @@ export type CategorySummary = {
   gradient_start?: string | null;
   gradient_middle?: string | null;
   gradient_end?: string | null;
+  theme_icon?: string | null;
 };
 
 export type ThemeDiscoverySummary = CategorySummary & {
@@ -116,6 +117,7 @@ type FactCategory = {
   gradient_start?: string | null;
   gradient_middle?: string | null;
   gradient_end?: string | null;
+  theme_icon?: string | null;
 };
 
 type FactRow = {
@@ -194,7 +196,7 @@ type RawDailyProgressRow = {
 };
 
 const FACT_SELECT =
-  "id,slug,title,hook,content,difficulty_level,long_content,seo_title,seo_description,event_day,event_month,event_year,published_at,updated_at,source,source_url,tone,accent_color,categories(id,name,slug,tone,accent_color,description_courte,description_longue,seo_title,seo_description,keywords,visual_motif,gradient_start,gradient_middle,gradient_end)";
+  "id,slug,title,hook,content,difficulty_level,long_content,seo_title,seo_description,event_day,event_month,event_year,published_at,updated_at,source,source_url,tone,accent_color,categories(id,name,slug,tone,accent_color,description_courte,description_longue,seo_title,seo_description,keywords,visual_motif,theme_icon,gradient_start,gradient_middle,gradient_end)";
 
 function isMissingSourceLabel(value: string) {
   const normalized = value
@@ -305,6 +307,7 @@ function mapCategory(category: FactCategory): CategorySummary {
     seo_description: category.seo_description ?? null,
     seo_title: category.seo_title ?? null,
     slug: category.slug,
+    theme_icon: category.theme_icon ?? null,
     tone:
       category.tone ||
       "from-[#0b1424] via-[#132744] to-[#f0a95a]",
@@ -601,7 +604,7 @@ export async function getFeedFacts(options?: {
   if (options?.themeSlug) {
     const { data: categoryData, error: categoryError } = await supabase
       .from("categories")
-      .select("id,name,slug,tone,accent_color,description_courte,description_longue,seo_title,seo_description,keywords,visual_motif,gradient_start,gradient_middle,gradient_end")
+      .select("id,name,slug,tone,accent_color,description_courte,description_longue,seo_title,seo_description,keywords,visual_motif,theme_icon,gradient_start,gradient_middle,gradient_end")
       .eq("slug", options.themeSlug)
       .maybeSingle();
 
@@ -715,7 +718,7 @@ async function getExplorerThemesWithCounts(
   // descriptions / gradients, ce qui forçait des fallbacks sur /theme.
   const categoriesQuery = supabase
     .from("categories")
-    .select("id,name,slug,tone,accent_color,description_courte,description_longue,seo_title,seo_description,keywords,visual_motif,gradient_start,gradient_middle,gradient_end")
+    .select("id,name,slug,tone,accent_color,description_courte,description_longue,seo_title,seo_description,keywords,visual_motif,theme_icon,gradient_start,gradient_middle,gradient_end")
     .order("name", { ascending: true });
 
   const categoriesResult = searchTerm
@@ -779,7 +782,7 @@ async function searchExplorerFacts(
 
   const matchingCategoriesResult = await supabase
     .from("categories")
-    .select("id,name,slug,tone,accent_color,description_courte,description_longue,seo_title,seo_description,keywords,visual_motif,gradient_start,gradient_middle,gradient_end")
+    .select("id,name,slug,tone,accent_color,description_courte,description_longue,seo_title,seo_description,keywords,visual_motif,theme_icon,gradient_start,gradient_middle,gradient_end")
     .or(`name.ilike.%${searchTerm}%,slug.ilike.%${searchTerm}%`);
 
   if (matchingCategoriesResult.error) {

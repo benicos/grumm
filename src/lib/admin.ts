@@ -1,8 +1,9 @@
 ﻿import { createSupabaseBrowserClient } from "@/lib/supabase/client";
-import { gradeIconOptions, paginationConfig } from "@/config/app";
+import { paginationConfig } from "@/config/app";
 import { getBadgeInfo } from "@/lib/badges";
 import { isCommercialCollaborationSlug } from "@/lib/commercial";
 import { formatAppError, getConfiguredErrorMessage } from "@/lib/errors";
+import { normalizeThemeIconName, themeIconOptions } from "@/lib/icons";
 import {
   type DifficultyLevel,
   normalizeDifficultyLevel,
@@ -2764,8 +2765,8 @@ export async function saveAdminGrade(input: {
 
   const name = input.name.trim();
   const requiredGoals = Math.max(0, Math.floor(input.required_goals));
-  const requestedBadge = input.badge?.trim() || "sparkles";
-  const badge = gradeIconOptions.some((option) => option.value === requestedBadge)
+  const requestedBadge = normalizeThemeIconName(input.badge || "sparkles");
+  const badge = themeIconOptions.some((option) => option.name === requestedBadge)
     ? requestedBadge
     : "sparkles";
 

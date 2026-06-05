@@ -15,6 +15,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { LoadingState, ScreenState } from "../components/ScreenState";
+import { ThemeIcon } from "../components/ThemeIcon";
 import { userMessages } from "../config/app";
 import { trackMobileAnalyticsEvent } from "../lib/analytics";
 import { getExplorerData } from "../lib/facts";
@@ -312,6 +313,9 @@ function ThemeCompactCard({
           colors={["rgba(0,0,0,0.08)", "rgba(0,0,0,0.68)"]}
           style={styles.imageScrim}
         >
+          <View style={[styles.themeIconBubble, { backgroundColor: theme.accent }]}>
+            <ThemeIcon color="#06111d" name={theme.themeIcon} size={15} />
+          </View>
           <Text numberOfLines={1} style={styles.compactName}>
             {theme.name}
           </Text>
@@ -347,6 +351,9 @@ function ContinueThemeCard({
         >
           <View style={styles.playButton}>
             <Play color="#06111d" fill="#06111d" size={16} strokeWidth={2.4} />
+          </View>
+          <View style={[styles.continueIconBubble, { backgroundColor: theme.accent }]}>
+            <ThemeIcon color="#06111d" name={theme.themeIcon} size={19} />
           </View>
           <View style={styles.continueText}>
             <Text numberOfLines={1} style={styles.continueName}>
@@ -390,6 +397,9 @@ function ThemeGridCard({
           colors={["rgba(0,0,0,0.02)", "rgba(0,0,0,0.70)"]}
           style={styles.gridScrim}
         >
+          <View style={[styles.gridIconBubble, { backgroundColor: theme.accent }]}>
+            <ThemeIcon color="#06111d" name={theme.themeIcon} size={14} />
+          </View>
           <Text numberOfLines={2} style={styles.gridName}>
             {theme.name}
           </Text>
@@ -451,6 +461,16 @@ const styles = StyleSheet.create({
   },
   continueImage: {
     flex: 1,
+  },
+  continueIconBubble: {
+    alignItems: "center",
+    borderRadius: 14,
+    height: 36,
+    justifyContent: "center",
+    left: 14,
+    position: "absolute",
+    top: 14,
+    width: 36,
   },
   continueMeta: {
     color: "rgba(248,250,252,0.72)",
@@ -522,6 +542,16 @@ const styles = StyleSheet.create({
   },
   gridImage: {
     flex: 1,
+  },
+  gridIconBubble: {
+    alignItems: "center",
+    borderRadius: 12,
+    height: 28,
+    justifyContent: "center",
+    left: 10,
+    position: "absolute",
+    top: 10,
+    width: 28,
   },
   gridName: {
     color: colors.text,
@@ -637,6 +667,16 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 10,
+  },
+  themeIconBubble: {
+    alignItems: "center",
+    borderRadius: 12,
+    height: 30,
+    justifyContent: "center",
+    left: 10,
+    position: "absolute",
+    top: 10,
+    width: 30,
   },
   title: {
     color: colors.text,

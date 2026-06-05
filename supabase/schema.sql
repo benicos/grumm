@@ -56,6 +56,8 @@ create table if not exists public.categories (
   slug text not null unique,
   accent_color text not null default '#ffd166',
   tone text not null default 'from-[#0b1424] via-[#132744] to-[#f0a95a]',
+  theme_icon text,
+  theme_image_url text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -137,6 +139,8 @@ alter table public.categories add column if not exists name text;
 alter table public.categories add column if not exists slug text;
 alter table public.categories add column if not exists accent_color text not null default '#ffd166';
 alter table public.categories add column if not exists tone text not null default 'from-[#0b1424] via-[#132744] to-[#f0a95a]';
+alter table public.categories add column if not exists theme_icon text;
+alter table public.categories add column if not exists theme_image_url text;
 alter table public.categories add column if not exists created_at timestamptz not null default now();
 alter table public.categories add column if not exists updated_at timestamptz not null default now();
 
@@ -2727,6 +2731,8 @@ returns table (
   slug text,
   tone text,
   accent_color text,
+  theme_icon text,
+  theme_image_url text,
   published_facts_count integer
 )
 language sql
@@ -2740,6 +2746,8 @@ as $$
     categories.slug,
     categories.tone,
     categories.accent_color,
+    categories.theme_icon,
+    categories.theme_image_url,
     count(facts.id)::integer as published_facts_count
   from public.categories as categories
   left join public.facts as facts

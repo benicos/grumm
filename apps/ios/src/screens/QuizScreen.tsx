@@ -300,7 +300,7 @@ export function QuizScreen({
         >
           <LinearGradient colors={ds.gradient.memory} style={styles.memoryGradient}>
             <View style={styles.badge}>
-              <Flame color={ds.color.orange} size={ds.icon.sm} strokeWidth={2.35} />
+              <Flame color={ds.color.action} size={ds.icon.sm} strokeWidth={2.35} />
               <Text style={styles.badgeText}>Défi du jour</Text>
             </View>
             <View style={styles.memoryBody}>
@@ -326,18 +326,20 @@ export function QuizScreen({
         </View>
         <Pressable
           onPress={() => void startQuickQuiz()}
-          style={({ pressed }) => [styles.quickCard, pressed && styles.pressed]}
+          style={({ pressed }) => [styles.quickCardShell, pressed && styles.pressed]}
         >
-          <View style={[styles.actionIcon, { backgroundColor: ds.color.action }]}>
-            <Bolt color="#06111d" size={ds.icon.md} strokeWidth={2.35} />
-          </View>
-          <View style={styles.quickCopy}>
-            <Text style={styles.quickTitle}>Prêt pour un défi rapide ?</Text>
-            <Text style={styles.quickMeta}>Réponds sans casser le rythme.</Text>
-          </View>
-          <View style={styles.quickPlay}>
-            <Play color="#06111d" fill="#06111d" size={15} strokeWidth={2.4} />
-          </View>
+          <LinearGradient colors={ds.gradient.quiz} style={styles.quickCard}>
+            <View style={[styles.actionIcon, { backgroundColor: ds.color.progress }]}>
+              <Bolt color={ds.color.background} size={ds.icon.md} strokeWidth={2.35} />
+            </View>
+            <View style={styles.quickCopy}>
+              <Text style={styles.quickTitle}>Prêt pour un défi rapide ?</Text>
+              <Text style={styles.quickMeta}>Réponds sans casser le rythme.</Text>
+            </View>
+            <View style={styles.quickPlay}>
+              <Play color={ds.color.background} fill={ds.color.background} size={15} strokeWidth={2.4} />
+            </View>
+          </LinearGradient>
         </Pressable>
 
         <View style={styles.sectionIntro}>
@@ -345,9 +347,9 @@ export function QuizScreen({
           <Text style={styles.sectionLink}>Voir tout</Text>
         </View>
         <View style={styles.statsRow}>
-          <StatCard Icon={Trophy} color={ds.color.goal} label="Meilleur score" value={bestScore ? `${bestScore}%` : "—"} />
+          <StatCard Icon={Trophy} color={ds.color.progress} label="Meilleur score" value={bestScore ? `${bestScore}%` : "—"} />
           <StatCard Icon={Flame} color={ds.color.orange} label="Meilleure série" value={streak} />
-          <StatCard Icon={Target} color={ds.color.progress} label="Quiz complétés" value={sessionsCount} />
+          <StatCard Icon={Target} color={ds.color.discovery} label="Quiz complétés" value={sessionsCount} />
         </View>
 
         <View style={styles.sectionIntro}>
@@ -662,14 +664,18 @@ const styles = StyleSheet.create({
   },
   quickCard: {
     alignItems: "center",
-    backgroundColor: ds.color.card,
     borderColor: ds.color.stroke,
     borderRadius: ds.radius.card,
     borderWidth: 1,
     flexDirection: "row",
     gap: ds.space.sm,
     minHeight: 76,
+    overflow: "hidden",
     padding: ds.space.md,
+  },
+  quickCardShell: {
+    borderRadius: ds.radius.card,
+    overflow: "hidden",
   },
   quickCopy: {
     flex: 1,
@@ -683,7 +689,7 @@ const styles = StyleSheet.create({
   },
   quickPlay: {
     alignItems: "center",
-    backgroundColor: ds.color.action,
+    backgroundColor: ds.color.progress,
     borderRadius: ds.radius.full,
     height: 38,
     justifyContent: "center",

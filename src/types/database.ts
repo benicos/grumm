@@ -814,6 +814,7 @@ export type Database = {
           slug: string;
           tone: string;
           accent_color: string;
+          theme_icon: string | null;
           theme_image_url: string | null;
           published_facts_count: number;
         }[];
