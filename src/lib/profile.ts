@@ -66,8 +66,10 @@ type ViewedFactRow = {
   fact_id: string;
   facts:
     | {
+        category_id: string | null;
         categories:
           | {
+              id: string;
               name: string;
               slug: string;
               tone: string;
@@ -76,6 +78,7 @@ type ViewedFactRow = {
               visual_motif?: string | null;
             }
           | {
+              id: string;
               name: string;
               slug: string;
               tone: string;
@@ -115,6 +118,7 @@ export type UserProfileSummary = {
   likedFacts: FeedFact[];
   savedFacts: FeedFact[];
   topThemes: ThemeViewStat[];
+  exploredThemeCount: number;
   memoryStats: MemoryStats;
 };
 
@@ -227,7 +231,7 @@ function getProfileErrorMessage(error: unknown) {
 const RELATED_FACT_SELECT =
   "fact_id,facts(id,slug,title,hook,content,difficulty_level,long_content,source,source_url,tone,accent_color,categories(name,slug,tone,accent_color,theme_icon,visual_motif))";
 const VIEWED_FACT_SELECT =
-  "fact_id,facts(categories(name,slug,tone,accent_color,theme_icon,visual_motif))";
+  "fact_id,facts(category_id,categories(id,name,slug,tone,accent_color,theme_icon,visual_motif))";
 
 function getTopViewedThemes(rows: ViewedFactRow[]): ThemeViewStat[] {
   const themesBySlug = new Map<string, Omit<ThemeViewStat, "percent">>();
@@ -268,6 +272,30 @@ function getTopViewedThemes(rows: ViewedFactRow[]): ThemeViewStat[] {
     ...theme,
     percent: Math.round((theme.count / maxCount) * 100),
   }));
+}
+
+function getExploredThemeCount(rows: ViewedFactRow[]) {
+  const categoryIds = new Set<string>();
+
+  rows.forEach((row) => {
+    const fact = row.facts;
+
+    if (!fact?.category_id) {
+      return;
+    }
+
+    const category = Array.isArray(fact.categories)
+      ? fact.categories[0]
+      : fact.categories;
+
+    if (category?.slug && isCommercialCollaborationSlug(category.slug)) {
+      return;
+    }
+
+    categoryIds.add(fact.category_id);
+  });
+
+  return categoryIds.size;
 }
 
 export async function getUserThemeProgress(): Promise<UserThemeProgress> {
@@ -401,6 +429,7 @@ export async function getUserProfileSummary(): Promise<UserProfileSummary> {
     standardViewRows.map((view) => view.fact_id),
   );
   const topThemes = getTopViewedThemes(standardViewRows);
+  const exploredThemeCount = getExploredThemeCount(standardViewRows);
   const dailyRows = dailyProgressResult.data ?? [];
   const grades = gradesResult.error
     ? []
@@ -452,6 +481,7 @@ export async function getUserProfileSummary(): Promise<UserProfileSummary> {
     likedFacts,
     savedFacts,
     topThemes,
+    exploredThemeCount,
     memoryStats,
   };
 }

@@ -303,20 +303,21 @@ function ChallengeContent() {
         </p>
 
         <div className="mt-8 grid gap-3 sm:grid-cols-2">
+          <Link
+            href="/quiz"
+            className={`${premiumPrimaryCtaClassName} justify-center`}
+          >
+            <Brain className="mr-2 h-4 w-4" aria-hidden="true" />
+            {quizCopy.buttons.returnQuiz}
+          </Link>
           <button
             type="button"
             onClick={() => void startSession()}
-            className={`${premiumPrimaryCtaClassName} justify-center`}
-          >
-            <RotateCcw className="mr-2 h-4 w-4" />
-            {quizCopy.buttons.relaunch}
-          </button>
-          <Link
-            href="/profil"
             className="inline-flex justify-center rounded-full border border-white/12 px-5 py-3 text-sm font-black text-white/70 transition hover:border-white/24 hover:text-white"
           >
-            {quizCopy.buttons.returnProfile}
-          </Link>
+            <RotateCcw className="mr-2 h-4 w-4" aria-hidden="true" />
+            {quizCopy.buttons.relaunch}
+          </button>
         </div>
 
         <div className="mt-8 divide-y divide-white/10 text-left">

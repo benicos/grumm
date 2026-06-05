@@ -9,6 +9,7 @@ import Footer from "../components/Footer";
 import HeroBackground from "../components/HeroBackground";
 import Navbar from "../components/Navbar";
 import PageHero from "../components/PageHero";
+import QuizStatsPanel from "./QuizStatsPanel";
 
 export const metadata: Metadata = buildDefaultMetadata({
   canonicalPath: "/quiz",
@@ -102,6 +103,8 @@ export default function QuizHubPage() {
             </Link>
           ))}
         </section>
+
+        <QuizStatsPanel />
       </main>
       <Footer />
     </div>

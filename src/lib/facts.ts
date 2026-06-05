@@ -23,6 +23,7 @@ export type FeedFact = {
   slug: string;
   category: string;
   categorySlug: string;
+  themeIcon?: string | null;
   title: string;
   hook: string | null;
   detail: string;
@@ -166,6 +167,8 @@ type FeedRpcRow = {
   category_slug: string;
   category_tone: string;
   category_accent_color: string;
+  category_theme_icon?: string | null;
+  theme_icon?: string | null;
   recommendation_score?: number | null;
   score_debug?: Record<string, unknown> | null;
 };
@@ -239,6 +242,7 @@ function mapFact(fact: FactRow): FeedFact {
     slug: fact.slug || slugify(fact.title),
     category: category?.name ?? "General",
     categorySlug: category?.slug ?? "general",
+    themeIcon: category?.theme_icon ?? null,
     title: fact.title,
     hook: fact.hook?.trim() || null,
     detail: fact.content,
@@ -268,6 +272,7 @@ function mapFeedRpcFact(fact: FeedRpcRow): FeedFact {
     slug: fact.slug || slugify(fact.title),
     category: fact.category_name ?? "General",
     categorySlug: fact.category_slug ?? "general",
+    themeIcon: fact.category_theme_icon ?? fact.theme_icon ?? null,
     title: fact.title,
     hook: fact.hook?.trim() || null,
     detail: fact.content,
@@ -1012,6 +1017,27 @@ export async function getPopularExplorerSearches(limit = 6) {
     .map(([term]) => term);
 }
 
+async function hydrateFactThemeVisuals(
+  supabase: NonNullable<ReturnType<typeof createSupabaseBrowserClient>>,
+  fact: FeedFact,
+) {
+  const themeResult = await supabase
+    .from("categories")
+    .select("visual_motif,theme_icon")
+    .eq("slug", fact.categorySlug)
+    .maybeSingle();
+
+  if (themeResult.error) {
+    return fact;
+  }
+
+  return {
+    ...fact,
+    themeIcon: fact.themeIcon ?? themeResult.data?.theme_icon ?? null,
+    visualMotif: fact.visualMotif ?? themeResult.data?.visual_motif ?? null,
+  };
+}
+
 export async function getFactOfTheDay() {
   const supabase = createSupabaseBrowserClient();
 
@@ -1030,19 +1056,9 @@ export async function getFactOfTheDay() {
 
     if (row) {
       const fact = mapFeedRpcFact(row as FeedRpcRow);
-      const themeResult = await supabase
-        .from("categories")
-        .select("visual_motif")
-        .eq("slug", fact.categorySlug)
-        .maybeSingle();
 
       return {
-        fact: {
-          ...fact,
-          visualMotif: themeResult.error
-            ? null
-            : themeResult.data?.visual_motif ?? null,
-        },
+        fact: await hydrateFactThemeVisuals(supabase, fact),
         interactionCount:
           typeof row.interaction_count === "number" ? row.interaction_count : 0,
         source: "supabase" as const,
@@ -1051,9 +1067,12 @@ export async function getFactOfTheDay() {
   }
 
   const fallback = await getFeedFacts({ limit: 1 });
+  const fallbackFact = fallback.facts[0] ?? null;
 
   return {
-    fact: fallback.facts[0] ?? null,
+    fact: fallbackFact
+      ? await hydrateFactThemeVisuals(supabase, fallbackFact)
+      : null,
     interactionCount: 0,
     source: fallback.source,
   };

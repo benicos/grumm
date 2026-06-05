@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { getTodayEventFact } from "@/lib/facts";
 import type { FeedFact } from "@/lib/facts";
 import { premiumPrimaryCtaClassName } from "./buttonStyles";
+import ThemeIcon from "./ThemeIcon";
 import ThemeMotif from "./ThemeMotif";
 
 function FactOfDaySkeleton() {
@@ -119,11 +120,20 @@ export default function FactOfDay() {
             backgroundImage: `radial-gradient(circle at 82% 10%, ${accentColor}22, transparent 30%), linear-gradient(145deg, rgba(255,255,255,0.065), rgba(255,255,255,0.022))`,
           }}
         >
-          <ThemeMotif
-            motif={fact.visualMotif}
-            className="absolute right-6 top-6 h-24 w-24 opacity-35 md:h-32 md:w-32"
-            style={{ color: accentColor }}
-          />
+          {fact.themeIcon ? (
+            <ThemeIcon
+              iconName={fact.themeIcon}
+              className="absolute right-6 top-6 h-24 w-24 opacity-35 md:h-32 md:w-32"
+              style={{ color: accentColor }}
+              strokeWidth={1.7}
+            />
+          ) : (
+            <ThemeMotif
+              motif={fact.visualMotif}
+              className="absolute right-6 top-6 h-24 w-24 opacity-35 md:h-32 md:w-32"
+              style={{ color: accentColor }}
+            />
+          )}
           <div
             className="absolute inset-x-0 top-0 h-px"
             style={{
@@ -151,7 +161,12 @@ export default function FactOfDay() {
                     {dateSubtitle}
                   </span>
                 ) : null}
-                <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.16em] text-white/62">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.16em] text-white/62">
+                  <ThemeIcon
+                    iconName={fact.themeIcon}
+                    className="h-3.5 w-3.5 shrink-0"
+                    strokeWidth={2.4}
+                  />
                   {fact.category}
                 </span>
                 {interactionCount > 0 && (

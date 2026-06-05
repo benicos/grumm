@@ -46,7 +46,22 @@ const nextConfig: NextConfig = {
       },
       {
         source: "/discover/theme/:themeSlug",
-        destination: "/decouvrir?theme=:themeSlug",
+        destination: "/decouvrir/theme/:themeSlug",
+        permanent: true,
+      },
+      {
+        source: "/admin/categories/:id/edit",
+        destination: "/admin/themes/:id/edit",
+        permanent: true,
+      },
+      {
+        source: "/admin/categories/:id",
+        destination: "/admin/themes/:id",
+        permanent: true,
+      },
+      {
+        source: "/admin/categories",
+        destination: "/admin/themes",
         permanent: true,
       },
       {

@@ -59,9 +59,9 @@ export const userMessages = {
 } as const;
 
 export const footerLinks = [
-  { href: appRoutes.about, label: "\u00c0 propos" },
   { href: appRoutes.discover, label: "D\u00e9couvrir" },
-  { href: appRoutes.explorer, label: "Th\u00e8mes" },
+  { href: appRoutes.explorer, label: "Explorer" },
+  { href: appRoutes.about, label: "\u00c0 propos" },
   { href: appRoutes.contact, label: "Contact" },
   { href: appRoutes.privacy, label: "Politique de confidentialit\u00e9" },
   { href: appRoutes.legalNotice, label: "Mentions l\u00e9gales" },

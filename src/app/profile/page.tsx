@@ -5,10 +5,12 @@ import Image from "next/image";
 import Link from "next/link";
 import {
   BookMarked,
+  BookOpen,
   Brain,
   Check,
   CheckCircle2,
   ChevronRight,
+  Compass,
   Flame,
   Info,
   Layers3,
@@ -20,6 +22,7 @@ import {
   Trophy,
   X,
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 import { trackAnalyticsEvent } from "@/lib/analytics/web";
 import { getBadgeInfo } from "@/lib/badges";
@@ -75,6 +78,11 @@ function ProgressPanel({ profile }: { profile: UserProfileSummary }) {
   const gradePercent = badge.nextThreshold
     ? Math.min((profile.completedDailyGoals / Math.max(nextThreshold, 1)) * 100, 100)
     : 100;
+  const orderedGrades = [...profile.grades].sort(
+    (a, b) =>
+      a.requiredGoals - b.requiredGoals ||
+      (a.displayOrder ?? 0) - (b.displayOrder ?? 0),
+  );
 
   return (
     <section className="mt-6 rounded-[26px] border border-white/10 bg-white/[0.045] p-5 shadow-[0_24px_80px_rgba(0,0,0,0.22)] backdrop-blur-xl">
@@ -90,8 +98,8 @@ function ProgressPanel({ profile }: { profile: UserProfileSummary }) {
           </h2>
           <p className="mt-2 text-sm font-semibold leading-6 text-white/56">
             {nextGrade
-              ? `${remainingGoals} objectif${remainingGoals > 1 ? "s" : ""} quotidien${remainingGoals > 1 ? "s" : ""} avant le prochain palier. Les avatars évolueront bientôt avec ton grade.`
-              : "Dernier palier atteint. Les avatars évolueront bientôt avec ton grade."}
+              ? `${remainingGoals} objectif${remainingGoals > 1 ? "s" : ""} quotidien${remainingGoals > 1 ? "s" : ""} avant le prochain palier. Ton avatar évoluera avec ton grade !`
+              : "Dernier palier atteint. Ton avatar évoluera avec ton grade !"}
           </p>
         </div>
         <span className="rounded-full border border-white/10 bg-black/18 px-4 py-2 text-sm font-black text-white/72">
@@ -106,25 +114,75 @@ function ProgressPanel({ profile }: { profile: UserProfileSummary }) {
         />
       </div>
 
-      <div className="mt-5 flex items-center gap-2 overflow-x-auto pb-1">
-        {profile.grades.slice(0, 6).map((grade) => {
+      <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
+        {orderedGrades.map((grade) => {
           const isReached = profile.completedDailyGoals >= grade.requiredGoals;
+          const progressValue = Math.min(
+            profile.completedDailyGoals,
+            grade.requiredGoals,
+          );
 
           return (
             <div
               key={grade.slug}
-              className={`flex min-w-[92px] items-center gap-2 rounded-full border px-3 py-2 text-xs font-bold ${
+              className={`flex min-h-[132px] flex-col justify-between rounded-[20px] border p-4 ${
                 isReached
                   ? "border-[#ffd166]/28 bg-[#ffd166]/12 text-white"
-                  : "border-white/10 bg-black/16 text-white/40"
+                  : "border-white/10 bg-black/16 text-white/58"
               }`}
             >
-              <span
-                className={`h-2 w-2 rounded-full ${
-                  isReached ? "bg-[#ffd166]" : "bg-white/20"
-                }`}
-              />
-              <span className="whitespace-normal break-words leading-4">{grade.name}</span>
+              <div className="flex items-start gap-3">
+                <span
+                  className={`grid h-11 w-11 shrink-0 place-items-center rounded-2xl border ${
+                    isReached
+                      ? "border-[#ffd166]/30 bg-[#ffd166]/16 text-[#ffd166]"
+                      : "border-white/10 bg-white/[0.04] text-white/42"
+                  }`}
+                >
+                  <GradeIcon badge={grade.badge} className="h-5 w-5" />
+                </span>
+                <div className="min-w-0">
+                  <h3 className="break-words text-sm font-black leading-5 text-white">
+                    {grade.name}
+                  </h3>
+                  <p className="mt-1 text-xs font-bold leading-5 text-white/46">
+                    {grade.requiredGoals === 0
+                      ? "Disponible dès le départ"
+                      : `${grade.requiredGoals} objectifs requis`}
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-4">
+                <div className="flex items-center justify-between gap-3 text-[11px] font-black uppercase tracking-[0.13em] text-white/42">
+                  <span>{isReached ? "Atteint" : "Progression"}</span>
+                  <span>
+                    {grade.requiredGoals === 0
+                      ? "Départ"
+                      : `${progressValue}/${grade.requiredGoals}`}
+                  </span>
+                </div>
+                <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/10">
+                  <div
+                    className={`h-full rounded-full ${
+                      isReached
+                        ? "bg-[#ffd166]"
+                        : "bg-gradient-to-r from-[#ffd166]/55 to-[#6ae3c0]/55"
+                    }`}
+                    style={{
+                      width:
+                        grade.requiredGoals <= 0
+                          ? "100%"
+                          : `${Math.min(
+                              (profile.completedDailyGoals /
+                                Math.max(grade.requiredGoals, 1)) *
+                                100,
+                              100,
+                            )}%`,
+                    }}
+                  />
+                </div>
+              </div>
             </div>
           );
         })}
@@ -285,8 +343,8 @@ function MemoryChallengePanel({ profile }: { profile: UserProfileSummary }) {
   const stats = profile.memoryStats;
   const isUnlocked = stats.revisableFacts >= MIN_MEMORY_FACTS;
   const bestSignal =
-    stats.bestStreakDays > 0
-      ? `${stats.bestStreakDays} j de série`
+    stats.averageScorePercent !== null
+      ? `${stats.averageScorePercent}% moyen`
       : `${stats.revisableFacts} faits prêts`;
 
   return (
@@ -316,7 +374,7 @@ function MemoryChallengePanel({ profile }: { profile: UserProfileSummary }) {
               {stats.revisableFacts} faits révisables
             </span>
             <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/18 px-3 py-1.5 text-xs font-black text-white/68">
-              <Flame className="h-3.5 w-3.5 text-[#ff9f43]" aria-hidden="true" />
+              <Target className="h-3.5 w-3.5 text-[#a78bfa]" aria-hidden="true" />
               {bestSignal}
             </span>
           </div>
@@ -354,41 +412,80 @@ function MemoryChallengePanel({ profile }: { profile: UserProfileSummary }) {
 }
 
 function QuickAccessPanel() {
+  const quickAccessItems: {
+    accent: string;
+    accentSoft: string;
+    href: string;
+    icon: LucideIcon;
+    label: string;
+    title: string;
+  }[] = [
+    {
+      accent: "#6ae3c0",
+      accentSoft: "rgba(106,227,192,0.13)",
+      href: "/decouvrir",
+      icon: Sparkles,
+      label: "Découvrir",
+      title: "Continuer le flux",
+    },
+    {
+      accent: "#a78bfa",
+      accentSoft: "rgba(167,139,250,0.13)",
+      href: "/quiz/memoire",
+      icon: Brain,
+      label: "Défi mémoire",
+      title: "Réviser mes faits",
+    },
+    {
+      accent: "#ffb45f",
+      accentSoft: "rgba(255,180,95,0.13)",
+      href: "/theme",
+      icon: Compass,
+      label: "Explorer",
+      title: "Chercher un sujet",
+    },
+  ];
+
   return (
     <section className="mt-6 grid gap-3 md:grid-cols-3">
-      <Link
-        href="/decouvrir"
-        className="rounded-[24px] border border-white/10 bg-white/[0.055] p-5 transition hover:-translate-y-1 hover:border-white/20 hover:bg-white/[0.08]"
-      >
-        <p className="text-xs font-black uppercase tracking-[0.18em] text-[#ffd166]">
-          Découvrir
-        </p>
-        <h2 className="mt-3 text-xl font-extrabold tracking-[-0.04em]">
-          Continuer le flux
-        </h2>
-      </Link>
-      <Link
-        href="/quiz/memoire"
-        className="rounded-[24px] border border-white/10 bg-white/[0.055] p-5 transition hover:-translate-y-1 hover:border-white/20 hover:bg-white/[0.08]"
-      >
-        <p className="text-xs font-black uppercase tracking-[0.18em] text-[#6ae3c0]">
-          Mémoire
-        </p>
-        <h2 className="mt-3 text-xl font-extrabold tracking-[-0.04em]">
-          Réviser mes faits
-        </h2>
-      </Link>
-      <Link
-        href="/theme"
-        className="rounded-[24px] border border-white/10 bg-white/[0.055] p-5 transition hover:-translate-y-1 hover:border-white/20 hover:bg-white/[0.08]"
-      >
-        <p className="text-xs font-black uppercase tracking-[0.18em] text-white/45">
-          Explorer
-        </p>
-        <h2 className="mt-3 text-xl font-extrabold tracking-[-0.04em]">
-          Chercher un sujet
-        </h2>
-      </Link>
+      {quickAccessItems.map(
+        ({ accent, accentSoft, href, icon: Icon, label, title }) => (
+        <Link
+          key={href}
+          href={href}
+          className="group rounded-[24px] border border-white/10 bg-white/[0.055] p-5 transition hover:-translate-y-1 hover:border-white/20 hover:bg-white/[0.08]"
+          style={{
+            backgroundImage: `radial-gradient(circle at 88% 12%, ${accent}18, transparent 34%)`,
+          }}
+        >
+          <div className="flex items-center justify-between gap-3">
+            <span
+              className="grid h-11 w-11 place-items-center rounded-2xl border shadow-[0_16px_46px_rgba(0,0,0,0.18)]"
+              style={{
+                backgroundColor: accentSoft,
+                borderColor: `${accent}36`,
+                color: accent,
+              }}
+            >
+              <Icon className="h-5 w-5" aria-hidden="true" />
+            </span>
+            <ChevronRight
+              className="h-4 w-4 text-white/34 transition group-hover:translate-x-0.5 group-hover:text-white/70"
+              aria-hidden="true"
+            />
+          </div>
+          <p
+            className="mt-5 text-xs font-black uppercase tracking-[0.18em]"
+            style={{ color: accent }}
+          >
+            {label}
+          </p>
+          <h2 className="mt-2 text-xl font-extrabold tracking-[-0.04em]">
+            {title}
+          </h2>
+        </Link>
+        ),
+      )}
     </section>
   );
 }
@@ -444,47 +541,94 @@ function SavedFactsPanel({ profile }: { profile: UserProfileSummary }) {
 }
 
 function SuccessPanel({ profile }: { profile: UserProfileSummary }) {
-  const successes = [
+  const successes: {
+    accent: string;
+    accentSoft: string;
+    icon: LucideIcon;
+    label: string;
+    value: string;
+  }[] = [
     {
-      label: "Mémoire",
+      accent: "#6ae3c0",
+      accentSoft: "rgba(106,227,192,0.12)",
+      icon: BookOpen,
+      label: "Faits lus",
+      value: `${profile.uniqueViewsCount} fait${profile.uniqueViewsCount > 1 ? "s" : ""}`,
+    },
+    {
+      accent: "#ff9f43",
+      accentSoft: "rgba(255,159,67,0.12)",
+      icon: Flame,
+      label: "Série quotidienne",
+      value: `${profile.currentStreakDays} jour${profile.currentStreakDays > 1 ? "s" : ""} de suite`,
+    },
+    {
+      accent: "#a78bfa",
+      accentSoft: "rgba(167,139,250,0.12)",
+      icon: Brain,
+      label: "Score quiz",
       value:
-        profile.memoryStats.bestStreakDays > 0
-          ? `${profile.memoryStats.bestStreakDays} jours de série`
-          : "Premier défi à lancer",
+        profile.memoryStats.averageScorePercent !== null
+          ? `${profile.memoryStats.averageScorePercent}% moyen`
+          : "Aucun score",
     },
     {
-      label: "Bibliothèque",
-      value: `${profile.savedCount} fait${profile.savedCount > 1 ? "s" : ""} enregistré${
-        profile.savedCount > 1 ? "s" : ""
-      }`,
-    },
-    {
-      label: "Découverte",
-      value: `${profile.uniqueViewsCount} fait${profile.uniqueViewsCount > 1 ? "s" : ""} découvert${
-        profile.uniqueViewsCount > 1 ? "s" : ""
-      }`,
+      accent: "#7dd3fc",
+      accentSoft: "rgba(125,211,252,0.12)",
+      icon: Compass,
+      label: "Thèmes explorés",
+      value: `${profile.exploredThemeCount} thème${profile.exploredThemeCount > 1 ? "s" : ""}`,
     },
   ];
 
   return (
-    <section className="mt-6 rounded-[28px] border border-white/10 bg-black/18 p-5">
-      <p className="text-xs font-black uppercase tracking-[0.2em] text-white/45">
+    <section className="mt-6 rounded-[28px] border border-white/10 bg-black/18 p-5 shadow-[0_24px_80px_rgba(0,0,0,0.16)]">
+      <p className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-[0.2em] text-white/48">
+        <Trophy className="h-4 w-4 text-[#ffd166]" aria-hidden="true" />
         Réussites récentes
       </p>
-      <div className="mt-4 grid gap-3 md:grid-cols-3">
-        {successes.map((success) => (
-          <div
-            key={success.label}
-            className="rounded-[20px] border border-white/10 bg-white/[0.045] p-4"
-          >
-            <p className="text-xs font-bold uppercase tracking-[0.16em] text-white/38">
-              {success.label}
-            </p>
-            <p className="mt-2 text-lg font-extrabold tracking-[-0.03em] text-white">
-              {success.value}
-            </p>
-          </div>
-        ))}
+      <div className="mt-4 divide-y divide-white/10">
+        {successes.map((success) => {
+          const Icon = success.icon;
+
+          return (
+            <div
+              key={success.label}
+              className="flex items-center gap-4 py-3 first:pt-0 last:pb-0"
+            >
+              <span
+                className="grid h-10 w-10 shrink-0 place-items-center rounded-full border"
+                style={{
+                  backgroundColor: success.accentSoft,
+                  borderColor: `${success.accent}36`,
+                  color: success.accent,
+                }}
+              >
+                <Icon className="h-5 w-5" aria-hidden="true" />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span
+                  className="block text-[11px] font-black uppercase tracking-[0.16em]"
+                  style={{ color: success.accent }}
+                >
+                  {success.label}
+                </span>
+                <span
+                  className="mt-1 block text-sm font-extrabold leading-6 tracking-[-0.02em] text-white"
+                >
+                  {success.value}
+                </span>
+              </span>
+              <span
+                className="hidden h-1.5 w-16 shrink-0 rounded-full sm:block"
+                style={{
+                  backgroundImage: `linear-gradient(90deg, ${success.accent}, transparent)`,
+                }}
+                aria-hidden="true"
+              />
+            </div>
+          );
+        })}
       </div>
     </section>
   );
@@ -685,7 +829,7 @@ function ProfileContent() {
                 <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
                   <span className="inline-flex items-center gap-2 rounded-full border border-[#ff9f43]/18 bg-[#ff9f43]/10 px-3 py-1.5 text-xs font-black text-[#ffd7ad]">
                     <Flame className="h-3.5 w-3.5" aria-hidden="true" />
-                    Série actuelle : {profile.currentStreakDays} jour{profile.currentStreakDays > 1 ? "s" : ""}
+                    Série quotidienne : {profile.currentStreakDays} jour{profile.currentStreakDays > 1 ? "s" : ""} de suite
                   </span>
                   <div className="flex items-center gap-1.5">
                     {weekLabels.map((label, index) => {
@@ -727,7 +871,7 @@ function ProfileContent() {
                   className="absolute inset-0 cursor-default"
                   onClick={() => setIsGradeModalOpen(false)}
                 />
-                <div className="grade-modal relative max-h-[86vh] w-full max-w-[560px] overflow-y-auto pr-1">
+                <div className="grade-modal relative max-h-[86vh] w-full max-w-[720px] overflow-y-auto pr-1">
                   <button
                     type="button"
                     aria-label="Fermer la progression"

@@ -18,7 +18,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     "/theme",
     "/quiz",
     "/quiz/general",
-    "/quiz/memoire",
     "/aujourdhui",
     "/contact",
     "/politique-confidentialite",
@@ -30,11 +29,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       url: buildCanonicalUrl(path),
       lastModified: now,
     })),
-    ...themes.map((theme) => ({
+    ...themes.filter((theme) => theme.slug).map((theme) => ({
       url: buildCanonicalUrl(`/theme/${theme.slug}`),
       lastModified: theme.updated_at ? new Date(theme.updated_at) : now,
     })),
-    ...facts.map((fact) => ({
+    ...facts.filter((fact) => fact.slug).map((fact) => ({
       url: buildCanonicalUrl(`/fait/${fact.slug}`),
       lastModified: fact.updated_at ? new Date(fact.updated_at) : now,
     })),

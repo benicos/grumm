@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import Link from "next/link";
+import { Brain, Compass, Sparkles } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { siteConfig } from "@/config/app";
+import { buildDefaultMetadata } from "@/lib/serverMetadata";
 import {
   premiumPrimaryCtaClassName,
   premiumTitleGradientClassName,
@@ -12,6 +15,11 @@ import HeroBackground from "./components/HeroBackground";
 import Navbar from "./components/Navbar";
 
 export const metadata: Metadata = {
+  ...buildDefaultMetadata({
+    canonicalPath: "/",
+    description: siteConfig.description,
+    title: siteConfig.name,
+  }),
   title: {
     absolute: siteConfig.name,
   },
@@ -21,6 +29,44 @@ const inter = Inter({
   subsets: ["latin"],
   weight: ["400", "500", "600", "700", "800"],
 });
+
+const conceptCards: {
+  accent: string;
+  accentSoft: string;
+  alt: string;
+  href: string;
+  icon: LucideIcon;
+  title: string;
+  text: string;
+}[] = [
+  {
+    accent: "#6ae3c0",
+    accentSoft: "rgba(106,227,192,0.14)",
+    alt: "D\u00e9couvrir",
+    href: "/decouvrir",
+    icon: Sparkles,
+    title: "D\u00e9couvrir",
+    text: "Un flux de d\u00e9couvertes courtes et surprenantes. Une id\u00e9e \u00e0 la fois, sans distraction.",
+  },
+  {
+    accent: "#b99cff",
+    accentSoft: "rgba(185,156,255,0.14)",
+    alt: "Explorer",
+    href: "/theme",
+    icon: Compass,
+    title: "Explorer",
+    text: "Science, histoire, psychologie, espace, nature... Explorez les sujets qui vous int\u00e9ressent vraiment.",
+  },
+  {
+    accent: "#ffb45f",
+    accentSoft: "rgba(255,180,95,0.14)",
+    alt: "Quiz",
+    href: "/quiz",
+    icon: Brain,
+    title: "Aller plus loin",
+    text: "Teste tes connaissances rapidement avec les quiz.",
+  },
+];
 
 export default function GrummLanding() {
   return (
@@ -83,53 +129,51 @@ export default function GrummLanding() {
             </div>
 
             <div className="grid gap-6 md:grid-cols-3">
-              {[
-                {
-                  icon: "01",
-                  title: "D\u00e9couvrir",
-                  text: "Un flux de d\u00e9couvertes courtes et surprenantes. Une id\u00e9e \u00e0 la fois, sans distraction.",
-                  href: "/decouvrir",
-                  alt: "D\u00e9couvrir",
-                },
-                {
-                  icon: "02",
-                  title: "Explorer",
-                  text: "Science, histoire, psychologie, espace, nature... Explorez les sujets qui vous int\u00e9ressent vraiment.",
-                  href: "/theme",
-                  alt: "Explorer",
-                },
-                {
-                  icon: "03",
-                  title: "Aller plus loin",
-                  text: "Teste tes connaissances rapidement avec les quiz.",
-                  href: "/quiz",
-                  alt: "Quiz",
-                },
-              ].map((card) => (
-                <div
-                  key={card.title}
-                  className="rounded-[26px] border border-white/[0.08] bg-[rgba(17,27,44,0.82)] p-7 backdrop-blur-xl transition hover:-translate-y-[6px] hover:border-[rgba(255,209,102,0.24)]"
-                >
-                  <div className="mb-6 grid h-[54px] w-[54px] place-items-center rounded-[18px] bg-white/[0.06] text-[0.9rem] font-black text-[#ffd166]">
-                    {card.icon}
-                  </div>
+              {conceptCards.map((card) => {
+                const Icon = card.icon;
 
-                  <h3 className="mb-3 text-[1.4rem] font-semibold tracking-[-0.03em]">
-                    {card.title}
-                  </h3>
-
-                  <p className="mb-6 leading-relaxed text-[#94a6c7]">
-                    {card.text}
-                  </p>
-
-                  <Link
-                    href={card.href}
-                    className="font-semibold text-[#ffd166]"
+                return (
+                  <div
+                    key={card.title}
+                    className="flex h-full flex-col rounded-[26px] border border-white/[0.08] bg-[rgba(17,27,44,0.82)] p-7 backdrop-blur-xl transition hover:-translate-y-[6px]"
                   >
-                    {card.alt} -&gt;
-                  </Link>
-                </div>
-              ))}
+                    <div className="flex-1">
+                      <div
+                        className="mb-6 grid h-[54px] w-[54px] place-items-center rounded-[18px] border"
+                        style={{
+                          backgroundColor: card.accentSoft,
+                          borderColor: `${card.accent}44`,
+                          color: card.accent,
+                        }}
+                      >
+                        <Icon
+                          className="h-6 w-6"
+                          aria-hidden="true"
+                          strokeWidth={2.3}
+                        />
+                      </div>
+
+                      <h3 className="mb-3 text-[1.4rem] font-semibold tracking-[-0.03em]">
+                        {card.title}
+                      </h3>
+
+                      <p className="leading-relaxed text-[#94a6c7]">
+                        {card.text}
+                      </p>
+                    </div>
+
+                    <div className="mt-7">
+                      <Link
+                        href={card.href}
+                        className="font-semibold"
+                        style={{ color: card.accent }}
+                      >
+                        {card.alt} -&gt;
+                      </Link>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </section>

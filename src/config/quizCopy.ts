@@ -5,6 +5,7 @@ export const quizCopy = {
     result: "Voir le résultat",
     reviewPrefix: "Relire :",
     returnProfile: "Retour profil",
+    returnQuiz: "Retour au quiz",
   },
   empty: {
     description:
