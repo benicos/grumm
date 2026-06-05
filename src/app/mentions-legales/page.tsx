@@ -32,7 +32,7 @@ const sections = [
     body: [
       "Hébergeur du site web : LWS.",
       "La base de données, l'authentification et certains services techniques peuvent être opérés via Supabase.",
-      "Le déploiement du site peut être opéré via Vercel si cette configuration est confirmée.",
+      "Le domaine public officiel du site est https://grumm.fr.",
     ],
   },
   {

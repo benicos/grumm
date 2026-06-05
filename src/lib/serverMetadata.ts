@@ -99,13 +99,7 @@ function firstCategory(categories: CategoryRelation) {
 }
 
 export function getSiteUrl() {
-  const configuredUrl = process.env.NEXT_PUBLIC_SITE_URL ?? siteConfig.publicUrl;
-
-  try {
-    return new URL(configuredUrl).origin;
-  } catch {
-    return siteConfig.fallbackUrl;
-  }
+  return siteConfig.publicUrl;
 }
 
 export function buildCanonicalUrl(path: string) {
@@ -125,15 +119,18 @@ export function titleizeSlug(slug: string) {
 export function buildDefaultMetadata({
   canonicalPath,
   description,
+  imagePath,
   noindex = false,
   title,
 }: {
   canonicalPath: string;
   description: string;
+  imagePath?: string;
   noindex?: boolean;
   title: string;
 }): Metadata {
   const canonical = buildCanonicalUrl(canonicalPath);
+  const imageUrl = imagePath ? buildCanonicalUrl(imagePath) : undefined;
 
   return {
     title,
@@ -142,14 +139,25 @@ export function buildDefaultMetadata({
     openGraph: {
       title,
       description,
+      images: imageUrl
+        ? [
+            {
+              alt: `${title} - ${siteConfig.name}`,
+              height: 630,
+              url: imageUrl,
+              width: 1200,
+            },
+          ]
+        : undefined,
       siteName: siteConfig.name,
       type: "website",
       url: canonical,
     },
     robots: noindex ? { follow: false, index: false } : undefined,
     twitter: {
-      card: "summary",
+      card: imageUrl ? "summary_large_image" : "summary",
       description,
+      images: imageUrl ? [imageUrl] : undefined,
       title,
     },
   };

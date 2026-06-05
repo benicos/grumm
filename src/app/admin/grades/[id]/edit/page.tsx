@@ -1,10 +1,11 @@
-"use client";
-
-import { useParams } from "next/navigation";
 import GradeEditor from "../../GradeEditor";
 
-export default function EditGradePage() {
-  const params = useParams<{ id: string }>();
+export default async function EditGradePage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
 
-  return <GradeEditor gradeId={params.id} />;
+  return <GradeEditor gradeId={id} />;
 }

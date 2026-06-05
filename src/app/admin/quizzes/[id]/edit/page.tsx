@@ -1,10 +1,11 @@
-"use client";
-
-import { useParams } from "next/navigation";
 import QuizEditor from "../../QuizEditor";
 
-export default function EditQuizQuestionPage() {
-  const params = useParams<{ id: string }>();
+export default async function EditQuizQuestionPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
 
-  return <QuizEditor questionId={params.id} />;
+  return <QuizEditor questionId={id} />;
 }

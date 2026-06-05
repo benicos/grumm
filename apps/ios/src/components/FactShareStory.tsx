@@ -58,7 +58,7 @@ export const FactShareStory = forwardRef<View, FactShareStoryProps>(({ fact }, r
               Source : {source}
             </Text>
           ) : null}
-          <Text style={styles.url}>grumm.app</Text>
+          <Text style={styles.url}>grumm.fr</Text>
         </View>
       </LinearGradient>
     </View>

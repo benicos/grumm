@@ -10,6 +10,7 @@ import {
   markFactReadInteraction,
   startFactRead,
   trackAnalyticsEvent,
+  trackAnalyticsEventOnce,
   type FactReadToken,
 } from "@/lib/analytics/web";
 import {
@@ -255,10 +256,16 @@ export default function FactDetailPage() {
       }
 
       if (!isActive) {
+        const firstEventName = enableAction === likeFact ? "first_like" : "first_save";
         void trackAnalyticsEvent({
           entityId: fact.id,
           entityType: "fact",
           eventName: enableAction === likeFact ? "fact_like" : "fact_save",
+        });
+        void trackAnalyticsEventOnce(firstEventName, {
+          entityId: fact.id,
+          entityType: "fact",
+          eventName: firstEventName,
         });
       }
     } catch {

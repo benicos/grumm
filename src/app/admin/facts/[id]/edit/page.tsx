@@ -1,10 +1,11 @@
-"use client";
-
-import { useParams } from "next/navigation";
 import FactEditor from "../../FactEditor";
 
-export default function EditFactPage() {
-  const params = useParams<{ id: string }>();
+export default async function EditFactPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
 
-  return <FactEditor factId={params.id} />;
+  return <FactEditor factId={id} />;
 }

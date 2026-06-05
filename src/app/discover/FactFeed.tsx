@@ -11,6 +11,7 @@ import {
   markFactReadInteraction,
   startFactRead,
   trackAnalyticsEvent,
+  trackAnalyticsEventOnce,
   type FactReadToken,
 } from "@/lib/analytics/web";
 import { isCommercialCollaborationFact } from "@/lib/commercial";
@@ -353,6 +354,14 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
           entityType: "fact",
           eventName: analyticsEventName,
         });
+        void trackAnalyticsEventOnce(
+          analyticsEventName === "fact_like" ? "first_like" : "first_save",
+          {
+            entityId: factId,
+            entityType: "fact",
+            eventName: analyticsEventName === "fact_like" ? "first_like" : "first_save",
+          },
+        );
       }
     } catch {
       toggleAction(factId, setter);

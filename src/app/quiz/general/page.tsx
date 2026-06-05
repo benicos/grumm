@@ -4,6 +4,7 @@ import QuizExperience from "./QuizExperience";
 
 export const metadata: Metadata = buildDefaultMetadata({
   canonicalPath: "/quiz/general",
+  imagePath: "/quiz/general/opengraph-image",
   description:
     "Teste ta culture avec un quiz Grumm rapide, vivant et pensé pour apprendre à chaque réponse.",
   title: "Grumm Quiz général",

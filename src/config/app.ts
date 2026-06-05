@@ -1,10 +1,12 @@
+export const SITE_URL = "https://grumm.fr";
+
 export const siteConfig = {
   officialName: "Grumm",
   name: "Grumm.",
   description:
     "Grumm est une exp\u00e9rience de d\u00e9couverte verticale pour apprendre vite, retenir facilement et raconter ce qui marque.",
-  fallbackUrl: "https://grumm.fr",
-  publicUrl: process.env.NEXT_PUBLIC_SITE_URL ?? "https://grumm.fr",
+  fallbackUrl: SITE_URL,
+  publicUrl: SITE_URL,
 } as const;
 
 export const appRoutes = {

@@ -1,10 +1,11 @@
-"use client";
-
-import { useParams } from "next/navigation";
 import ThemeEditor from "../../ThemeEditor";
 
-export default function EditThemePage() {
-  const params = useParams<{ id: string }>();
+export default async function EditThemePage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
 
-  return <ThemeEditor themeId={params.id} />;
+  return <ThemeEditor themeId={id} />;
 }

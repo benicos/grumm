@@ -1,6 +1,5 @@
 "use client";
 
-import { toPng } from "html-to-image";
 import { Download, Link as LinkIcon, Share2, X } from "lucide-react";
 import { type RefObject, useMemo, useRef, useState } from "react";
 import { siteConfig, socialShareConfig } from "@/config/app";
@@ -141,10 +140,6 @@ export default function FactShareModal({ fact, onClose }: FactShareModalProps) {
       return siteConfig.publicUrl;
     }
 
-    if (typeof window !== "undefined") {
-      return `${window.location.origin}/fait/${fact.slug}`;
-    }
-
     return `${siteConfig.publicUrl}/fait/${fact.slug}`;
   }, [fact]);
 
@@ -163,6 +158,7 @@ export default function FactShareModal({ fact, onClose }: FactShareModalProps) {
       throw new Error(publicSiteTexts.share.previewUnavailable);
     }
 
+    const { toPng } = await import("html-to-image");
     const dataUrl = await toPng(node, {
       cacheBust: true,
       height: socialShareConfig.story.previewHeight,

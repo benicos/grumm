@@ -16,6 +16,7 @@ import {
   type MemoryChallengeQuestion,
   type MemoryChallengeSession,
 } from "@/lib/memoryChallenge";
+import { trackAnalyticsEvent } from "@/lib/analytics/web";
 import RequireAuth from "../../auth/RequireAuth";
 import { AppState } from "../../components/AppState";
 import { premiumPrimaryCtaClassName } from "../../components/buttonStyles";
@@ -166,6 +167,13 @@ function ChallengeContent() {
     }
 
     setSession(result.session);
+    void trackAnalyticsEvent({
+      eventName: "quiz_started",
+      metadata: {
+        question_count: result.session.questions.length,
+        quiz_type: "memory_challenge",
+      },
+    });
     setIsLoading(false);
   }, [clearAnimationTimers]);
 
@@ -196,6 +204,15 @@ function ChallengeContent() {
     setIsSaving(true);
 
     const isCorrect = answer === currentQuestion.correctAnswer;
+    void trackAnalyticsEvent({
+      entityId: currentQuestion.factId,
+      entityType: "quiz_question",
+      eventName: "quiz_question_answered",
+      metadata: {
+        is_correct: isCorrect,
+        quiz_type: "memory_challenge",
+      },
+    });
     if (isCorrect) {
       triggerCorrectAnswerAnimation();
     } else {
@@ -264,6 +281,14 @@ function ChallengeContent() {
     }
 
     setIsCompleted(true);
+    void trackAnalyticsEvent({
+      eventName: "quiz_completed",
+      metadata: {
+        quiz_type: "memory_challenge",
+        score: finalScore,
+        total_questions: session.questions.length,
+      },
+    });
   }
 
   if (isLoading) {

@@ -1,10 +1,11 @@
-"use client";
-
-import { useParams } from "next/navigation";
 import RoleEditor from "../../RoleEditor";
 
-export default function EditRolePage() {
-  const params = useParams<{ roleSlug: string }>();
+export default async function EditRolePage({
+  params,
+}: {
+  params: Promise<{ roleSlug: string }>;
+}) {
+  const { roleSlug } = await params;
 
-  return <RoleEditor roleSlug={params.roleSlug} />;
+  return <RoleEditor roleSlug={roleSlug} />;
 }

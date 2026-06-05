@@ -1,10 +1,12 @@
+export const MOBILE_SITE_URL = "https://grumm.fr";
+
 export const mobileConfig = {
   dailyGoal: 10,
   dailyGoalMax: 100,
   dailyGoalMin: 1,
   feedBatchSize: 12,
   siteName: "Grumm.",
-  siteUrl: process.env.EXPO_PUBLIC_SITE_URL ?? "https://grumm.app",
+  siteUrl: MOBILE_SITE_URL,
 } as const;
 
 export const userMessages = {

@@ -32,7 +32,7 @@ Renseigner :
 ```bash
 EXPO_PUBLIC_SUPABASE_URL=
 EXPO_PUBLIC_SUPABASE_ANON_KEY=
-EXPO_PUBLIC_SITE_URL=https://grumm.app
+EXPO_PUBLIC_SITE_URL=https://grumm.fr
 ```
 
 La clé `EXPO_PUBLIC_SUPABASE_ANON_KEY` est la clé publique Supabase prévue pour les clients. Ne jamais placer de clé service role dans cette app.

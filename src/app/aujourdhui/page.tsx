@@ -15,6 +15,7 @@ import {
 
 export const metadata: Metadata = buildDefaultMetadata({
   canonicalPath: "/aujourdhui",
+  imagePath: "/aujourdhui/opengraph-image",
   description:
     "Les faits culturels à découvrir aujourd’hui sur Grumm, liés à la date du jour ou sélectionnés pour nourrir la curiosité.",
   title: "Aujourd’hui",

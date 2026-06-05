@@ -5,6 +5,7 @@ import DecouvrirClient from "./DecouvrirClient";
 
 export const metadata: Metadata = buildDefaultMetadata({
   canonicalPath: "/decouvrir",
+  imagePath: "/decouvrir/opengraph-image",
   description:
     "Découvre un flux de faits courts, culturels et mémorables sur Grumm.",
   title: "Découvrir",

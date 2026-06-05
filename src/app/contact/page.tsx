@@ -4,6 +4,7 @@ import InfoPageShell from "../components/InfoPageShell";
 
 export const metadata: Metadata = buildDefaultMetadata({
   canonicalPath: "/contact",
+  imagePath: "/contact/opengraph-image",
   description:
     "Contacte Grumm pour une question, une correction éditoriale ou une demande liée au compte.",
   title: "Contact",

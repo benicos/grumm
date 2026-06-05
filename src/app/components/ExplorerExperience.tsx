@@ -251,6 +251,9 @@ export default function ExplorerExperience() {
               <span className="grid h-11 w-11 shrink-0 place-items-center rounded-[16px] bg-white/8 text-[#f4ead5]">
                 <Search className="h-5 w-5" />
               </span>
+              <label htmlFor="explorer-search" className="sr-only">
+                Rechercher un thème, une époque ou une idée
+              </label>
               <input
                 id="explorer-search"
                 value={query}

@@ -7,7 +7,7 @@ export const metadata: Metadata = {
   },
 };
 
-export default function DiscoverThemeLayout({
+export default function DecouvrirThemeLayout({
   children,
 }: {
   children: React.ReactNode;

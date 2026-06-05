@@ -7,10 +7,15 @@ import type { Json } from "@/types/database";
 export type AnalyticsEventName =
   | "app_opened"
   | "page_viewed"
+  | "homepage_view"
+  | "discover_opened"
   | "category_opened"
   | "search_used"
   | "explorer_search"
   | "explorer_search_no_result"
+  | "first_fact_read"
+  | "first_like"
+  | "first_save"
   | "fact_view"
   | "fact_viewed"
   | "fact_swipe"
@@ -23,6 +28,16 @@ export type AnalyticsEventName =
   | "fact_saved"
   | "daily_goal_completed"
   | "profile_opened"
+  | "avatar_viewed"
+  | "grade_up"
+  | "returned_day_1"
+  | "returned_day_7"
+  | "returned_day_30"
+  | "returned_next_day"
+  | "quiz_page_view"
+  | "quiz_started"
+  | "quiz_question_answered"
+  | "quiz_completed"
   | "signup_completed"
   | "login_completed"
   | "admin_fact_created"
@@ -57,6 +72,8 @@ export type FactReadToken = {
 };
 
 const ANONYMOUS_ID_KEY = "grumm_anonymous_id";
+const FIRST_EVENT_PREFIX = "grumm_analytics_first_event";
+const RETENTION_EVENT_PREFIX = "grumm_analytics_retention_event";
 const SESSION_KEY = "grumm_analytics_session";
 const INACTIVITY_TIMEOUT_MS = 30 * 60 * 1000;
 const SESSION_UPDATE_DEBOUNCE_MS = 2200;
@@ -420,6 +437,83 @@ export async function trackAnalyticsEvent(event: AnalyticsEventInput) {
   scheduleEventFlush();
 }
 
+function readOnceKey(prefix: string, key: string) {
+  return `${prefix}:${key}`;
+}
+
+export async function trackAnalyticsEventOnce(
+  key: string,
+  event: AnalyticsEventInput,
+) {
+  if (typeof window === "undefined") {
+    await trackAnalyticsEvent(event);
+    return;
+  }
+
+  const storageKey = readOnceKey(FIRST_EVENT_PREFIX, key);
+
+  try {
+    if (window.localStorage.getItem(storageKey)) {
+      return;
+    }
+
+    window.localStorage.setItem(storageKey, new Date().toISOString());
+  } catch {
+    // Local analytics deduplication is best effort.
+  }
+
+  await trackAnalyticsEvent(event);
+}
+
+export async function trackRetentionMilestones(createdAt?: string | null) {
+  if (!createdAt || typeof window === "undefined") {
+    return;
+  }
+
+  const createdTime = new Date(createdAt).getTime();
+
+  if (!Number.isFinite(createdTime)) {
+    return;
+  }
+
+  const ageDays = Math.floor((Date.now() - createdTime) / (24 * 60 * 60 * 1000));
+  const milestones = [
+    { days: 1, eventName: "returned_day_1" as const },
+    { days: 7, eventName: "returned_day_7" as const },
+    { days: 30, eventName: "returned_day_30" as const },
+  ];
+
+  for (const milestone of milestones) {
+    if (ageDays < milestone.days) {
+      continue;
+    }
+
+    const storageKey = readOnceKey(RETENTION_EVENT_PREFIX, milestone.eventName);
+
+    try {
+      if (window.localStorage.getItem(storageKey)) {
+        continue;
+      }
+
+      window.localStorage.setItem(storageKey, new Date().toISOString());
+    } catch {
+      // Local analytics deduplication is best effort.
+    }
+
+    await trackAnalyticsEvent({
+      eventName: milestone.eventName,
+      metadata: { age_days: ageDays },
+    });
+
+    if (milestone.days === 1) {
+      await trackAnalyticsEventOnce("returned_next_day", {
+        eventName: "returned_next_day",
+        metadata: { age_days: ageDays },
+      });
+    }
+  }
+}
+
 export async function trackPageView(pathname: string) {
   if (!canTrackProductAnalytics() || pathname.startsWith("/admin")) {
     return;
@@ -489,6 +583,11 @@ export async function startFactRead(factId: string): Promise<FactReadToken> {
     entityId: factId,
     entityType: "fact",
     eventName: "fact_view",
+  });
+  await trackAnalyticsEventOnce("first_fact_read", {
+    entityId: factId,
+    entityType: "fact",
+    eventName: "first_fact_read",
   });
 
   if (!supabase) {

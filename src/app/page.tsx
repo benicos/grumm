@@ -18,6 +18,7 @@ export const metadata: Metadata = {
   ...buildDefaultMetadata({
     canonicalPath: "/",
     description: siteConfig.description,
+    imagePath: "/opengraph-image",
     title: siteConfig.name,
   }),
   title: {

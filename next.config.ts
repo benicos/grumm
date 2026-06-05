@@ -70,6 +70,16 @@ const nextConfig: NextConfig = {
         permanent: true,
       },
       {
+        source: "/explore",
+        destination: "/theme",
+        permanent: true,
+      },
+      {
+        source: "/today",
+        destination: "/aujourdhui",
+        permanent: true,
+      },
+      {
         source: "/discover",
         destination: "/decouvrir",
         permanent: true,

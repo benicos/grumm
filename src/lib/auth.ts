@@ -3,7 +3,7 @@ import {
   createSupabaseBrowserClient,
   isInvalidRefreshTokenError,
 } from "@/lib/supabase/client";
-import { dailyGoalConfig, signupDailyGoalOptions } from "@/config/app";
+import { dailyGoalConfig, signupDailyGoalOptions, siteConfig } from "@/config/app";
 import { formatAppError, getConfiguredErrorMessage } from "@/lib/errors";
 import { logSupabaseError } from "@/lib/logger";
 import {
@@ -325,10 +325,7 @@ export async function requestPasswordReset(email: string): Promise<AuthResult> {
     };
   }
 
-  const redirectTo =
-    typeof window === "undefined"
-      ? undefined
-      : `${window.location.origin}/reset-password`;
+  const redirectTo = `${siteConfig.publicUrl}/reset-password`;
   const { error } = await supabase.auth.resetPasswordForEmail(normalizedEmail, {
     redirectTo,
   });

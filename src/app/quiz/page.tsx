@@ -13,6 +13,7 @@ import QuizStatsPanel from "./QuizStatsPanel";
 
 export const metadata: Metadata = buildDefaultMetadata({
   canonicalPath: "/quiz",
+  imagePath: "/quiz/opengraph-image",
   description:
     "Choisis ton expérience de quiz Grumm : quiz général ou défi mémoire personnalisé.",
   title: "Grumm Quiz",

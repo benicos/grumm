@@ -11,6 +11,7 @@ import {
   type GeneralQuizAnswer,
   type GeneralQuizQuestion,
 } from "@/lib/generalQuiz";
+import { trackAnalyticsEvent } from "@/lib/analytics/web";
 import { quizDifficultyLabels } from "@/lib/quizShared";
 import Footer from "../../components/Footer";
 import HeroBackground from "../../components/HeroBackground";
@@ -400,6 +401,13 @@ export default function QuizExperience() {
     }
 
     setQuestions(result.questions);
+    void trackAnalyticsEvent({
+      eventName: "quiz_started",
+      metadata: {
+        question_count: result.questions.length,
+        quiz_type: "general",
+      },
+    });
     setIsLoading(false);
   }, [clearAnimationTimers]);
 
@@ -419,6 +427,15 @@ export default function QuizExperience() {
     }
 
     setSelectedAnswer(answer);
+    void trackAnalyticsEvent({
+      entityId: currentQuestion.id,
+      entityType: "quiz_question",
+      eventName: "quiz_question_answered",
+      metadata: {
+        is_correct: answer === currentQuestion.correctAnswer,
+        quiz_type: "general",
+      },
+    });
     requestAnimationFrame(() => scrollToQuizAnchor(true));
 
     if (answer === currentQuestion.correctAnswer) {
@@ -470,6 +487,14 @@ export default function QuizExperience() {
     await persistGeneralQuizResult({
       answers: nextAnswers,
       totalQuestions: questions.length,
+    });
+    void trackAnalyticsEvent({
+      eventName: "quiz_completed",
+      metadata: {
+        quiz_type: "general",
+        score: nextAnswers.filter((answer) => answer.isCorrect).length,
+        total_questions: questions.length,
+      },
     });
     setIsPersisting(false);
     setFinished(true);

@@ -15,7 +15,7 @@ Variables attendues :
 ```bash
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
-NEXT_PUBLIC_SITE_URL=
+NEXT_PUBLIC_SITE_URL=https://grumm.fr
 ```
 
 Option de debug :
@@ -47,7 +47,7 @@ Vercel. À vérifier dans le dashboard Vercel :
 - Project Settings -> Git -> Production Branch = `main`.
 - Preview deployments activés pour les branches non production.
 - Variables Supabase présentes dans Production et Preview.
-- `NEXT_PUBLIC_SITE_URL` défini sur le domaine public en production.
+- Domaine public officiel : `https://grumm.fr`.
 
 ## Supabase
 

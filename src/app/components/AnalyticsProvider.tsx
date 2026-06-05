@@ -8,6 +8,7 @@ import {
   setAnalyticsUserId,
   trackAnalyticsEvent,
   trackPageView,
+  trackRetentionMilestones,
 } from "@/lib/analytics/web";
 import { useAuth } from "../auth/AuthProvider";
 
@@ -52,7 +53,23 @@ export default function AnalyticsProvider({
     }
 
     void trackPageView(pathname);
-  }, [isLoading, pathname, profile?.role]);
+
+    if (pathname === "/") {
+      void trackAnalyticsEvent({ eventName: "homepage_view" });
+    }
+
+    if (pathname === "/decouvrir" || pathname.startsWith("/decouvrir/")) {
+      void trackAnalyticsEvent({ eventName: "discover_opened" });
+    }
+
+    if (pathname === "/quiz") {
+      void trackAnalyticsEvent({ eventName: "quiz_page_view" });
+    }
+
+    if (user?.created_at) {
+      void trackRetentionMilestones(user.created_at);
+    }
+  }, [isLoading, pathname, profile?.role, user?.created_at]);
 
   return children;
 }

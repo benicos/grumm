@@ -4,6 +4,7 @@ import ExplorerExperience from "../components/ExplorerExperience";
 
 export const metadata: Metadata = buildDefaultMetadata({
   canonicalPath: "/theme",
+  imagePath: "/theme/opengraph-image",
   description:
     "Explore les thèmes, recherches populaires et portes d'entrée culturelles de Grumm.",
   title: "Explorer",

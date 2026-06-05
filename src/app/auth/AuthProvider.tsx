@@ -17,6 +17,7 @@ import {
   isInvalidRefreshTokenError,
   isSupabaseConfigured,
 } from "@/lib/supabase/client";
+import { setAdminAuthCookie } from "@/lib/supabase/adminAuthCookie";
 import {
   getDefaultRolePermissions,
   type PermissionKey,
@@ -97,6 +98,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const commitAuthState = useCallback(
     (nextSession: Session | null, nextProfile: UserProfile | null) => {
+      setAdminAuthCookie(nextSession?.access_token ?? null);
       sessionRef.current = nextSession;
       setSession(nextSession);
       setProfile(nextProfile);
@@ -265,6 +267,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         currentSession?.user?.id === nextSession?.user?.id;
 
       if (event === "TOKEN_REFRESHED" || (event === "SIGNED_IN" && isSameUser)) {
+        setAdminAuthCookie(nextSession?.access_token ?? null);
         setIsLoading(false);
         return;
       }

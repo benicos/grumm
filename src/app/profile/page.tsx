@@ -24,7 +24,7 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useEffect, useState } from "react";
-import { trackAnalyticsEvent } from "@/lib/analytics/web";
+import { trackAnalyticsEvent, trackAnalyticsEventOnce } from "@/lib/analytics/web";
 import { getBadgeInfo } from "@/lib/badges";
 import { MIN_MEMORY_FACTS } from "@/lib/memoryChallenge";
 import { getUserProfileSummary } from "@/lib/profile";
@@ -643,7 +643,32 @@ function ProfileContent() {
 
   useEffect(() => {
     void trackAnalyticsEvent({ eventName: "profile_opened" });
+    void trackAnalyticsEventOnce("avatar_viewed", { eventName: "avatar_viewed" });
   }, []);
+
+  useEffect(() => {
+    if (!profile) {
+      return;
+    }
+
+    const currentGrade = [...profile.grades]
+      .sort((a, b) => b.requiredGoals - a.requiredGoals)
+      .find((grade) => profile.completedDailyGoals >= grade.requiredGoals);
+
+    if (!currentGrade) {
+      return;
+    }
+
+    void trackAnalyticsEventOnce(`grade_up:${currentGrade.slug}`, {
+      entityId: currentGrade.id,
+      entityType: "grade",
+      eventName: "grade_up",
+      metadata: {
+        completed_daily_goals: profile.completedDailyGoals,
+        grade_slug: currentGrade.slug,
+      },
+    });
+  }, [profile]);
 
   useEffect(() => {
     let isMounted = true;
@@ -756,7 +781,7 @@ function ProfileContent() {
                   <div className="h-32 w-32 shrink-0 overflow-hidden rounded-[34px] border-[3px] border-[#ffd166]/30 bg-white/[0.06] shadow-[0_0_0_1px_rgba(255,255,255,0.08),0_24px_84px_rgba(0,0,0,0.32),0_0_64px_rgba(255,209,102,0.18)]">
                     {/* Les avatars sont liés au rang, pas modifiables par l'utilisateur. */}
                     <Image
-                      alt=""
+                      alt="Avatar de rang Grumm"
                       height={128}
                       src={avatarSrc}
                       width={128}
