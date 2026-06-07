@@ -94,6 +94,7 @@ export type ProfileSummary = SessionProfile & {
   topThemes: ThemeViewStat[];
   todayReadCount: number;
   uniqueViewsCount: number;
+  weeklyGoalDays: WeeklyGoalDay[];
 };
 
 export type QuizStatsSummary = {
@@ -116,4 +117,11 @@ export type ThemeViewStat = {
   percent: number;
   slug: string;
   themeIcon: string | null;
+};
+
+export type WeeklyGoalDay = {
+  completed: boolean;
+  count: number;
+  date: string;
+  dayIndex: number;
 };

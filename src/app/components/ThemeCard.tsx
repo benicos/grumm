@@ -44,6 +44,11 @@ export default function ThemeCard({
     : count > 0
       ? `${count} ${publicSiteTexts.themeProgress.factsToExplore}`
       : publicSiteTexts.themeProgress.fallback;
+  const keywords = (theme.keywords ?? [])
+    .filter((keyword): keyword is string => typeof keyword === "string")
+    .map((keyword) => keyword.trim())
+    .filter(Boolean)
+    .slice(0, 3);
 
   return (
     <Link
@@ -87,7 +92,24 @@ export default function ThemeCard({
             {getThemeShortDescription(theme)}
           </p>
 
-          <div className="mx-auto mt-6 max-w-[240px]">
+          {keywords.length > 0 ? (
+            <div className="mx-auto mt-5 flex max-w-[280px] flex-wrap justify-center gap-2">
+              {keywords.map((keyword) => (
+                <span
+                  key={keyword}
+                  className="rounded-full border border-white/14 bg-black/18 px-3 py-1.5 text-xs font-black text-white/72 backdrop-blur"
+                >
+                  {keyword}
+                </span>
+              ))}
+            </div>
+          ) : (
+            <p className="mx-auto mt-5 max-w-[28ch] text-center text-xs font-black uppercase tracking-[0.16em] text-white/42">
+              Un univers à explorer
+            </p>
+          )}
+
+          <div className="mx-auto mt-5 max-w-[240px]">
             {progress ? (
               <div className="mb-4 h-1 overflow-hidden rounded-full bg-white/14">
                 <div

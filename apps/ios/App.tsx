@@ -1,9 +1,9 @@
-﻿import { StatusBar } from "expo-status-bar";
+import { StatusBar } from "expo-status-bar";
 import { useEffect, useRef, useState } from "react";
-import { AppState, InteractionManager, StyleSheet, View } from "react-native";
+import { ActivityIndicator, AppState, InteractionManager, StyleSheet, Text, View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
-import { BottomNav, type MobileTab } from "./src/components/BottomNav";
+import { BottomTabs, type MobileTab } from "./src/components/BottomTabs";
 import { AuthProvider, useAuth } from "./src/context/AuthContext";
 import {
   endMobileAnalyticsSession,
@@ -12,12 +12,13 @@ import {
   trackMobileAnalyticsEvent,
   trackMobilePageView,
 } from "./src/lib/analytics";
-import { DiscoverScreen } from "./src/screens/DiscoverScreen";
-import { ExploreScreen } from "./src/screens/ExploreScreen";
+import { AuthScreen } from "./src/screens/AuthScreen";
+import { FeedScreen } from "./src/screens/FeedScreen";
 import { ProfileScreen } from "./src/screens/ProfileScreen";
 import { QuizScreen } from "./src/screens/QuizScreen";
-import { colors } from "./src/theme/colors";
-import type { FeedFact } from "./src/types/domain";
+import { ThemesScreen } from "./src/screens/ThemesScreen";
+import { appTheme } from "./src/theme/appTheme";
+import type { CategorySummary } from "./src/types/domain";
 
 export default function App() {
   return (
@@ -30,40 +31,27 @@ export default function App() {
 }
 
 function GrummMobileApp() {
-  const [activeTab, setActiveTab] = useState<MobileTab>("discover");
-  const [discoverSeedFact, setDiscoverSeedFact] = useState<FeedFact | null>(null);
-  const [discoverThemeSlug, setDiscoverThemeSlug] = useState<string | null>(null);
-  const [memoryStartSignal, setMemoryStartSignal] = useState(0);
+  const [activeTab, setActiveTab] = useState<MobileTab>("feed");
+  const [selectedTheme, setSelectedTheme] = useState<Pick<CategorySummary, "name" | "slug"> | null>(null);
   const { isLoading, profile, session } = useAuth();
   const openedRef = useRef(false);
 
   function changeTab(tab: MobileTab) {
-    if (tab === "discover") {
-      setDiscoverSeedFact(null);
-      setDiscoverThemeSlug(null);
-    }
-
     setActiveTab(tab);
   }
 
-  function openFactInDiscover(fact: FeedFact) {
-    setDiscoverSeedFact(fact);
-    setActiveTab("discover");
+  function openTheme(theme: CategorySummary) {
+    setSelectedTheme({ name: theme.name, slug: theme.slug });
+    setActiveTab("feed");
   }
 
-  function openThemeInDiscover(themeSlug: string) {
-    setDiscoverSeedFact(null);
-    setDiscoverThemeSlug(themeSlug);
-    setActiveTab("discover");
-  }
-
-  function openMemoryChallenge() {
-    setMemoryStartSignal((value) => value + 1);
-    setActiveTab("quiz");
+  function clearTheme() {
+    setSelectedTheme(null);
+    setActiveTab("feed");
   }
 
   useEffect(() => {
-    if (isLoading) {
+    if (isLoading || !session) {
       return;
     }
 
@@ -71,7 +59,7 @@ function GrummMobileApp() {
 
     void (async () => {
       await setMobileAnalyticsEnabled(shouldTrack);
-      await setMobileAnalyticsUserId(shouldTrack ? session?.user.id ?? null : null);
+      await setMobileAnalyticsUserId(shouldTrack ? session.user.id : null);
 
       if (!shouldTrack || openedRef.current) {
         return;
@@ -85,17 +73,19 @@ function GrummMobileApp() {
         });
       });
     })();
-  }, [isLoading, profile?.role, session?.user.id]);
+  }, [isLoading, profile?.role, session]);
 
   useEffect(() => {
-    if (!isLoading && profile?.role !== "administrateur") {
+    if (!isLoading && session && profile?.role !== "administrateur") {
       const task = InteractionManager.runAfterInteractions(() => {
         void trackMobilePageView(activeTab).catch(() => undefined);
       });
 
       return () => task.cancel();
     }
-  }, [activeTab, isLoading, profile?.role]);
+
+    return undefined;
+  }, [activeTab, isLoading, profile?.role, session]);
 
   useEffect(() => {
     const subscription = AppState.addEventListener("change", (state) => {
@@ -107,41 +97,62 @@ function GrummMobileApp() {
     return () => subscription.remove();
   }, []);
 
+  if (isLoading) {
+    return (
+      <View style={styles.authGate}>
+        <StatusBar style="dark" />
+        <ActivityIndicator color={appTheme.color.teal} size="large" />
+        <Text style={styles.authGateText}>Préparation de Grumm...</Text>
+      </View>
+    );
+  }
+
+  if (!session) {
+    return (
+      <View style={styles.root}>
+        <StatusBar style="dark" />
+        <AuthScreen />
+      </View>
+    );
+  }
+
   return (
-        <View style={styles.root}>
-          <StatusBar style="light" />
-          <View style={styles.screen}>
-            {activeTab === "discover" ? (
-              <DiscoverScreen
-                initialFact={discoverSeedFact}
-                onRequireAuth={() => setActiveTab("profile")}
-                themeSlug={discoverThemeSlug}
-              />
-            ) : null}
-            {activeTab === "explore" ? (
-              <ExploreScreen
-                onOpenDiscover={() => setActiveTab("discover")}
-                onOpenFact={openFactInDiscover}
-                onOpenTheme={openThemeInDiscover}
-              />
-            ) : null}
-            {activeTab === "quiz" ? (
-              <QuizScreen
-                memoryStartSignal={memoryStartSignal}
-                onMemoryStartHandled={() => setMemoryStartSignal(0)}
-              />
-            ) : null}
-            {activeTab === "profile" ? <ProfileScreen onOpenMemoryChallenge={openMemoryChallenge} /> : null}
-          </View>
-          <BottomNav activeTab={activeTab} onChange={changeTab} />
-        </View>
+    <View style={styles.root}>
+      <StatusBar style="dark" />
+      <View style={styles.screen}>
+        {activeTab === "feed" ? (
+          <FeedScreen
+            onClearTheme={clearTheme}
+            onRequireAuth={() => setActiveTab("profile")}
+            themeName={selectedTheme?.name}
+            themeSlug={selectedTheme?.slug}
+          />
+        ) : null}
+        {activeTab === "themes" ? <ThemesScreen onOpenTheme={openTheme} /> : null}
+        {activeTab === "quiz" ? <QuizScreen /> : null}
+        {activeTab === "profile" ? <ProfileScreen /> : null}
+      </View>
+      <BottomTabs activeTab={activeTab} onChange={changeTab} />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  root: {
+  authGate: {
+    alignItems: "center",
+    backgroundColor: appTheme.color.background,
     flex: 1,
-    backgroundColor: colors.background,
+    gap: 14,
+    justifyContent: "center",
+  },
+  authGateText: {
+    color: appTheme.color.muted,
+    fontSize: 14,
+    fontWeight: appTheme.weight.bold,
+  },
+  root: {
+    backgroundColor: appTheme.color.background,
+    flex: 1,
   },
   screen: {
     flex: 1,

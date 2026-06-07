@@ -128,6 +128,8 @@ const feedCache = new Map<string, CacheEntry<FeedFact[]>>();
 const explorerCache = new Map<string, CacheEntry<ExplorerData>>();
 const profileSummaryCache = new Map<string, CacheEntry<ProfileSummary>>();
 const savedFactsCache = new Map<string, CacheEntry<FeedFact[]>>();
+const pendingFeedRequests = new Map<string, Promise<FeedFact[]>>();
+const pendingFactActionsRequests = new Map<string, Promise<Map<string, FactActions>>>();
 let feedSessionId: string | null = null;
 
 function createFeedSessionId() {
@@ -317,6 +319,27 @@ function getCompletedStreak(rows: DailyProgressRow[]) {
   return streak;
 }
 
+function getCurrentWeekGoalDays(rows: DailyProgressRow[]) {
+  const rowsByDate = new Map(rows.map((row) => [row.progress_date, row]));
+  const today = new Date();
+  const monday = new Date(today);
+  monday.setDate(today.getDate() - ((today.getDay() + 6) % 7));
+
+  return Array.from({ length: 7 }, (_, dayIndex) => {
+    const date = new Date(monday);
+    date.setDate(monday.getDate() + dayIndex);
+    const dateKey = keyFromDate(date);
+    const row = rowsByDate.get(dateKey);
+
+    return {
+      completed: Boolean(row?.goal_completed),
+      count: row?.facts_read_count ?? 0,
+      date: dateKey,
+      dayIndex,
+    };
+  });
+}
+
 export function getFactUrl(fact: FeedFact) {
   return `${mobileConfig.siteUrl.replace(/\/$/, "")}/fact/${fact.slug}`;
 }
@@ -326,40 +349,81 @@ export async function getFeedFacts(options?: {
   learningGoal?: LearningGoal | null;
   limit?: number;
   themeSlug?: string | null;
+  userId?: string | null;
 }) {
-  const canUseCache = !options?.excludeIds?.length;
-  const cacheKey = `feed:${options?.limit ?? mobileConfig.feedBatchSize}:${options?.learningGoal ?? "default"}:${options?.themeSlug ?? "all"}`;
+  const excludeIds = options?.excludeIds ?? [];
+  const canUseCache = excludeIds.length === 0;
+  const cacheKey = `feed:${options?.limit ?? mobileConfig.feedBatchSize}:${options?.learningGoal ?? "default"}:${options?.themeSlug ?? "all"}:${options?.userId ?? "anonymous"}`;
+  const requestKey = `${cacheKey}:${excludeIds.join(",") || "none"}`;
   const cachedFacts = canUseCache ? getCached(feedCache, cacheKey) : null;
 
   if (cachedFacts) {
     return cachedFacts;
   }
 
-  const supabase = getSupabaseClient();
-  const personalizedResult = await withSupabaseTimeout(
-    supabase.rpc("get_personalized_feed", {
-      p_debug: false,
-      p_limit: options?.limit ?? mobileConfig.feedBatchSize,
-      p_session_id: getFeedSessionId(),
-      p_theme_slug: options?.themeSlug ?? null,
-      p_user_id: null,
-    }),
-  );
-  let rows = personalizedResult.data as FeedRpcRow[] | null;
-  let error = personalizedResult.error;
+  const pendingFacts = pendingFeedRequests.get(requestKey);
 
-  if (
-    error &&
-    (error.code === "42883" ||
-      error.message.toLowerCase().includes("get_personalized_feed"))
-  ) {
+  if (pendingFacts) {
+    return pendingFacts;
+  }
+
+  const request = readFeedFacts(options, cacheKey, canUseCache, excludeIds).finally(() => {
+    pendingFeedRequests.delete(requestKey);
+  });
+  pendingFeedRequests.set(requestKey, request);
+
+  return request;
+}
+
+async function readFeedFacts(
+  options: {
+    excludeIds?: string[];
+    learningGoal?: LearningGoal | null;
+    limit?: number;
+    themeSlug?: string | null;
+    userId?: string | null;
+  } | undefined,
+  cacheKey: string,
+  canUseCache: boolean,
+  excludeIds: string[],
+) {
+  const supabase = getSupabaseClient();
+  let rows: FeedRpcRow[] | null = null;
+  let error: { code?: string; message: string } | null = null;
+
+  if (options?.userId) {
+    const personalizedResult = await withSupabaseTimeout(
+      supabase.rpc("get_personalized_feed", {
+        p_debug: false,
+        p_limit: options?.limit ?? mobileConfig.feedBatchSize,
+        p_session_id: getFeedSessionId(),
+        p_theme_slug: options?.themeSlug ?? null,
+        p_user_id: options.userId,
+      }),
+      userMessages.genericLoadError,
+      0,
+      "feed:get_personalized_feed",
+    );
+    rows = personalizedResult.data as FeedRpcRow[] | null;
+    error = personalizedResult.error;
+  }
+
+  const shouldUseDiscoverFallback =
+    !options?.userId ||
+    Boolean(error) ||
+    (rows?.length ?? 0) === 0;
+
+  if (shouldUseDiscoverFallback) {
     const fallbackResult = await withSupabaseTimeout(
       supabase.rpc("get_discover_feed", {
-        p_exclude_ids: options?.excludeIds ?? [],
+        p_exclude_ids: excludeIds,
         p_learning_goal: options?.learningGoal ?? null,
         p_limit: options?.limit ?? mobileConfig.feedBatchSize,
         p_theme_slug: options?.themeSlug ?? null,
       }),
+      userMessages.genericLoadError,
+      0,
+      "feed:get_discover_feed",
     );
 
     rows = fallbackResult.data as FeedRpcRow[] | null;
@@ -370,10 +434,10 @@ export async function getFeedFacts(options?: {
     throw new Error(userMessages.genericLoadError);
   }
 
-  const excludedIds = new Set(options?.excludeIds ?? []);
-  const facts = ((rows ?? []) as FeedRpcRow[])
+  const excludedIdSet = new Set(excludeIds);
+  const facts = (rows ?? [])
     .map(mapFeedFact)
-    .filter((fact) => !excludedIds.has(fact.id));
+    .filter((fact) => !excludedIdSet.has(fact.id));
 
   if (canUseCache) {
     setCached(feedCache, cacheKey, facts);
@@ -452,6 +516,9 @@ export async function getExplorerData(options?: {
       p_limit: query ? 24 : 18,
       p_query: query || null,
     }),
+    userMessages.genericLoadError,
+    undefined,
+    "themes:get_explorer_themes",
   );
 
   if (themesResult.error) {
@@ -464,6 +531,9 @@ export async function getExplorerData(options?: {
           p_limit: 24,
           p_query: query,
         }),
+        userMessages.genericLoadError,
+        undefined,
+        "themes:search_published_facts",
       )
     : null;
 
@@ -491,6 +561,22 @@ export async function getFactActions(factIds: string[]) {
     return new Map<string, FactActions>();
   }
 
+  const requestKey = [...new Set(factIds)].sort().join(",");
+  const pendingActions = pendingFactActionsRequests.get(requestKey);
+
+  if (pendingActions) {
+    return pendingActions;
+  }
+
+  const request = readFactActions(factIds).finally(() => {
+    pendingFactActionsRequests.delete(requestKey);
+  });
+  pendingFactActionsRequests.set(requestKey, request);
+
+  return request;
+}
+
+async function readFactActions(factIds: string[]) {
   const supabase = getSupabaseClient();
   const {
     data: { user },
@@ -504,8 +590,18 @@ export async function getFactActions(factIds: string[]) {
   }
 
   const [likesResult, savesResult] = await Promise.all([
-    withSupabaseTimeout(supabase.from("likes").select("fact_id").eq("user_id", user.id).in("fact_id", factIds)),
-    withSupabaseTimeout(supabase.from("saves").select("fact_id").eq("user_id", user.id).in("fact_id", factIds)),
+    withSupabaseTimeout(
+      supabase.from("likes").select("fact_id").eq("user_id", user.id).in("fact_id", factIds),
+      userMessages.genericLoadError,
+      0,
+      "feed:get_likes",
+    ),
+    withSupabaseTimeout(
+      supabase.from("saves").select("fact_id").eq("user_id", user.id).in("fact_id", factIds),
+      userMessages.genericLoadError,
+      0,
+      "feed:get_saves",
+    ),
   ]);
 
   if (likesResult.error || savesResult.error) {
@@ -818,6 +914,7 @@ export async function getProfileSummary(): Promise<ProfileSummary> {
     topThemes: getTopViewedThemes((viewedThemesResult.data ?? []) as ViewedFactRow[]),
     todayReadCount: todayRow?.facts_read_count ?? 0,
     uniqueViewsCount: viewsResult.count ?? 0,
+    weeklyGoalDays: getCurrentWeekGoalDays(progressRows),
     username: profileResult.data?.username ?? null,
   };
 

@@ -1,47 +1,55 @@
 import * as Haptics from "expo-haptics";
-import { LinearGradient } from "expo-linear-gradient";
-import { BookOpen, Bookmark, Bot, Brain, Calendar, Check, ChevronLeft, Compass, Flame, Heart, Pencil, Target, X, Zap, type LucideIcon } from "lucide-react-native";
+import {
+  BookOpenText,
+  Bookmark,
+  CalendarCheck2,
+  Flame,
+  LogOut,
+  Pencil,
+  Target,
+  Trophy,
+  UserRound,
+} from "lucide-react-native";
 import { useCallback, useEffect, useState } from "react";
-import { ImageBackground, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import Svg, { Circle } from "react-native-svg";
+import {
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 
-import { GoalCelebration } from "../components/GoalCelebration";
-import { GradeIcon } from "../components/GradeIcon";
-import { LoadingState } from "../components/ScreenState";
-import { SwipeBackView } from "../components/SwipeBackView";
-import { GrummButton } from "../components/GrummButton";
-import { ThemeIcon } from "../components/ThemeIcon";
+import { AppScreen } from "../components/AppScreen";
+import { EmptyState, LoadingState } from "../components/ScreenState";
+import { ProfileStat } from "../components/ProfileStat";
 import { mobileConfig, userMessages } from "../config/app";
 import { useAuth } from "../context/AuthContext";
-import { trackMobileAnalyticsEvent } from "../lib/analytics";
-import { getGoalCelebrationMessage } from "../lib/badges";
 import { getProfileSummary, getQuizStatsSummary } from "../lib/facts";
-import { getLearningGoalLabel, learningGoalOptions, normalizeLearningGoal, type LearningGoal } from "../lib/learning";
-import { updateProfileEmail, updateProfilePassword, updateProfileSettings, type ProfileField } from "../lib/profile";
-import { colors } from "../theme/colors";
-import { designTokens as ds } from "../theme/designTokens";
-import { mobileDesign } from "../theme/mobile";
+import { getLearningGoalLabel, normalizeLearningGoal } from "../lib/learning";
+import { updateProfileSettings } from "../lib/profile";
+import { appTheme, withAlpha } from "../theme/appTheme";
 import type { ProfileSummary, QuizStatsSummary } from "../types/domain";
 import { AuthScreen } from "./AuthScreen";
 
-type FieldErrors = Partial<Record<ProfileField, string>>;
-
-export function ProfileScreen({ onOpenMemoryChallenge }: { onOpenMemoryChallenge?: () => void }) {
-  const insets = useSafeAreaInsets();
-  const { error: authError, isLoading: isAuthLoading, profile, refreshProfile, session, signOut } = useAuth();
+export function ProfileScreen() {
+  const {
+    error: authError,
+    isLoading: isAuthLoading,
+    profile,
+    refreshProfile,
+    session,
+    signOut,
+  } = useAuth();
   const [summary, setSummary] = useState<ProfileSummary | null>(null);
   const [quizStats, setQuizStats] = useState<QuizStatsSummary | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [showAuth, setShowAuth] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-  const [celebration, setCelebration] = useState(false);
 
-  useEffect(() => {
-    void trackMobileAnalyticsEvent({ eventName: "profile_opened" });
-  }, []);
-
-  const loadSummary = useCallback(async () => {
+  const loadProfile = useCallback(async () => {
     if (!session) {
       return;
     }
@@ -65,1235 +73,627 @@ export function ProfileScreen({ onOpenMemoryChallenge }: { onOpenMemoryChallenge
 
   useEffect(() => {
     const frame = requestAnimationFrame(() => {
-      loadSummary();
+      void loadProfile();
     });
 
     return () => cancelAnimationFrame(frame);
-  }, [loadSummary]);
+  }, [loadProfile]);
 
   if (isAuthLoading) {
-    return <LoadingState label="Ouverture de ton espace..." />;
+    return (
+      <AppScreen>
+        <LoadingState label="Ouverture du profil..." />
+      </AppScreen>
+    );
   }
 
   if (!session) {
-    return <AuthScreen />;
-  }
+    if (showAuth) {
+      return <AuthScreen />;
+    }
 
-  const displayName = summary?.username ?? profile?.username ?? profile?.email ?? "Lecteur Grumm";
-  const dailyGoal = summary?.dailyGoal ?? profile?.dailyGoal ?? mobileConfig.dailyGoal;
-  const todayReadCount = summary?.todayReadCount ?? 0;
-  const dailyPercent = Math.min(100, Math.round((todayReadCount / Math.max(dailyGoal, 1)) * 100));
-  const gradeTitle = summary?.gradeTitle ?? "Curieux débutant";
-  const gradeBadge = summary?.gradeBadge ?? "sparkles";
-  const completedGoals = summary?.completedDailyGoals ?? 0;
-  const learningGoal = summary?.learningGoal ?? profile?.learningGoal;
-  const canReplayCelebration = todayReadCount >= dailyGoal;
-  const readCount = summary?.uniqueViewsCount ?? 0;
-  const gradeStep = 50;
-  const gradeProgress = Math.min(100, Math.round(((readCount % gradeStep) / gradeStep) * 100));
-  const nextGradeRemaining = gradeStep - (readCount % gradeStep || gradeStep);
-  const bestScore = quizStats?.bestScore ?? null;
-  const weekProgress = [completedGoals > 3, completedGoals > 2, completedGoals > 1, completedGoals > 0, todayReadCount >= dailyGoal, false, false];
-  const todayIndex = (new Date().getDay() + 6) % 7;
-
-  async function replayCelebration() {
-    setCelebration(true);
-    await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    setTimeout(() => setCelebration(false), 1900);
+    return (
+      <AppScreen>
+        <EmptyState
+          Icon={UserRound}
+          actionLabel="Se connecter"
+          message="Le feed reste accessible. Connecte-toi pour sauvegarder et suivre ta progression."
+          onAction={() => setShowAuth(true)}
+          title="Profil non connecté"
+        />
+      </AppScreen>
+    );
   }
 
   if (isEditing) {
     return (
       <ProfileEditView
-        email={summary?.email ?? profile?.email ?? ""}
         onBack={() => setIsEditing(false)}
-        onChanged={async () => {
+        onSaved={async () => {
           await refreshProfile();
-          await loadSummary();
+          await loadProfile();
+          setIsEditing(false);
         }}
-        profile={summary}
+        profile={summary ?? profile}
       />
     );
   }
 
+  const displayName = summary?.username ?? profile?.username ?? "Lecteur Grumm";
+  const email = summary?.email ?? profile?.email ?? session.user.email ?? "";
+  const dailyGoal = summary?.dailyGoal ?? profile?.dailyGoal ?? mobileConfig.dailyGoal;
+  const todayReadCount = summary?.todayReadCount ?? 0;
+  const goalPercent = Math.min(100, Math.round((todayReadCount / Math.max(dailyGoal, 1)) * 100));
+  const gradeTitle = summary?.gradeTitle ?? "Curieux";
+  const learningGoal = summary?.learningGoal ?? profile?.learningGoal;
+
   return (
-    <LinearGradient colors={ds.gradient.app} style={styles.root}>
-      <ScrollView contentContainerStyle={[styles.content, { paddingTop: insets.top + 14 }]} showsVerticalScrollIndicator={false}>
-        <LinearGradient colors={ds.gradient.profile} style={styles.header}>
-          <Pressable onPress={() => setIsEditing(true)} style={styles.editButton}>
-            <Pencil color={ds.color.text} size={17} strokeWidth={2.3} />
-          </Pressable>
-          <View style={styles.profileHeroRow}>
-            <View style={styles.robotAvatar}>
-              <View style={styles.robotGlow} />
-              <Bot color={ds.color.text} size={42} strokeWidth={2.05} />
-            </View>
-            <View style={styles.headerIdentity}>
-              <Text style={styles.eyebrow}>Profil</Text>
-              <Text numberOfLines={1} style={styles.title}>{displayName}</Text>
-              <View style={styles.gradeLine}>
-                <View style={styles.gradeBadgeMini}>
-                  <GradeIcon badge={gradeBadge} size={22} />
-                </View>
-                <Text numberOfLines={1} style={styles.rankTitle}>{gradeTitle}</Text>
-              </View>
-              <Text style={styles.levelText}>{getLearningGoalLabel(learningGoal)}</Text>
-            </View>
+    <AppScreen scroll>
+      <View style={styles.headerCard}>
+        <Pressable accessibilityRole="button" onPress={() => setIsEditing(true)} style={styles.editButton}>
+          <Pencil color={appTheme.color.ink} size={18} strokeWidth={2.25} />
+        </Pressable>
+        <View style={styles.identityRow}>
+          <View style={styles.avatar}>
+            <Text style={styles.avatarText}>{getInitial(displayName)}</Text>
           </View>
-
-          <View style={styles.gradeProgressBlock}>
-            <View style={styles.progressHeader}>
-              <Text style={styles.panelValue}>Prochain grade</Text>
-              <Text style={styles.panelHint}>{nextGradeRemaining} faits</Text>
-            </View>
-            <View style={styles.progressTrack}>
-              <View style={[styles.progressFill, { width: `${gradeProgress}%` }]} />
-            </View>
-          </View>
-        </LinearGradient>
-
-        {authError || error ? <Text style={styles.error}>{authError ?? error}</Text> : null}
-        {isLoading ? <LoadingState label="Lecture du profil..." /> : null}
-
-        <Text style={styles.sectionTitle}>Objectif quotidien</Text>
-        <LinearGradient colors={ds.gradient.goal} style={styles.dailyHero}>
-          <ProgressRing percent={dailyPercent} />
-          <View style={styles.dailyTextBlock}>
-            <Text style={styles.panelLabel}>Aujourd’hui</Text>
-            <Text style={styles.dailyCount}>
-              {todayReadCount}/{dailyGoal}
+          <View style={styles.identityCopy}>
+            <Text style={styles.kicker}>Profil</Text>
+            <Text numberOfLines={1} style={styles.name}>
+              {displayName}
             </Text>
-            <View style={styles.streakLine}>
-              <Flame color={ds.color.orange} size={16} strokeWidth={2.35} />
-              <Text style={styles.streakLineText}>Série actuelle : {summary?.streakCount ?? 0} jours</Text>
-            </View>
-            <WeekDots progress={weekProgress} todayIndex={todayIndex} />
-            {canReplayCelebration ? (
-              <Pressable onPress={() => void replayCelebration()} style={styles.replayButton}>
-                <Flame color={ds.color.orange} size={17} strokeWidth={2.25} />
-                <Text style={styles.replayText}>Réussite</Text>
-              </Pressable>
+            {email ? (
+              <Text numberOfLines={1} style={styles.email}>
+                {email}
+              </Text>
             ) : null}
           </View>
-        </LinearGradient>
-
-        <Text style={styles.sectionTitle}>Statistiques</Text>
-        <View style={styles.metricGrid}>
-          <MetricPill Icon={BookOpen} color={ds.color.discovery} label="Faits lus" value={readCount} />
-          <MetricPill Icon={Calendar} color={ds.color.success} label="Jours actifs" value={completedGoals} />
-          <MetricPill Icon={Target} color={ds.color.progress} label="Score quiz" value={bestScore ? `${bestScore}%` : "—"} />
-          <MetricPill Icon={Compass} color={ds.color.orange} label="Thèmes" value={summary?.topThemes.length ?? 0} />
         </View>
 
-        <ThemeSection themes={summary?.topThemes ?? []} />
-
-        <Text style={styles.sectionTitle}>Défi mémoire</Text>
-        <Pressable
-          onPress={() => {
-            void Haptics.selectionAsync();
-            onOpenMemoryChallenge?.();
-          }}
-          style={({ pressed }) => [styles.memoryPanel, pressed && styles.pressed]}
-        >
-          <LinearGradient colors={ds.gradient.memory} style={styles.memoryGradient}>
-            <View style={styles.memoryIcon}>
-              <Brain color={ds.color.text} size={30} strokeWidth={2.2} />
-            </View>
-            <View style={styles.memoryTextBlock}>
-              <Text style={styles.memoryTitle}>Défi mémoire</Text>
-              <Text style={styles.memoryMeta}>{summary?.savedCount ?? 0} faits à réactiver</Text>
-            </View>
-            <View style={styles.memoryArrow}>
-              <Zap color="#06111d" size={18} strokeWidth={2.5} />
-            </View>
-          </LinearGradient>
-        </Pressable>
-
-        <ProfileFactSection
-          empty="Aucun fait enregistré pour le moment."
-          facts={summary?.savedFacts ?? []}
-          Icon={Bookmark}
-          title="Sauvegardes"
-        />
-
-        <View style={styles.settingsBlock}>
-          <GrummButton onPress={loadSummary} variant="secondary">
-            Actualiser
-          </GrummButton>
-          <GrummButton onPress={signOut} variant="ghost">
-            Se déconnecter
-          </GrummButton>
+        <View style={styles.gradeRow}>
+          <View style={styles.gradePill}>
+            <Trophy color={appTheme.color.yellow} size={17} strokeWidth={2.25} />
+            <Text numberOfLines={1} style={styles.gradeText}>
+              {gradeTitle}
+            </Text>
+          </View>
+          <Text numberOfLines={1} style={styles.goalText}>
+            {getLearningGoalLabel(learningGoal)}
+          </Text>
         </View>
-      </ScrollView>
+      </View>
 
-      <GoalCelebration
-        completedGoals={completedGoals}
-        message={getGoalCelebrationMessage(completedGoals)}
-        visible={celebration}
+      {authError || error ? (
+        <View style={styles.notice}>
+          <Text style={styles.noticeText}>{authError ?? error}</Text>
+        </View>
+      ) : null}
+      {isLoading ? <LoadingState label="Lecture du profil..." /> : null}
+
+      <View style={styles.goalCard}>
+        <View style={styles.goalHeader}>
+          <View>
+            <Text style={styles.sectionTitle}>Objectif quotidien</Text>
+            <Text style={styles.goalMeta}>
+              {todayReadCount}/{dailyGoal} faits lus
+            </Text>
+          </View>
+          <View style={styles.goalBubble}>
+            <Text style={styles.goalBubbleText}>{goalPercent}%</Text>
+          </View>
+        </View>
+        <View style={styles.progressTrack}>
+          <View style={[styles.progressFill, { width: `${goalPercent}%` }]} />
+        </View>
+      </View>
+
+      <WeekGoalPanel
+        days={summary?.weeklyGoalDays ?? getFallbackWeekDays()}
+        hasData={Boolean(summary)}
+        streak={summary?.streakCount ?? 0}
       />
-    </LinearGradient>
+
+      <View style={styles.statsGrid}>
+        <ProfileStat
+          Icon={BookOpenText}
+          color={appTheme.color.teal}
+          label="Faits lus"
+          value={summary?.uniqueViewsCount ?? 0}
+        />
+        <ProfileStat
+          Icon={Bookmark}
+          color={appTheme.color.violet}
+          label="Enregistres"
+          value={summary?.savedCount ?? 0}
+        />
+        <ProfileStat
+          Icon={Target}
+          color={appTheme.color.accent}
+          label="Quiz joues"
+          value={quizStats?.sessionsCount ?? 0}
+        />
+        <ProfileStat
+          Icon={Flame}
+          color="#f2a93b"
+          label="Serie"
+          value={summary?.streakCount ?? 0}
+        />
+      </View>
+
+      <Pressable
+        accessibilityRole="button"
+        onPress={() => void signOut()}
+        style={({ pressed }) => [styles.signOutButton, pressed && styles.pressed]}
+      >
+        <LogOut color={appTheme.color.danger} size={18} strokeWidth={2.25} />
+        <Text style={styles.signOutText}>Se déconnecter</Text>
+      </Pressable>
+    </AppScreen>
   );
 }
 
 function ProfileEditView({
-  email,
   onBack,
-  onChanged,
+  onSaved,
   profile,
 }: {
-  email: string;
   onBack: () => void;
-  onChanged: () => Promise<void>;
-  profile: ProfileSummary | null;
+  onSaved: () => Promise<void>;
+  profile: Pick<ProfileSummary, "dailyGoal" | "learningGoal" | "username"> | null;
 }) {
-  const insets = useSafeAreaInsets();
   const [username, setUsername] = useState(profile?.username ?? "");
   const [dailyGoal, setDailyGoal] = useState(String(profile?.dailyGoal ?? mobileConfig.dailyGoal));
-  const [learningGoal, setLearningGoal] = useState<LearningGoal>(normalizeLearningGoal(profile?.learningGoal));
-  const [nextEmail, setNextEmail] = useState(email);
-  const [password, setPassword] = useState("");
-  const [errors, setErrors] = useState<FieldErrors>({});
   const [message, setMessage] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState<"email" | "password" | "settings" | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  async function handleResult(result: Awaited<ReturnType<typeof updateProfileSettings>>) {
+  async function submit() {
+    setIsSubmitting(true);
+    setMessage(null);
+
+    const result = await updateProfileSettings({
+      dailyGoal: Number(dailyGoal),
+      learningGoal: normalizeLearningGoal(profile?.learningGoal),
+      username,
+    });
+
     if (!result.ok) {
-      setErrors({ [result.field]: result.message });
-      setMessage(null);
+      setMessage(result.message);
+      setIsSubmitting(false);
       return;
     }
 
-    setErrors({});
-    setMessage(result.message);
     await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    await onChanged();
-  }
-
-  async function submitSettings() {
-    setIsSubmitting("settings");
-    await handleResult(
-      await updateProfileSettings({
-        dailyGoal: Number(dailyGoal),
-        learningGoal,
-        username,
-      }),
-    );
-    setIsSubmitting(null);
-  }
-
-  async function submitEmail() {
-    setIsSubmitting("email");
-    await handleResult(await updateProfileEmail(nextEmail));
-    setIsSubmitting(null);
-  }
-
-  async function submitPassword() {
-    setIsSubmitting("password");
-    const result = await updateProfilePassword(password);
-    await handleResult(result);
-    if (result.ok) {
-      setPassword("");
-    }
-    setIsSubmitting(null);
+    await onSaved();
+    setIsSubmitting(false);
   }
 
   return (
-    <SwipeBackView onBack={onBack} style={styles.root}>
-    <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={styles.root}>
-      <ScrollView contentContainerStyle={[styles.editContent, { paddingTop: insets.top + 14 }]} showsVerticalScrollIndicator={false}>
-        <Pressable onPress={onBack} style={styles.backButton}>
-          <ChevronLeft color={colors.text} size={20} strokeWidth={2.4} />
-          <Text style={styles.backText}>Profil</Text>
-        </Pressable>
+    <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={styles.keyboard}>
+      <AppScreen scroll>
+        <View style={styles.header}>
+          <Text style={styles.kicker}>Profil</Text>
+          <Text style={styles.title}>Modifier</Text>
+        </View>
 
-        <Text style={styles.editTitle}>Modifier le profil</Text>
-
-        <View style={styles.formPanel}>
-          <Text style={styles.formLabel}>Pseudo</Text>
+        <View style={styles.formCard}>
+          <Text style={styles.inputLabel}>Pseudo</Text>
           <TextInput
             autoCapitalize="none"
             onChangeText={setUsername}
-            onSubmitEditing={submitSettings}
-            placeholder="pseudo"
-            placeholderTextColor="rgba(248,250,252,0.42)"
-            returnKeyType="done"
+            placeholder="Pseudo"
+            placeholderTextColor={appTheme.color.muted}
             style={styles.input}
             value={username}
           />
-          <FieldError message={errors.username} />
 
-          <Text style={styles.formLabel}>Objectif quotidien</Text>
+          <Text style={styles.inputLabel}>Objectif quotidien</Text>
           <TextInput
             keyboardType="number-pad"
             onChangeText={setDailyGoal}
-            onSubmitEditing={submitSettings}
             placeholder="10"
-            placeholderTextColor="rgba(248,250,252,0.42)"
-            returnKeyType="done"
+            placeholderTextColor={appTheme.color.muted}
             style={styles.input}
             value={dailyGoal}
           />
-          <FieldError message={errors.dailyGoal} />
 
-          <Text style={styles.formLabel}>Objectif culturel</Text>
-          <View style={styles.learningGoalList}>
-            {learningGoalOptions.map((option) => {
-              const selected = learningGoal === option.value;
-
-              return (
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityState={{ selected }}
-                  key={option.value}
-                  onPress={() => setLearningGoal(option.value)}
-                  style={[styles.learningGoalOption, selected && styles.learningGoalOptionSelected]}
-                >
-                  <Text style={styles.learningGoalLabel}>{option.label}</Text>
-                  <Text style={styles.learningGoalDescription}>{option.description}</Text>
-                </Pressable>
-              );
-            })}
-          </View>
-          <FieldError message={errors.learningGoal} />
-
-          <GrummButton disabled={isSubmitting === "settings"} isLoading={isSubmitting === "settings"} onPress={submitSettings}>
-            Mettre à jour
-          </GrummButton>
+          {message ? <Text style={styles.formMessage}>{message}</Text> : null}
         </View>
 
-        <View style={styles.formPanel}>
-          <Text style={styles.formLabel}>Email</Text>
-          <TextInput
-            autoCapitalize="none"
-            keyboardType="email-address"
-            onChangeText={setNextEmail}
-            onSubmitEditing={submitEmail}
-            placeholder="email"
-            placeholderTextColor="rgba(248,250,252,0.42)"
-            returnKeyType="done"
-            style={styles.input}
-            value={nextEmail}
-          />
-          <FieldError message={errors.email} />
-          <GrummButton disabled={isSubmitting === "email"} isLoading={isSubmitting === "email"} onPress={submitEmail} variant="secondary">
-            Changer l&apos;email
-          </GrummButton>
-
-          <Text style={styles.formLabel}>Nouveau mot de passe</Text>
-          <TextInput
-            onChangeText={setPassword}
-            onSubmitEditing={submitPassword}
-            placeholder="8 caractères minimum"
-            placeholderTextColor="rgba(248,250,252,0.42)"
-            returnKeyType="done"
-            secureTextEntry
-            style={styles.input}
-            value={password}
-          />
-          <FieldError message={errors.password} />
-          <GrummButton
-            disabled={isSubmitting === "password" || password.length === 0}
-            isLoading={isSubmitting === "password"}
-            onPress={submitPassword}
-            variant="secondary"
-          >
-            Changer le mot de passe
-          </GrummButton>
-        </View>
-
-        {message ? (
-          <View style={styles.success}>
-            <Check color={colors.cyan} size={18} strokeWidth={2.4} />
-            <Text style={styles.successText}>{message}</Text>
-          </View>
-        ) : null}
-        <FieldError message={errors.global} />
-      </ScrollView>
+        <Pressable
+          disabled={isSubmitting}
+          onPress={() => void submit()}
+          style={[styles.primaryButton, isSubmitting && styles.disabled]}
+        >
+          <Text style={styles.primaryButtonText}>
+            {isSubmitting ? "Mise à jour..." : "Enregistrer"}
+          </Text>
+        </Pressable>
+        <Pressable onPress={onBack} style={styles.secondaryButton}>
+          <Text style={styles.secondaryButtonText}>Annuler</Text>
+        </Pressable>
+      </AppScreen>
     </KeyboardAvoidingView>
-    </SwipeBackView>
   );
 }
 
-function FieldError({ message }: { message?: string }) {
-  if (!message) {
-    return null;
-  }
-
-  return (
-    <View style={styles.fieldError}>
-      <X color={colors.danger} size={15} strokeWidth={2.4} />
-      <Text style={styles.fieldErrorText}>{message}</Text>
-    </View>
-  );
-}
-
-function ProgressRing({ percent }: { percent: number }) {
-  const size = 116;
-  const stroke = 10;
-  const radius = (size - stroke) / 2;
-  const circumference = 2 * Math.PI * radius;
-  const clampedPercent = Math.min(100, Math.max(0, percent));
-  const dashOffset = circumference - (circumference * clampedPercent) / 100;
-
-  return (
-    <View style={styles.ringWrap}>
-      <Svg height={size} width={size}>
-        <Circle
-          cx={size / 2}
-          cy={size / 2}
-          fill="transparent"
-          r={radius}
-          stroke="rgba(255,255,255,0.10)"
-          strokeWidth={stroke}
-        />
-        <Circle
-          cx={size / 2}
-          cy={size / 2}
-          fill="transparent"
-          r={radius}
-          stroke={ds.color.goal}
-          strokeDasharray={`${circumference} ${circumference}`}
-          strokeDashoffset={dashOffset}
-          strokeLinecap="round"
-          strokeWidth={stroke}
-          transform={`rotate(-90 ${size / 2} ${size / 2})`}
-        />
-      </Svg>
-      <Text style={styles.ringValue}>{clampedPercent}%</Text>
-    </View>
-  );
-}
-
-function WeekDots({ progress, todayIndex }: { progress: boolean[]; todayIndex: number }) {
+function WeekGoalPanel({
+  days,
+  hasData,
+  streak,
+}: {
+  days: ProfileSummary["weeklyGoalDays"];
+  hasData: boolean;
+  streak: number;
+}) {
   const labels = ["L", "M", "M", "J", "V", "S", "D"];
 
   return (
-    <View style={styles.weekRow}>
-      {labels.map((label, index) => {
-        const done = progress[index];
-        const isToday = index === todayIndex;
-
-        return (
-          <View key={`${label}-${index}`} style={[styles.weekDot, done && styles.weekDotActive, isToday && styles.weekDotToday]}>
-            <Text style={[styles.weekLabel, done && styles.weekLabelActive, isToday && !done && styles.weekLabelToday]}>
-              {done ? "✓" : label}
-            </Text>
-          </View>
-        );
-      })}
-    </View>
-  );
-}
-
-function MetricPill({ Icon, color, label, value }: { Icon: LucideIcon; color: string; label: string; value: number | string }) {
-  return (
-    <View style={styles.metricPill}>
-      <View style={[styles.metricIcon, { backgroundColor: color }]}>
-        <Icon color="#06111d" size={16} strokeWidth={2.45} />
+    <View style={styles.weekPanel}>
+      <View style={styles.weekHeader}>
+        <View style={styles.panelIcon}>
+          <CalendarCheck2 color={appTheme.color.green} size={20} strokeWidth={2.25} />
+        </View>
+        <View style={styles.panelCopy}>
+          <Text style={styles.panelTitle}>Série actuelle</Text>
+          <Text style={styles.panelText}>
+            {hasData ? `${streak} jour${streak > 1 ? "s" : ""}` : "Progression à venir"}
+          </Text>
+        </View>
       </View>
-      <Text style={styles.metricValue}>{value}</Text>
-      <Text style={styles.metricLabel}>{label}</Text>
-    </View>
-  );
-}
 
-function ThemeSection({ themes }: { themes: ProfileSummary["topThemes"] }) {
-  const visibleThemes = themes.slice(0, 4);
-  const maxCount = Math.max(...visibleThemes.map((theme) => theme.count), 1);
-
-  return (
-    <View style={styles.sectionBlock}>
-      <Text style={styles.sectionTitle}>Top thèmes</Text>
-      <View style={styles.profileSection}>
-        {visibleThemes.length > 0 ? (
-          <View style={styles.themeGrid}>
-            {visibleThemes.map((theme) => (
-              <View key={theme.slug} style={[styles.themeMiniCard, { borderColor: `${theme.accent}55` }]}>
-                {theme.imageUrl ? (
-                  <ImageBackground resizeMode="cover" source={{ uri: theme.imageUrl }} style={styles.themeImage}>
-                    <View style={styles.themeImageScrim} />
-                  </ImageBackground>
-                ) : (
-                  <View style={[styles.themeAura, { backgroundColor: theme.accent }]} />
-                )}
-                <View style={[styles.themeIllustration, { backgroundColor: theme.accent }]}>
-                  <ThemeIcon color="#06111d" name={theme.themeIcon} size={18} strokeWidth={2.5} />
-                </View>
-                <Text numberOfLines={1} style={styles.themeMiniName}>{theme.name}</Text>
-                <View style={styles.themeMiniFooter}>
-                  <Text style={styles.themeMiniCount}>{theme.count} faits</Text>
-                  <View style={styles.themeTrack}>
-                    <View
-                      style={[
-                        styles.themeFill,
-                        {
-                          backgroundColor: theme.accent,
-                          width: `${Math.max(18, Math.round((theme.count / maxCount) * 100))}%`,
-                        },
-                      ]}
-                    />
-                  </View>
-                </View>
-              </View>
-            ))}
+      <View style={styles.weekDots}>
+        {days.map((day, index) => (
+          <View key={day.date} style={styles.weekDay}>
+            <View style={[styles.weekDot, day.completed && styles.weekDotDone]}>
+              <Text style={[styles.weekDotText, day.completed && styles.weekDotTextDone]}>
+                {labels[index]}
+              </Text>
+            </View>
+            <Text style={styles.weekDayCount}>{day.completed ? "OK" : day.count > 0 ? day.count : "-"}</Text>
           </View>
-        ) : (
-          <Text style={styles.emptyInline}>Lis quelques faits pour faire émerger tes thèmes.</Text>
-        )}
+        ))}
       </View>
     </View>
   );
 }
 
-function ProfileFactSection({
-  empty,
-  facts,
-  Icon,
-  title,
-}: {
-  empty: string;
-  facts: ProfileSummary["likedFacts"];
-  Icon: typeof Heart;
-  title: string;
-}) {
-  return (
-    <View style={styles.sectionBlock}>
-      <View style={styles.sectionHeader}>
-        <Icon color={ds.color.goal} size={18} strokeWidth={2.3} />
-        <Text style={styles.sectionTitle}>{title}</Text>
-      </View>
-      <View style={styles.profileSection}>
-        {facts.length > 0 ? (
-          <View style={styles.factPreviewList}>
-            {facts.slice(0, 4).map((fact) => (
-              <View key={fact.id} style={styles.factPreview}>
-                <Text numberOfLines={1} style={[styles.factCategory, { color: fact.accent }]}>
-                  {fact.category}
-                </Text>
-                <Text numberOfLines={2} style={styles.factTitle}>
-                  {fact.title}
-                </Text>
-              </View>
-            ))}
-          </View>
-        ) : (
-          <Text style={styles.emptyInline}>{empty}</Text>
-        )}
-      </View>
-    </View>
-  );
+function getInitial(value: string) {
+  return value.trim().charAt(0).toUpperCase() || "G";
+}
+
+function getFallbackWeekDays(): ProfileSummary["weeklyGoalDays"] {
+  return Array.from({ length: 7 }, (_, dayIndex) => ({
+    completed: false,
+    count: 0,
+    date: `fallback-${dayIndex}`,
+    dayIndex,
+  }));
 }
 
 const styles = StyleSheet.create({
-  backButton: {
+  avatar: {
     alignItems: "center",
-    alignSelf: "flex-start",
-    backgroundColor: "rgba(255,255,255,0.07)",
-    borderColor: colors.border,
-    borderRadius: 999,
+    backgroundColor: withAlpha(appTheme.color.teal, 0.14),
+    borderColor: withAlpha(appTheme.color.teal, 0.22),
+    borderRadius: 24,
     borderWidth: 1,
-    flexDirection: "row",
-    gap: 6,
-    minHeight: 42,
-    paddingHorizontal: 13,
+    height: 62,
+    justifyContent: "center",
+    width: 62,
   },
-  backText: {
-    color: colors.text,
-    fontSize: 13,
-    fontWeight: mobileDesign.weight.semibold,
+  avatarText: {
+    color: appTheme.color.teal,
+    fontSize: 24,
+    fontWeight: appTheme.weight.bold,
   },
-  content: {
-    gap: ds.space.sm,
-    padding: ds.space.gutter,
-    paddingBottom: 30,
+  disabled: {
+    opacity: 0.56,
   },
   editButton: {
     alignItems: "center",
-    backgroundColor: "rgba(255,255,255,0.10)",
-    borderColor: ds.color.stroke,
-    borderRadius: ds.radius.control,
+    backgroundColor: "rgba(255,255,255,0.72)",
+    borderColor: appTheme.color.border,
+    borderRadius: appTheme.radius.pill,
     borderWidth: 1,
-    height: 44,
+    height: 40,
     justifyContent: "center",
     position: "absolute",
-    right: 16,
-    top: 16,
-    width: 44,
-  },
-  editContent: {
-    gap: 16,
-    paddingBottom: 30,
-    paddingHorizontal: 18,
-  },
-  dailyCount: {
-    color: ds.color.text,
-    fontSize: 31,
-    fontWeight: ds.weight.bold,
-    lineHeight: 34,
-    marginTop: 5,
-  },
-  dailyHero: {
-    alignItems: "center",
-    borderColor: "rgba(255,255,255,0.12)",
-    borderRadius: ds.radius.sheet,
-    borderWidth: 1,
-    flexDirection: "row",
-    gap: ds.space.md,
-    minHeight: 148,
-    overflow: "hidden",
-    padding: ds.space.md,
-    ...ds.shadow.soft,
-  },
-  dailyTextBlock: {
-    flex: 1,
-    minWidth: 0,
-  },
-  dashboardPanel: {
-    backgroundColor: ds.color.card,
-    borderColor: ds.color.stroke,
-    borderRadius: ds.radius.card,
-    borderWidth: 1,
-    gap: 12,
-    padding: 14,
-  },
-  editTitle: {
-    color: colors.text,
-    fontSize: 28,
-    fontWeight: mobileDesign.weight.bold,
-    lineHeight: 32,
+    right: 14,
+    top: 14,
+    width: 40,
   },
   email: {
-    color: "rgba(248,250,252,0.46)",
-    flex: 1,
+    color: appTheme.color.muted,
     fontSize: 13,
-    fontWeight: mobileDesign.weight.medium,
-  },
-  emailRow: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: 7,
-    marginTop: 8,
-    minWidth: 0,
-  },
-  error: {
-    color: colors.danger,
-    fontSize: 14,
-    fontWeight: mobileDesign.weight.semibold,
-    lineHeight: 20,
-  },
-  emptyInline: {
-    color: ds.color.muted,
-    fontSize: 14,
-    fontWeight: mobileDesign.weight.medium,
-    lineHeight: 21,
-  },
-  eyebrow: {
-    color: ds.color.action,
-    fontSize: ds.typography.small,
-    fontWeight: ds.weight.bold,
-    textTransform: "uppercase",
-  },
-  fieldError: {
-    alignItems: "center",
-    backgroundColor: "rgba(255,122,144,0.10)",
-    borderColor: "rgba(255,122,144,0.18)",
-    borderRadius: 14,
-    borderWidth: 1,
-    flexDirection: "row",
-    gap: 8,
-    padding: 11,
-  },
-  fieldErrorText: {
-    color: "#ffd7de",
-    flex: 1,
-    fontSize: 12,
-    fontWeight: mobileDesign.weight.medium,
-    lineHeight: 17,
-  },
-  factCategory: {
-    fontSize: 11,
-    fontWeight: mobileDesign.weight.semibold,
-    textTransform: "uppercase",
-  },
-  factPreview: {
-    borderBottomColor: "rgba(255,255,255,0.10)",
-    borderBottomWidth: 1,
-    gap: 7,
-    paddingVertical: 13,
-  },
-  factPreviewList: {
-    gap: 2,
-  },
-  factTitle: {
-    color: colors.text,
-    fontSize: 16,
-    fontWeight: mobileDesign.weight.semibold,
-    lineHeight: 21,
-  },
-  formLabel: {
-    color: "rgba(248,250,252,0.72)",
-    fontSize: 13,
-    fontWeight: mobileDesign.weight.semibold,
-  },
-  formPanel: {
-    backgroundColor: "rgba(255,255,255,0.045)",
-    borderBottomColor: "rgba(255,255,255,0.12)",
-    borderBottomWidth: 1,
-    gap: 12,
-    paddingVertical: 18,
-  },
-  gradeRing: {
-    alignItems: "center",
-    backgroundColor: "rgba(5,8,18,0.42)",
-    borderColor: "rgba(255,209,102,0.28)",
-    borderRadius: 16,
-    borderWidth: 1,
-    height: 50,
-    justifyContent: "center",
-    width: 50,
-  },
-  header: {
-    borderColor: ds.color.stroke,
-    borderRadius: ds.radius.sheet,
-    borderWidth: 1,
-    gap: ds.space.md,
-    minHeight: 164,
-    overflow: "hidden",
-    padding: ds.space.md,
-    paddingRight: 62,
-    ...ds.shadow.soft,
-  },
-  headerIdentity: {
-    flex: 1,
-    minWidth: 0,
-  },
-  headerTop: {
-    flexDirection: "row",
-    gap: 14,
-    justifyContent: "space-between",
-  },
-  gradeBadgeMini: {
-    alignItems: "center",
-    backgroundColor: "rgba(5,8,18,0.42)",
-    borderColor: "rgba(255,255,255,0.12)",
-    borderRadius: 12,
-    borderWidth: 1,
-    height: 34,
-    justifyContent: "center",
-    width: 34,
-  },
-  gradeLine: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: 8,
-    marginTop: 8,
-  },
-  input: {
-    backgroundColor: "rgba(255,255,255,0.08)",
-    borderColor: colors.border,
-    borderRadius: 16,
-    borderWidth: 1,
-    color: colors.text,
-    fontSize: 16,
-    fontWeight: mobileDesign.weight.semibold,
-    minHeight: 54,
-    paddingHorizontal: 16,
-  },
-  learningGoalDescription: {
-    color: "rgba(248,250,252,0.50)",
-    fontSize: 12,
-    fontWeight: mobileDesign.weight.medium,
-    lineHeight: 17,
-    marginTop: 4,
-  },
-  learningGoalLabel: {
-    color: colors.text,
-    fontSize: 14,
-    fontWeight: mobileDesign.weight.semibold,
-  },
-  learningGoalList: {
-    gap: 9,
-  },
-  learningGoalOption: {
-    backgroundColor: "rgba(255,255,255,0.065)",
-    borderColor: "rgba(255,255,255,0.11)",
-    borderRadius: 16,
-    borderWidth: 1,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-  },
-  learningGoalOptionSelected: {
-    backgroundColor: "rgba(244,234,213,0.12)",
-    borderColor: "rgba(244,234,213,0.34)",
-  },
-  panelHint: {
-    color: ds.color.muted,
-    fontSize: 12,
-    fontWeight: ds.weight.medium,
+    fontWeight: appTheme.weight.medium,
     marginTop: 3,
   },
-  panelLabel: {
-    color: ds.color.text,
-    fontSize: 14,
-    fontWeight: ds.weight.semibold,
+  formCard: {
+    backgroundColor: appTheme.color.card,
+    borderColor: appTheme.color.border,
+    borderRadius: appTheme.radius.card,
+    borderWidth: 1,
+    gap: 10,
+    padding: 16,
+    ...appTheme.shadow.card,
   },
-  panelValue: {
-    color: ds.color.text,
-    fontSize: 15,
-    fontWeight: ds.weight.semibold,
+  formMessage: {
+    color: appTheme.color.danger,
+    fontSize: 13,
+    fontWeight: appTheme.weight.semibold,
+    lineHeight: 18,
   },
-  progressFill: {
-    backgroundColor: ds.color.progress,
-    borderRadius: 999,
-    height: "100%",
+  goalBubble: {
+    alignItems: "center",
+    backgroundColor: withAlpha(appTheme.color.green, 0.13),
+    borderRadius: appTheme.radius.pill,
+    height: 52,
+    justifyContent: "center",
+    width: 52,
   },
-  progressHeader: {
+  goalBubbleText: {
+    color: appTheme.color.green,
+    fontSize: 16,
+    fontWeight: appTheme.weight.bold,
+  },
+  goalCard: {
+    backgroundColor: appTheme.color.card,
+    borderColor: appTheme.color.border,
+    borderRadius: appTheme.radius.card,
+    borderWidth: 1,
+    padding: 16,
+    ...appTheme.shadow.card,
+  },
+  goalHeader: {
     alignItems: "center",
     flexDirection: "row",
     justifyContent: "space-between",
   },
-  progressPanel: {
-    backgroundColor: "rgba(255,255,255,0.06)",
-    borderColor: "rgba(255,255,255,0.12)",
-    borderRadius: 24,
+  goalMeta: {
+    color: appTheme.color.muted,
+    fontSize: 13,
+    fontWeight: appTheme.weight.medium,
+    marginTop: 4,
+  },
+  goalText: {
+    color: appTheme.color.muted,
+    flex: 1,
+    fontSize: 13,
+    fontWeight: appTheme.weight.medium,
+    textAlign: "right",
+  },
+  gradePill: {
+    alignItems: "center",
+    backgroundColor: withAlpha(appTheme.color.yellow, 0.14),
+    borderRadius: appTheme.radius.pill,
+    flexDirection: "row",
+    gap: 7,
+    maxWidth: "55%",
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
+  gradeRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 10,
+    justifyContent: "space-between",
+    marginTop: 18,
+  },
+  gradeText: {
+    color: appTheme.color.ink,
+    flexShrink: 1,
+    fontSize: 13,
+    fontWeight: appTheme.weight.semibold,
+  },
+  header: {
+    gap: 3,
+    paddingTop: 8,
+  },
+  headerCard: {
+    backgroundColor: appTheme.color.cardSoft,
+    borderColor: appTheme.color.border,
+    borderRadius: appTheme.radius.card,
     borderWidth: 1,
-    paddingHorizontal: 18,
-    paddingVertical: 18,
-  },
-  progressTrack: {
-    backgroundColor: "rgba(255,255,255,0.10)",
-    borderRadius: 999,
-    height: 8,
-    marginTop: 11,
     overflow: "hidden",
+    padding: 16,
+    paddingRight: 62,
+    ...appTheme.shadow.card,
   },
-  gradeProgressBlock: {
-    backgroundColor: "rgba(5,8,18,0.24)",
-    borderColor: ds.color.stroke,
-    borderRadius: 18,
+  identityCopy: {
+    flex: 1,
+    minWidth: 0,
+  },
+  identityRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 14,
+  },
+  input: {
+    backgroundColor: appTheme.color.background,
+    borderColor: appTheme.color.border,
+    borderRadius: appTheme.radius.control,
+    borderWidth: 1,
+    color: appTheme.color.ink,
+    fontSize: 15,
+    fontWeight: appTheme.weight.semibold,
+    minHeight: 52,
+    paddingHorizontal: 14,
+  },
+  inputLabel: {
+    color: appTheme.color.ink,
+    fontSize: 13,
+    fontWeight: appTheme.weight.semibold,
+  },
+  keyboard: {
+    flex: 1,
+  },
+  kicker: {
+    color: appTheme.color.teal,
+    fontSize: 12,
+    fontWeight: appTheme.weight.bold,
+    textTransform: "uppercase",
+  },
+  name: {
+    color: appTheme.color.ink,
+    fontSize: 23,
+    fontWeight: appTheme.weight.bold,
+    lineHeight: 27,
+    marginTop: 2,
+  },
+  notice: {
+    backgroundColor: withAlpha(appTheme.color.danger, 0.1),
+    borderColor: withAlpha(appTheme.color.danger, 0.18),
+    borderRadius: appTheme.radius.control,
     borderWidth: 1,
     padding: 13,
   },
-  metaGrid: {
-    gap: 9,
-  },
-  metricLabel: {
-    color: ds.color.muted,
-    fontSize: 11,
-    fontWeight: ds.weight.medium,
-    marginTop: 5,
-  },
-  metricPill: {
-    backgroundColor: ds.color.card,
-    borderColor: ds.color.stroke,
-    borderRadius: ds.radius.card,
-    borderWidth: 1,
-    flexGrow: 1,
-    flexShrink: 1,
-    minHeight: 86,
-    minWidth: "47%",
-    padding: 12,
-  },
-  metricGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: ds.space.sm,
-  },
-  metricIcon: {
-    alignItems: "center",
-    borderRadius: 12,
-    height: 30,
-    justifyContent: "center",
-    marginBottom: 8,
-    width: 30,
-  },
-  metricValue: {
-    color: ds.color.text,
-    fontSize: 21,
-    fontWeight: ds.weight.bold,
-  },
-  metaItem: {
-    alignItems: "center",
-    backgroundColor: "rgba(5,8,18,0.24)",
-    borderColor: "rgba(255,255,255,0.09)",
-    borderRadius: 17,
-    borderWidth: 1,
-    flexDirection: "row",
-    gap: 10,
-    minHeight: 54,
-    paddingHorizontal: 13,
-  },
-  metaLabel: {
-    color: "rgba(248,250,252,0.40)",
-    fontSize: 10,
-    fontWeight: mobileDesign.weight.semibold,
-    textTransform: "uppercase",
-  },
-  metaTextBlock: {
-    flex: 1,
-    minWidth: 0,
-  },
-  metaValue: {
-    color: colors.text,
+  noticeText: {
+    color: appTheme.color.danger,
     fontSize: 13,
-    fontWeight: mobileDesign.weight.semibold,
-    marginTop: 2,
-  },
-  rankCard: {
-    alignItems: "center",
-    backgroundColor: "rgba(255,209,102,0.10)",
-    borderColor: "rgba(255,209,102,0.20)",
-    borderRadius: 21,
-    borderWidth: 1,
-    flexDirection: "row",
-    gap: 11,
-    maxWidth: 156,
-    minHeight: 78,
-    padding: 11,
-  },
-  rankLabel: {
-    color: "rgba(255,209,102,0.72)",
-    fontSize: 10,
-    fontWeight: mobileDesign.weight.semibold,
-    textTransform: "uppercase",
-  },
-  rankTextBlock: {
-    flex: 1,
-    minWidth: 0,
-  },
-  rankTitle: {
-    color: ds.color.text,
-    flex: 1,
-    fontSize: 14,
-    fontWeight: ds.weight.semibold,
+    fontWeight: appTheme.weight.semibold,
     lineHeight: 18,
   },
-  replayButton: {
+  panelCopy: {
+    flex: 1,
+    minWidth: 0,
+  },
+  panelIcon: {
+    alignItems: "center",
+    backgroundColor: withAlpha(appTheme.color.green, 0.13),
+    borderRadius: 16,
+    height: 42,
+    justifyContent: "center",
+    width: 42,
+  },
+  panelText: {
+    color: appTheme.color.muted,
+    fontSize: 13,
+    fontWeight: appTheme.weight.medium,
+    lineHeight: 19,
+    marginTop: 3,
+  },
+  panelTitle: {
+    color: appTheme.color.ink,
+    fontSize: 16,
+    fontWeight: appTheme.weight.bold,
+  },
+  pressed: {
+    opacity: 0.72,
+    transform: [{ scale: 0.985 }],
+  },
+  primaryButton: {
+    alignItems: "center",
+    backgroundColor: appTheme.color.ink,
+    borderRadius: appTheme.radius.control,
+    justifyContent: "center",
+    minHeight: 52,
+  },
+  primaryButtonText: {
+    color: "#ffffff",
+    fontSize: 15,
+    fontWeight: appTheme.weight.bold,
+  },
+  progressFill: {
+    backgroundColor: appTheme.color.green,
+    borderRadius: appTheme.radius.pill,
+    height: "100%",
+  },
+  progressTrack: {
+    backgroundColor: withAlpha(appTheme.color.green, 0.13),
+    borderRadius: appTheme.radius.pill,
+    height: 8,
+    marginTop: 15,
+    overflow: "hidden",
+  },
+  secondaryButton: {
+    alignItems: "center",
+    borderColor: appTheme.color.border,
+    borderRadius: appTheme.radius.control,
+    borderWidth: 1,
+    justifyContent: "center",
+    minHeight: 50,
+  },
+  secondaryButtonText: {
+    color: appTheme.color.ink,
+    fontSize: 15,
+    fontWeight: appTheme.weight.semibold,
+  },
+  sectionTitle: {
+    color: appTheme.color.ink,
+    fontSize: 17,
+    fontWeight: appTheme.weight.bold,
+  },
+  signOutButton: {
     alignItems: "center",
     alignSelf: "flex-start",
     flexDirection: "row",
     gap: 8,
-    marginTop: 16,
+    minHeight: 44,
+    paddingHorizontal: 2,
   },
-  replayText: {
-    color: ds.color.orange,
-    fontSize: 13,
-    fontWeight: mobileDesign.weight.semibold,
+  signOutText: {
+    color: appTheme.color.danger,
+    fontSize: 14,
+    fontWeight: appTheme.weight.bold,
   },
-  root: {
-    backgroundColor: colors.background,
-    flex: 1,
-  },
-  ringValue: {
-    color: ds.color.text,
-    fontSize: 22,
-    fontWeight: ds.weight.bold,
-    position: "absolute",
-  },
-  ringWrap: {
-    alignItems: "center",
-    height: 116,
-    justifyContent: "center",
-    width: 116,
-  },
-  glowBottom: {
-    backgroundColor: "rgba(106,227,192,0.12)",
-    borderRadius: 999,
-    bottom: -120,
-    height: 260,
-    left: -105,
-    position: "absolute",
-    width: 260,
-  },
-  glowTop: {
-    backgroundColor: "rgba(167,139,250,0.18)",
-    borderRadius: 999,
-    height: 280,
-    position: "absolute",
-    right: -115,
-    top: -90,
-    width: 280,
-  },
-  profileSection: {
-    backgroundColor: ds.color.card,
-    borderColor: ds.color.stroke,
-    borderRadius: ds.radius.card,
-    borderWidth: 1,
-    gap: 14,
-    paddingHorizontal: ds.space.md,
-    paddingVertical: ds.space.md,
-  },
-  pressed: {
-    opacity: 0.84,
-    transform: [{ scale: 0.985 }],
-  },
-  profileHeroRow: {
-    alignItems: "center",
+  statsGrid: {
     flexDirection: "row",
-    gap: ds.space.md,
-  },
-  robotAvatar: {
-    alignItems: "center",
-    backgroundColor: "rgba(167,139,250,0.22)",
-    borderColor: ds.color.progress,
-    borderRadius: 26,
-    borderWidth: 2,
-    height: ds.size.profileAvatar,
-    justifyContent: "center",
-    overflow: "hidden",
-    width: ds.size.profileAvatar,
-  },
-  robotGlow: {
-    backgroundColor: "rgba(106,227,192,0.24)",
-    borderRadius: ds.radius.full,
-    height: 80,
-    position: "absolute",
-    right: -32,
-    top: -30,
-    width: 80,
-  },
-  sectionHeader: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: 9,
-  },
-  sectionBlock: {
-    gap: ds.space.sm,
-  },
-  sectionTitle: {
-    color: ds.color.text,
-    fontSize: ds.typography.section,
-    fontWeight: ds.weight.semibold,
-  },
-  settingsBlock: {
-    gap: 8,
-    opacity: 0.82,
-    paddingTop: 2,
-  },
-  streakLine: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: ds.space.xs,
-    marginTop: ds.space.xs,
-  },
-  streakLineText: {
-    color: ds.color.orange,
-    fontSize: ds.typography.caption,
-    fontWeight: ds.weight.semibold,
-  },
-  success: {
-    alignItems: "center",
-    backgroundColor: "rgba(106,227,192,0.10)",
-    borderColor: "rgba(106,227,192,0.20)",
-    borderRadius: 16,
-    borderWidth: 1,
-    flexDirection: "row",
-    gap: 9,
-    padding: 13,
-  },
-  successText: {
-    color: "#c8ffee",
-    flex: 1,
-    fontSize: 13,
-    fontWeight: mobileDesign.weight.semibold,
-  },
-  themeCount: {
-    backgroundColor: "rgba(255,255,255,0.07)",
-    borderRadius: 999,
-    color: "rgba(248,250,252,0.70)",
-    fontSize: 12,
-    fontWeight: "900",
-    minWidth: 24,
-    paddingHorizontal: 9,
-    paddingVertical: 4,
-    textAlign: "right",
-  },
-  themeDot: {
-    borderRadius: 999,
-    height: 9,
-    width: 9,
-  },
-  themeFill: {
-    borderRadius: 999,
-    height: "100%",
-  },
-  themeAura: {
-    borderRadius: 999,
-    height: 70,
-    opacity: 0.30,
-    position: "absolute",
-    right: -18,
-    top: -22,
-    width: 70,
-  },
-  themeGrid: {
+    flexWrap: "wrap",
     gap: 10,
   },
-  themeIllustration: {
-    alignItems: "center",
-    borderRadius: 16,
-    height: 34,
-    justifyContent: "center",
-    marginBottom: 12,
-    width: 34,
-  },
-  themeImage: {
-    bottom: 0,
-    left: 0,
-    opacity: 0.36,
-    position: "absolute",
-    right: 0,
-    top: 0,
-  },
-  themeImageScrim: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(7,17,29,0.42)",
-  },
-  themeList: {
-    gap: 12,
-  },
-  themeMiniCard: {
-    backgroundColor: "rgba(5,8,18,0.28)",
-    borderRadius: 18,
-    borderWidth: 1,
-    minHeight: 92,
-    overflow: "hidden",
-    padding: 14,
-  },
-  themeMiniCount: {
-    color: "rgba(248,250,252,0.52)",
-    fontSize: 12,
-    fontWeight: mobileDesign.weight.medium,
-  },
-  themeMiniFooter: {
-    gap: 9,
-    marginTop: "auto",
-  },
-  themeMiniName: {
-    color: ds.color.text,
-    fontSize: 16,
-    fontWeight: mobileDesign.weight.semibold,
-    lineHeight: 20,
-    maxWidth: "78%",
-  },
-  themeName: {
-    color: colors.text,
-    flex: 1,
-    fontSize: 14,
-    fontWeight: mobileDesign.weight.semibold,
-  },
-  themeRow: {
-    alignItems: "center",
-    backgroundColor: "rgba(5,8,18,0.18)",
-    borderColor: "rgba(255,255,255,0.08)",
-    borderRadius: 16,
-    borderWidth: 1,
-    flexDirection: "row",
-    gap: 12,
-    justifyContent: "space-between",
-    minHeight: 54,
-    paddingHorizontal: 13,
-  },
-  themeTextRow: {
+  weekDay: {
     alignItems: "center",
     flex: 1,
-    flexDirection: "row",
-    gap: 8,
-    minWidth: 0,
+    gap: 6,
   },
-  themeTrack: {
-    backgroundColor: "rgba(255,255,255,0.10)",
-    borderRadius: 999,
-    flex: 1,
-    height: 7,
-    overflow: "hidden",
-  },
-  title: {
-    color: ds.color.text,
-    fontSize: 25,
-    fontWeight: ds.weight.bold,
-    lineHeight: 29,
-    marginTop: 4,
-  },
-  levelText: {
-    color: ds.color.muted,
-    fontSize: 12,
-    fontWeight: ds.weight.medium,
-    marginTop: 5,
-  },
-  memoryArrow: {
-    alignItems: "center",
-    backgroundColor: ds.color.action,
-    borderRadius: ds.radius.full,
-    height: 38,
-    justifyContent: "center",
-    width: 38,
-  },
-  memoryGradient: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: ds.space.sm,
-    minHeight: 82,
-    padding: ds.space.md,
-  },
-  memoryIcon: {
-    alignItems: "center",
-    backgroundColor: "rgba(255,255,255,0.12)",
-    borderRadius: 18,
-    height: 48,
-    justifyContent: "center",
-    width: 48,
-  },
-  memoryMeta: {
-    color: ds.color.muted,
-    fontSize: 12,
-    fontWeight: ds.weight.medium,
-    marginTop: 3,
-  },
-  memoryPanel: {
-    borderRadius: ds.radius.card,
-    overflow: "hidden",
-  },
-  memoryTextBlock: {
-    flex: 1,
-    minWidth: 0,
-  },
-  memoryTitle: {
-    color: ds.color.text,
-    fontSize: 17,
-    fontWeight: ds.weight.bold,
+  weekDayCount: {
+    color: appTheme.color.muted,
+    fontSize: 10,
+    fontWeight: appTheme.weight.semibold,
   },
   weekDot: {
     alignItems: "center",
-    backgroundColor: "rgba(5,8,18,0.28)",
-    borderColor: "rgba(255,255,255,0.10)",
-    borderRadius: ds.radius.full,
+    backgroundColor: appTheme.color.background,
+    borderColor: appTheme.color.border,
+    borderRadius: appTheme.radius.pill,
     borderWidth: 1,
-    height: 24,
+    height: 32,
     justifyContent: "center",
-    width: 24,
+    width: 32,
   },
-  weekDotActive: {
-    backgroundColor: ds.color.goal,
-    borderColor: "rgba(255,209,102,0.64)",
+  weekDotDone: {
+    backgroundColor: appTheme.color.green,
+    borderColor: withAlpha(appTheme.color.green, 0.52),
   },
-  weekDotToday: {
-    borderColor: ds.color.goal,
+  weekDotText: {
+    color: appTheme.color.muted,
+    fontSize: 12,
+    fontWeight: appTheme.weight.bold,
   },
-  weekLabel: {
-    color: ds.color.muted,
-    fontSize: 10,
-    fontWeight: ds.weight.semibold,
+  weekDotTextDone: {
+    color: "#ffffff",
   },
-  weekLabelActive: {
-    color: "#06111d",
-  },
-  weekLabelToday: {
-    color: ds.color.goal,
-  },
-  weekRow: {
+  weekDots: {
     flexDirection: "row",
-    gap: 5,
-    marginTop: 11,
+    gap: 7,
+    marginTop: 14,
+  },
+  weekHeader: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 12,
+  },
+  weekPanel: {
+    backgroundColor: withAlpha(appTheme.color.green, 0.08),
+    borderColor: withAlpha(appTheme.color.green, 0.18),
+    borderRadius: appTheme.radius.card,
+    borderWidth: 1,
+    padding: 14,
+  },
+  title: {
+    color: appTheme.color.ink,
+    fontSize: 24,
+    fontWeight: appTheme.weight.bold,
+    lineHeight: 29,
   },
 });

@@ -105,14 +105,23 @@ export default function Navbar({ fixed = false }: NavbarProps) {
     <div className="hidden items-center gap-2 sm:flex">
       <Link
         href="/profil"
-        className="flex max-w-[190px] items-center gap-2 rounded-md px-3 py-2 text-sm font-bold text-white transition hover:bg-white/5"
+        className="flex max-w-[230px] items-center gap-2 rounded-full border border-white/10 bg-white/[0.045] px-3 py-2 text-sm font-bold text-white shadow-[0_12px_36px_rgba(0,0,0,0.14)] backdrop-blur-xl transition hover:border-white/18 hover:bg-white/[0.07]"
         title={profile?.gradeName ?? undefined}
       >
-        <span className="truncate">{displayName ?? "Profil"}</span>
         <GradeIcon
           badge={profile?.gradeBadge}
           className="h-4 w-4 shrink-0 text-[#ffd166]"
         />
+        <span className="min-w-0">
+          <span className="block truncate leading-4">
+            {displayName ?? "Profil"}
+          </span>
+          {profile?.gradeName ? (
+            <span className="block truncate text-[10px] font-black uppercase tracking-[0.16em] text-[#ffd166]/78">
+              {profile.gradeName}
+            </span>
+          ) : null}
+        </span>
       </Link>
       <button
         type="button"
@@ -226,7 +235,14 @@ export default function Navbar({ fixed = false }: NavbarProps) {
                           badge={profile?.gradeBadge}
                           className="h-5 w-5 shrink-0 text-[#ffd166]"
                         />
-                        <span>{displayName ?? "Profil"}</span>
+                        <span className="min-w-0">
+                          <span className="block truncate">{displayName ?? "Profil"}</span>
+                          {profile?.gradeName ? (
+                            <span className="block text-xs font-black uppercase tracking-[0.16em] text-[#ffd166]/78">
+                              {profile.gradeName}
+                            </span>
+                          ) : null}
+                        </span>
                       </Link>
                       <button
                         type="button"

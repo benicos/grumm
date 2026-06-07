@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { CalendarDays } from "lucide-react";
 import {
   buildDefaultMetadata,
   buildThemeJsonLd,
@@ -8,10 +9,8 @@ import {
 import Footer from "../components/Footer";
 import HeroBackground from "../components/HeroBackground";
 import Navbar from "../components/Navbar";
-import {
-  premiumPrimaryCtaClassName,
-  premiumTitleGradientClassName,
-} from "../components/buttonStyles";
+import PageHero from "../components/PageHero";
+import { premiumPrimaryCtaClassName } from "../components/buttonStyles";
 
 export const metadata: Metadata = buildDefaultMetadata({
   canonicalPath: "/aujourdhui",
@@ -48,25 +47,21 @@ export default async function TodayPage() {
       />
       <HeroBackground />
       <Navbar />
-      <main className="relative z-10 mx-auto max-w-[1180px] px-5 pb-24 pt-16 lg:px-8">
-        <section className="max-w-3xl">
-          <p className="text-sm font-bold uppercase tracking-[0.18em] text-[#ffe4a1]/80">
-            {todayLabel}
-          </p>
-          <h1 className={`${premiumTitleGradientClassName} mt-5 text-[clamp(3rem,7vw,5.8rem)] font-extrabold leading-[0.95]`}>
-            Aujourd’hui dans la culture.
-          </h1>
-          <p className="mt-6 max-w-2xl text-lg leading-8 text-white/68">
-            Une sélection liée à la date du jour quand elle existe, complétée
-            par des faits récents pour garder une porte ouverte vers la
-            découverte.
-          </p>
-          <Link href="/decouvrir" className={`${premiumPrimaryCtaClassName} mt-8 inline-flex`}>
+      <main className="relative z-10 mx-auto min-h-[calc(100vh-92px)] w-full max-w-[1120px] px-5 py-12 sm:px-6 lg:px-8">
+        <PageHero
+          Icon={CalendarDays}
+          eyebrow={todayLabel}
+          title="Aujourd’hui dans la culture."
+          description="Événements, anniversaires et faits liés à la date du jour pour entrer dans la culture par le calendrier."
+        />
+
+        <div className="mx-auto flex justify-center">
+          <Link href="/decouvrir" className={`${premiumPrimaryCtaClassName} inline-flex`}>
             Découvrir le flux
           </Link>
-        </section>
+        </div>
 
-        <section className="mt-16 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <section className="mx-auto mt-10 grid w-full max-w-5xl gap-4 md:grid-cols-2 lg:grid-cols-3">
           {facts.map((fact) => (
             <Link
               key={fact.id}

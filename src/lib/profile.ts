@@ -113,6 +113,7 @@ export type UserProfileSummary = {
   uniqueViewsCount: number;
   completedDailyGoals: number;
   currentStreakDays: number;
+  weeklyDailyProgress: WeeklyDailyProgressDay[];
   grades: GradeDefinition[];
   todayReadCount: number;
   likedFacts: FeedFact[];
@@ -120,6 +121,14 @@ export type UserProfileSummary = {
   topThemes: ThemeViewStat[];
   exploredThemeCount: number;
   memoryStats: MemoryStats;
+};
+
+export type WeeklyDailyProgressDay = {
+  date: string;
+  label: string;
+  readCount: number;
+  goal: number;
+  status: "completed" | "current" | "missed" | "pending";
 };
 
 export type ProfileField =
@@ -153,6 +162,12 @@ function getCurrentDailyGoalStreak(
       .map((row) => row.progress_date),
   );
   const cursor = new Date();
+  const today = todayKey();
+
+  if (!completedDates.has(today)) {
+    cursor.setDate(cursor.getDate() - 1);
+  }
+
   let streak = 0;
 
   while (true) {
@@ -167,6 +182,58 @@ function getCurrentDailyGoalStreak(
   }
 
   return streak;
+}
+
+function dateKey(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
+
+function buildWeeklyDailyProgress(
+  rows: {
+    daily_goal?: number | null;
+    facts_read_count?: number | null;
+    goal_completed: boolean;
+    progress_date: string;
+  }[],
+  fallbackDailyGoal: number,
+): WeeklyDailyProgressDay[] {
+  const labels = ["L", "M", "M", "J", "V", "S", "D"];
+  const today = new Date();
+  const todayDateKey = dateKey(today);
+  const monday = new Date(today);
+  const dayIndex = (today.getDay() + 6) % 7;
+  monday.setDate(today.getDate() - dayIndex);
+  const rowsByDate = new Map(rows.map((row) => [row.progress_date, row]));
+
+  return labels.map((label, index) => {
+    const date = new Date(monday);
+    date.setDate(monday.getDate() + index);
+    const key = dateKey(date);
+    const row = rowsByDate.get(key);
+    const readCount = row?.facts_read_count ?? 0;
+    const goal = row?.daily_goal ?? fallbackDailyGoal;
+    let status: WeeklyDailyProgressDay["status"] = "pending";
+
+    if (row?.goal_completed) {
+      status = "completed";
+    } else if (key === todayDateKey) {
+      status = "current";
+    } else if (key < todayDateKey) {
+      status = "missed";
+    }
+
+    return {
+      date: key,
+      goal,
+      label,
+      readCount,
+      status,
+    };
+  });
 }
 
 function mapRelatedFact(row: RelatedFactRow): FeedFact | null {
@@ -444,6 +511,7 @@ export async function getUserProfileSummary(): Promise<UserProfileSummary> {
       }));
   const today = todayKey();
   const todayRow = dailyRows.find((row) => row.progress_date === today);
+  const dailyGoal = profileResult.data?.daily_goal ?? dailyGoalConfig.defaultGoal;
   let memoryStats: MemoryStats = {
     averageScorePercent: null,
     bestStreakDays: 0,
@@ -468,7 +536,7 @@ export async function getUserProfileSummary(): Promise<UserProfileSummary> {
         : null),
     email: user.email ?? null,
     createdAt: profileResult.data?.created_at ?? user.created_at ?? null,
-    dailyGoal: profileResult.data?.daily_goal ?? dailyGoalConfig.defaultGoal,
+    dailyGoal,
     learningGoal: normalizeLearningGoal(profileResult.data?.learning_goal),
     role: (profileResult.data?.role ?? "membre") as UserRole,
     likedCount: likedFacts.length,
@@ -476,6 +544,7 @@ export async function getUserProfileSummary(): Promise<UserProfileSummary> {
     uniqueViewsCount: uniqueViews.size,
     completedDailyGoals: dailyRows.filter((row) => row.goal_completed).length,
     currentStreakDays: getCurrentDailyGoalStreak(dailyRows),
+    weeklyDailyProgress: buildWeeklyDailyProgress(dailyRows, dailyGoal),
     grades,
     todayReadCount: todayRow?.facts_read_count ?? 0,
     likedFacts,

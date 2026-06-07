@@ -1,17 +1,26 @@
-﻿import * as Haptics from "expo-haptics";
-import { LinearGradient } from "expo-linear-gradient";
-import { Brain, Bolt, ChevronRight, Flame, Play, RotateCcw, Target, Trophy, type LucideIcon } from "lucide-react-native";
+import * as Haptics from "expo-haptics";
+import {
+  Brain,
+  CheckCircle2,
+  Clock3,
+  History,
+  RotateCcw,
+  Target,
+  Trophy,
+  XCircle,
+} from "lucide-react-native";
 import { useCallback, useEffect, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 
+import { AppScreen } from "../components/AppScreen";
 import { LoadingState } from "../components/ScreenState";
+import { ProfileStat } from "../components/ProfileStat";
+import { QuizCard } from "../components/QuizCard";
 import { useAuth } from "../context/AuthContext";
 import { getProfileSummary, getQuizStatsSummary } from "../lib/facts";
 import {
-  getQuickQuizQuestions,
   getMemoryChallengeQuestions,
-  getMistakeReviewQuestions,
+  getQuickQuizQuestions,
   getQuizResult,
   saveQuizResult,
   saveQuickQuizResult,
@@ -20,117 +29,64 @@ import {
   type MobileQuizResult,
   type MobileQuizType,
 } from "../lib/quiz";
-import { colors } from "../theme/colors";
-import { designTokens as ds } from "../theme/designTokens";
+import { appTheme, withAlpha } from "../theme/appTheme";
 import type { ProfileSummary, QuizStatsSummary } from "../types/domain";
-import { AuthScreen } from "./AuthScreen";
 
-export function QuizScreen({
-  memoryStartSignal = 0,
-  onMemoryStartHandled,
-}: {
-  memoryStartSignal?: number;
-  onMemoryStartHandled?: () => void;
-}) {
-  const insets = useSafeAreaInsets();
+export function QuizScreen() {
   const { isLoading: isAuthLoading, session } = useAuth();
   const [summary, setSummary] = useState<ProfileSummary | null>(null);
   const [quizStats, setQuizStats] = useState<QuizStatsSummary | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [questions, setQuestions] = useState<MobileQuizQuestion[]>([]);
-  const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<MobileQuizAnswer[]>([]);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [activeQuizType, setActiveQuizType] = useState<MobileQuizType>("general_quizz");
   const [result, setResult] = useState<MobileQuizResult | null>(null);
-  const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
-  const [modeHint, setModeHint] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
 
-  const loadHub = useCallback(async () => {
+  const loadHistory = useCallback(async () => {
     if (!session) {
+      setSummary(null);
+      setQuizStats(null);
       return;
     }
 
-    setIsLoading(true);
     const [nextSummary, nextQuizStats] = await Promise.all([
       getProfileSummary().catch(() => null),
       getQuizStatsSummary().catch(() => null),
     ]);
     setSummary(nextSummary);
     setQuizStats(nextQuizStats);
-    setIsLoading(false);
   }, [session]);
 
   useEffect(() => {
     const frame = requestAnimationFrame(() => {
-      void loadHub();
+      void loadHistory();
     });
 
     return () => cancelAnimationFrame(frame);
-  }, [loadHub]);
+  }, [loadHistory]);
 
-  useEffect(() => {
-    if (!session || memoryStartSignal === 0) {
-      return;
-    }
-
-    void selectMemoryMode();
-    onMemoryStartHandled?.();
-  }, [memoryStartSignal, onMemoryStartHandled, session]);
-
-  async function selectMemoryMode() {
+  async function startQuiz(type: MobileQuizType) {
     await Haptics.selectionAsync();
-    setModeHint(null);
+    setIsLoading(true);
+    setMessage(null);
     setResult(null);
-    setSelectedAnswer(null);
+    setQuestions([]);
     setAnswers([]);
     setCurrentIndex(0);
-    setActiveQuizType("memory_challenge");
-    setIsLoading(true);
-    try {
-      setQuestions(await getMemoryChallengeQuestions());
-    } catch (error) {
-      setModeHint(error instanceof Error ? error.message : "Défi indisponible.");
-    } finally {
-      setIsLoading(false);
-    }
-  }
-
-  async function startQuickQuiz() {
-    await Haptics.selectionAsync();
-    setModeHint(null);
-    setResult(null);
     setSelectedAnswer(null);
-    setAnswers([]);
-    setCurrentIndex(0);
-    setActiveQuizType("general_quizz");
-    setIsLoading(true);
-    try {
-      setQuestions(await getQuickQuizQuestions());
-    } catch (error) {
-      setModeHint(error instanceof Error ? error.message : "Quiz indisponible.");
-    } finally {
-      setIsLoading(false);
-    }
-  }
+    setActiveQuizType(type);
 
-  async function startMistakeReview() {
-    await Haptics.selectionAsync();
-    setModeHint(null);
-    setResult(null);
-    setSelectedAnswer(null);
-    setAnswers([]);
-    setCurrentIndex(0);
-    setActiveQuizType("general_quizz");
-    setIsLoading(true);
     try {
-      const mistakeQuestions = await getMistakeReviewQuestions();
-      if (mistakeQuestions.length === 0) {
-        setModeHint("Aucune erreur à revoir pour le moment.");
-        return;
-      }
-      setQuestions(mistakeQuestions);
+      const nextQuestions =
+        type === "memory_challenge"
+          ? await getMemoryChallengeQuestions()
+          : await getQuickQuizQuestions();
+      setQuestions(nextQuestions);
     } catch (error) {
-      setModeHint(error instanceof Error ? error.message : "Révision indisponible.");
+      setMessage(error instanceof Error ? error.message : "Quiz indisponible.");
     } finally {
       setIsLoading(false);
     }
@@ -150,6 +106,7 @@ export function QuizScreen({
       questionId: question.id,
       selectedAnswer: answer,
     };
+
     setSelectedAnswer(answer);
     setAnswers((current) => [...current, nextAnswer]);
     await Haptics.notificationAsync(
@@ -166,59 +123,64 @@ export function QuizScreen({
       return;
     }
 
-    const nextResult = activeQuizType === "general_quizz"
-      ? await saveQuickQuizResult(answers)
-      : await saveQuizResult(answers, activeQuizType);
+    const finalAnswers = answers;
+    const nextResult = session
+      ? activeQuizType === "general_quizz"
+        ? await saveQuickQuizResult(finalAnswers)
+        : await saveQuizResult(finalAnswers, activeQuizType)
+      : getQuizResult(finalAnswers);
+
+    setResult(nextResult ?? getQuizResult(finalAnswers));
     setQuestions([]);
     setSelectedAnswer(null);
-    setResult(nextResult ?? getQuizResult(answers));
-    setModeHint(null);
-    await loadHub();
+    await loadHistory();
   }
 
-  function resetQuizHub() {
+  function resetHub() {
+    setQuestions([]);
     setAnswers([]);
     setCurrentIndex(0);
-    setModeHint(null);
-    setQuestions([]);
-    setResult(null);
     setSelectedAnswer(null);
+    setResult(null);
+    setMessage(null);
   }
 
   if (isAuthLoading) {
-    return <LoadingState label="Ouverture du Quiz..." />;
+    return (
+      <AppScreen>
+        <LoadingState label="Ouverture du quiz..." />
+      </AppScreen>
+    );
   }
 
-  if (!session) {
-    return <AuthScreen />;
+  if (isLoading) {
+    return (
+      <AppScreen>
+        <LoadingState label="Préparation des questions..." />
+      </AppScreen>
+    );
   }
-
-  const bestScore = quizStats?.bestScore ?? null;
-  const sessionsCount = quizStats?.sessionsCount ?? 0;
-  const streak = summary?.streakCount ?? 0;
 
   if (result) {
     return (
-      <LinearGradient colors={ds.gradient.app} style={styles.root}>
-        <View style={[styles.content, styles.resultContent, { paddingTop: insets.top + ds.space.md }]}>
-          <View style={styles.resultBadge}>
-            <Trophy color={ds.color.goal} size={ds.icon.lg} strokeWidth={2.3} />
-          </View>
-          <Text style={styles.resultScore}>{result.scorePercent}%</Text>
-          <Text style={styles.resultTitle}>Session terminée</Text>
-          <Text style={styles.resultText}>
-            {result.correctAnswers}/{result.totalQuestions} bonnes réponses · série max {result.bestStreak}
-          </Text>
-          <View style={styles.resultActions}>
-            <Pressable onPress={() => void startQuickQuiz()} style={styles.resultPrimary}>
-              <Text style={styles.resultPrimaryText}>Recommencer</Text>
-            </Pressable>
-            <Pressable onPress={resetQuizHub} style={styles.resultSecondary}>
-              <Text style={styles.resultSecondaryText}>Retour Quiz</Text>
-            </Pressable>
-          </View>
+      <AppScreen contentStyle={styles.centered}>
+        <View style={styles.resultBadge}>
+          <Trophy color={appTheme.color.yellow} size={34} strokeWidth={2.25} />
         </View>
-      </LinearGradient>
+        <Text style={styles.resultScore}>{result.scorePercent}%</Text>
+        <Text style={styles.resultTitle}>Session terminée</Text>
+        <Text style={styles.resultText}>
+          {result.correctAnswers}/{result.totalQuestions} bonnes réponses
+        </Text>
+        <View style={styles.resultActions}>
+          <Pressable onPress={() => void startQuiz("general_quizz")} style={styles.primaryButton}>
+            <Text style={styles.primaryButtonText}>Recommencer</Text>
+          </Pressable>
+          <Pressable onPress={resetHub} style={styles.secondaryButton}>
+            <Text style={styles.secondaryButtonText}>Retour quiz</Text>
+          </Pressable>
+        </View>
+      </AppScreen>
     );
   }
 
@@ -227,681 +189,368 @@ export function QuizScreen({
     const selectedIsCorrect = selectedAnswer === question.correctAnswer;
 
     return (
-      <LinearGradient colors={ds.gradient.app} style={styles.root}>
-        <ScrollView
-          contentContainerStyle={[styles.content, { paddingTop: insets.top + ds.space.md }]}
-          showsVerticalScrollIndicator={false}
-        >
-          <Text style={styles.kicker}>Quiz rapide</Text>
-          <View style={styles.questionHeader}>
-            <Text style={styles.questionCounter}>
-              {currentIndex + 1}/{questions.length}
-            </Text>
-            <View style={styles.questionPill}>
-              <Target color={ds.color.goal} size={ds.icon.sm} strokeWidth={2.3} />
-              <Text style={styles.questionPillText}>{question.theme}</Text>
-            </View>
-          </View>
-          <View style={styles.questionCard}>
-            <Text style={styles.questionText}>{question.prompt}</Text>
-            <View style={styles.answerList}>
-              {question.options.map((option) => {
-                const isSelected = selectedAnswer === option;
-                const isCorrect = selectedAnswer && option === question.correctAnswer;
-                const isWrong = isSelected && !isCorrect;
+      <AppScreen scroll>
+        <View style={styles.questionTop}>
+          <Text style={styles.kicker}>
+            {activeQuizType === "memory_challenge" ? "Défi mémoire" : "Quiz rapide"}
+          </Text>
+          <Text style={styles.questionCounter}>
+            {currentIndex + 1}/{questions.length}
+          </Text>
+        </View>
 
-                return (
-                  <Pressable
-                    disabled={Boolean(selectedAnswer)}
-                    key={option}
-                    onPress={() => void chooseAnswer(option)}
-                    style={[
-                      styles.answerButton,
-                      isCorrect && styles.answerCorrect,
-                      isWrong && styles.answerWrong,
-                    ]}
-                  >
-                    <Text style={styles.answerText}>{option}</Text>
-                  </Pressable>
-                );
-              })}
-            </View>
+        <View style={styles.questionCard}>
+          <View style={styles.themePill}>
+            <Target color={appTheme.color.violet} size={15} strokeWidth={2.3} />
+            <Text numberOfLines={1} style={styles.themePillText}>
+              {question.theme}
+            </Text>
           </View>
-          {selectedAnswer ? (
-            <Pressable onPress={() => void goNext()} style={styles.nextButton}>
-              <Text style={styles.nextButtonText}>
-                {selectedIsCorrect ? "Continuer" : `Réponse : ${question.correctAnswer}`}
-              </Text>
-            </Pressable>
-          ) : null}
-        </ScrollView>
-      </LinearGradient>
+          <Text style={styles.questionText}>{question.prompt}</Text>
+
+          <View style={styles.answerList}>
+            {question.options.map((option) => {
+              const isSelected = selectedAnswer === option;
+              const isCorrect = Boolean(selectedAnswer) && option === question.correctAnswer;
+              const isWrong = isSelected && !isCorrect;
+
+              return (
+                <Pressable
+                  disabled={Boolean(selectedAnswer)}
+                  key={option}
+                  onPress={() => void chooseAnswer(option)}
+                  style={[
+                    styles.answerButton,
+                    isCorrect && styles.answerCorrect,
+                    isWrong && styles.answerWrong,
+                  ]}
+                >
+                  <Text style={styles.answerText}>{option}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
+
+        {selectedAnswer ? (
+          <View style={selectedIsCorrect ? styles.feedbackGood : styles.feedbackBad}>
+            {selectedIsCorrect ? (
+              <CheckCircle2 color={appTheme.color.green} size={19} strokeWidth={2.35} />
+            ) : (
+              <XCircle color={appTheme.color.danger} size={19} strokeWidth={2.35} />
+            )}
+            <Text style={styles.feedbackText}>
+              {selectedIsCorrect
+                ? "Bonne réponse."
+                : `Presque. La bonne réponse était ${question.correctAnswer}.`}
+            </Text>
+          </View>
+        ) : null}
+
+        {selectedAnswer ? (
+          <Pressable onPress={() => void goNext()} style={styles.primaryButton}>
+            <Text style={styles.primaryButtonText}>Question suivante</Text>
+          </Pressable>
+        ) : null}
+      </AppScreen>
     );
   }
 
   return (
-    <LinearGradient colors={ds.gradient.app} style={styles.root}>
-      <ScrollView
-        contentContainerStyle={[styles.content, { paddingTop: insets.top + ds.space.md }]}
-        showsVerticalScrollIndicator={false}
-      >
-        <View style={styles.headerSimple}>
-          <Text style={styles.screenTitle}>Quiz</Text>
-          <View style={styles.streakPill}>
-            <Text style={styles.streakText}>🔥 {streak}</Text>
+    <AppScreen contentStyle={styles.hubContent} scroll>
+      <View style={styles.header}>
+        <Text style={styles.kicker}>Entrainement</Text>
+        <Text style={styles.title}>Quiz</Text>
+      </View>
+
+      <QuizCard
+        Icon={Clock3}
+        color={appTheme.color.violet}
+        description="5 questions, feedback immédiat."
+        meta="Court"
+        onPress={() => startQuiz("general_quizz")}
+        title="Quiz rapide"
+        variant="gradient"
+      />
+
+      <QuizCard
+        Icon={Brain}
+        color={appTheme.color.teal}
+        description="Des questions issues de tes lectures quand c'est possible."
+        meta="Mémoire"
+        onPress={() => startQuiz("memory_challenge")}
+        title="Défi mémoire"
+      />
+
+      {message ? (
+        <View style={styles.notice}>
+          <Text style={styles.noticeText}>{message}</Text>
+        </View>
+      ) : null}
+
+      {session ? (
+        <>
+          <View style={styles.sectionHeader}>
+            <History color={appTheme.color.ink} size={18} strokeWidth={2.25} />
+            <Text style={styles.sectionTitle}>Historique</Text>
           </View>
-        </View>
-
-        {isLoading ? <LoadingState label="Lecture des scores..." /> : null}
-
-        <Pressable
-          onPress={() => void selectMemoryMode()}
-          style={({ pressed }) => [styles.memoryCard, pressed && styles.pressed]}
-        >
-          <LinearGradient colors={ds.gradient.memory} style={styles.memoryGradient}>
-            <View style={styles.badge}>
-              <Flame color={ds.color.action} size={ds.icon.sm} strokeWidth={2.35} />
-              <Text style={styles.badgeText}>Défi du jour</Text>
-            </View>
-            <View style={styles.memoryBody}>
-              <View style={styles.brainIllustration}>
-                <View style={styles.brainOrbit} />
-                <Brain color={ds.color.text} size={42} strokeWidth={2.1} />
-              </View>
-              <View style={styles.memoryCopy}>
-                <Text style={styles.modeTitle}>Relève le défi mémoire du jour</Text>
-                <Text style={styles.modeMeta}>10 questions · Mélangé</Text>
-              </View>
-            </View>
-            <View style={styles.memoryCta}>
-              <Text style={styles.memoryCtaText}>Commencer</Text>
-              <Play color="#06111d" fill="#06111d" size={16} strokeWidth={2.4} />
-            </View>
-          </LinearGradient>
-        </Pressable>
-
-        <View style={styles.sectionIntro}>
-          <Text style={styles.sectionTitle}>Quiz rapide</Text>
-          <Text style={styles.sectionSubtitle}>5 questions · Top chrono</Text>
-        </View>
-        <Pressable
-          onPress={() => void startQuickQuiz()}
-          style={({ pressed }) => [styles.quickCardShell, pressed && styles.pressed]}
-        >
-          <LinearGradient colors={ds.gradient.quiz} style={styles.quickCard}>
-            <View style={[styles.actionIcon, { backgroundColor: ds.color.progress }]}>
-              <Bolt color={ds.color.background} size={ds.icon.md} strokeWidth={2.35} />
-            </View>
-            <View style={styles.quickCopy}>
-              <Text style={styles.quickTitle}>Prêt pour un défi rapide ?</Text>
-              <Text style={styles.quickMeta}>Réponds sans casser le rythme.</Text>
-            </View>
-            <View style={styles.quickPlay}>
-              <Play color={ds.color.background} fill={ds.color.background} size={15} strokeWidth={2.4} />
-            </View>
-          </LinearGradient>
-        </Pressable>
-
-        <View style={styles.sectionIntro}>
-          <Text style={styles.sectionTitle}>Ton historique</Text>
-          <Text style={styles.sectionLink}>Voir tout</Text>
-        </View>
-        <View style={styles.statsRow}>
-          <StatCard Icon={Trophy} color={ds.color.progress} label="Meilleur score" value={bestScore ? `${bestScore}%` : "—"} />
-          <StatCard Icon={Flame} color={ds.color.orange} label="Meilleure série" value={streak} />
-          <StatCard Icon={Target} color={ds.color.discovery} label="Quiz complétés" value={sessionsCount} />
-        </View>
-
-        <View style={styles.sectionIntro}>
-          <Text style={styles.sectionTitle}>Revoir tes erreurs</Text>
-        </View>
-        <View style={styles.primaryGrid}>
-          <ActionCard
-            Icon={RotateCcw}
-            color={ds.color.discovery}
-            cta="Revoir"
-            label="Tes erreurs"
-            meta="Questions à revoir"
-            onPress={startMistakeReview}
-          />
-        </View>
-
-        {modeHint ? (
-          <View style={styles.toast}>
-            <Trophy color={ds.color.goal} size={17} strokeWidth={2.3} />
-            <Text style={styles.toastText}>{modeHint}</Text>
+          <View style={styles.statsGrid}>
+            <ProfileStat
+              Icon={Trophy}
+              color={appTheme.color.yellow}
+              label="Meilleur score"
+              value={quizStats?.bestScore ? `${quizStats.bestScore}%` : "-"}
+            />
+            <ProfileStat
+              Icon={Target}
+              color={appTheme.color.violet}
+              label="Quiz joues"
+              value={quizStats?.sessionsCount ?? 0}
+            />
+            <ProfileStat
+              Icon={RotateCcw}
+              color={appTheme.color.teal}
+              label="Serie"
+              value={summary?.streakCount ?? 0}
+            />
           </View>
-        ) : null}
-      </ScrollView>
-    </LinearGradient>
-  );
-}
-
-function ActionCard({
-  Icon,
-  color,
-  cta,
-  label,
-  meta,
-  onPress,
-}: {
-  Icon: LucideIcon;
-  color: string;
-  cta: string;
-  label: string;
-  meta: string;
-  onPress: () => void | Promise<void>;
-}) {
-  return (
-    <Pressable onPress={() => void onPress()} style={({ pressed }) => [styles.actionCard, pressed && styles.pressed]}>
-      <View style={[styles.actionIcon, { backgroundColor: color }]}>
-        <Icon color="#06111d" size={ds.icon.md} strokeWidth={2.35} />
-      </View>
-      <Text style={styles.actionLabel}>{label}</Text>
-      <Text style={styles.actionMeta}>{meta}</Text>
-      <View style={styles.actionCta}>
-        <Text style={styles.actionCtaText}>{cta}</Text>
-        <ChevronRight color={ds.color.text} size={15} strokeWidth={2.4} />
-      </View>
-    </Pressable>
-  );
-}
-
-function StatCard({ Icon, color, label, value }: { Icon: LucideIcon; color: string; label: string; value: number | string }) {
-  return (
-    <View style={styles.statCard}>
-      <View style={[styles.statIcon, { backgroundColor: color }]}>
-        <Icon color="#06111d" size={16} strokeWidth={2.45} />
-      </View>
-      <Text style={styles.statValue}>{value}</Text>
-      <Text style={styles.statLabel}>{label}</Text>
-    </View>
+        </>
+      ) : (
+        <View style={styles.connectHint}>
+          <Text style={styles.connectTitle}>Progression non sauvegardée</Text>
+          <Text style={styles.connectText}>
+            Connecte-toi depuis le profil pour garder tes scores.
+          </Text>
+        </View>
+      )}
+    </AppScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  actionCard: {
-    backgroundColor: ds.color.card,
-    borderColor: ds.color.stroke,
-    borderRadius: ds.radius.card,
-    borderWidth: 1,
-    flex: 1,
-    minHeight: 132,
-    padding: ds.space.md,
-  },
-  actionCta: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: 3,
-    marginTop: "auto",
-  },
-  actionCtaText: {
-    color: ds.color.text,
-    fontSize: ds.typography.caption,
-    fontWeight: ds.weight.semibold,
-  },
-  actionIcon: {
-    alignItems: "center",
-    borderRadius: 17,
-    height: 42,
-    justifyContent: "center",
-    marginBottom: 12,
-    width: 42,
-  },
-  actionLabel: {
-    color: ds.color.text,
-    fontSize: 17,
-    fontWeight: ds.weight.bold,
-  },
-  actionMeta: {
-    color: ds.color.muted,
-    fontSize: ds.typography.caption,
-    fontWeight: ds.weight.medium,
-    marginTop: 4,
-  },
   answerButton: {
-    backgroundColor: ds.color.card,
-    borderColor: ds.color.stroke,
-    borderRadius: ds.radius.control,
+    backgroundColor: appTheme.color.card,
+    borderColor: appTheme.color.border,
+    borderRadius: appTheme.radius.control,
     borderWidth: 1,
     justifyContent: "center",
-    minHeight: 52,
-    paddingHorizontal: 15,
+    minHeight: 54,
+    paddingHorizontal: 14,
   },
   answerCorrect: {
-    backgroundColor: "rgba(106,227,192,0.16)",
-    borderColor: "rgba(106,227,192,0.44)",
+    backgroundColor: withAlpha(appTheme.color.green, 0.12),
+    borderColor: withAlpha(appTheme.color.green, 0.42),
   },
   answerList: {
     gap: 9,
     marginTop: 18,
   },
   answerText: {
-    color: ds.color.text,
-    fontSize: ds.typography.body,
-    fontWeight: ds.weight.semibold,
+    color: appTheme.color.ink,
+    fontSize: 15,
+    fontWeight: appTheme.weight.semibold,
     lineHeight: 20,
   },
   answerWrong: {
-    backgroundColor: "rgba(255,122,144,0.13)",
-    borderColor: "rgba(255,122,144,0.34)",
+    backgroundColor: withAlpha(appTheme.color.danger, 0.11),
+    borderColor: withAlpha(appTheme.color.danger, 0.38),
   },
-  badge: {
+  centered: {
     alignItems: "center",
-    alignSelf: "flex-start",
-    backgroundColor: "rgba(5,8,18,0.36)",
-    borderColor: "rgba(255,255,255,0.12)",
-    borderRadius: ds.radius.full,
-    borderWidth: 1,
-    flexDirection: "row",
-    gap: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 7,
-  },
-  badgeText: {
-    color: ds.color.text,
-    fontSize: ds.typography.small,
-    fontWeight: ds.weight.semibold,
-    textTransform: "uppercase",
-  },
-  brainIllustration: {
-    alignItems: "center",
-    backgroundColor: "rgba(255,255,255,0.13)",
-    borderColor: "rgba(255,255,255,0.16)",
-    borderRadius: 30,
-    borderWidth: 1,
-    height: 72,
     justifyContent: "center",
-    overflow: "hidden",
-    width: 72,
   },
-  brainOrbit: {
-    backgroundColor: "rgba(106,227,192,0.26)",
-    borderRadius: ds.radius.full,
-    height: 84,
-    position: "absolute",
-    right: -32,
-    top: -30,
-    width: 84,
-  },
-  content: {
-    gap: ds.space.sm,
-    paddingBottom: 30,
-    paddingHorizontal: ds.space.gutter,
-  },
-  headerSimple: {
-    alignItems: "center",
-    flexDirection: "row",
-    justifyContent: "space-between",
-    minHeight: 52,
-  },
-  glowCyan: {
-    backgroundColor: "rgba(106,227,192,0.13)",
-    borderRadius: ds.radius.full,
-    bottom: -120,
-    height: 260,
-    left: -120,
-    position: "absolute",
-    width: 260,
-  },
-  glowViolet: {
-    backgroundColor: "rgba(167,139,250,0.18)",
-    borderRadius: ds.radius.full,
-    height: 260,
-    position: "absolute",
-    right: -120,
-    top: -90,
-    width: 260,
-  },
-  hero: {
-    alignItems: "center",
-    flexDirection: "row",
-    justifyContent: "space-between",
-    minHeight: 88,
-  },
-  heroCopy: {
-    flex: 1,
-  },
-  heroProgress: {
-    alignItems: "center",
-    backgroundColor: "rgba(167,139,250,0.18)",
-    borderColor: "rgba(167,139,250,0.32)",
-    borderRadius: 20,
+  connectHint: {
+    backgroundColor: withAlpha(appTheme.color.teal, 0.09),
+    borderColor: withAlpha(appTheme.color.teal, 0.2),
+    borderRadius: appTheme.radius.card,
     borderWidth: 1,
-    justifyContent: "center",
-    minHeight: 62,
-    minWidth: 76,
+    padding: 16,
   },
-  heroProgressLabel: {
-    color: ds.color.muted,
-    fontSize: 10,
-    fontWeight: ds.weight.medium,
-    marginTop: 2,
+  connectText: {
+    color: appTheme.color.muted,
+    fontSize: 14,
+    fontWeight: appTheme.weight.medium,
+    lineHeight: 20,
+    marginTop: 4,
   },
-  heroProgressValue: {
-    color: ds.color.text,
-    fontSize: 20,
-    fontWeight: ds.weight.bold,
+  connectTitle: {
+    color: appTheme.color.ink,
+    fontSize: 16,
+    fontWeight: appTheme.weight.bold,
   },
-  historyPanel: {
-    gap: 10,
-    paddingTop: 2,
-  },
-  kicker: {
-    color: ds.color.action,
-    fontSize: ds.typography.small,
-    fontWeight: ds.weight.bold,
-    textTransform: "uppercase",
-  },
-  memoryBody: {
+  feedbackBad: {
     alignItems: "center",
-    flexDirection: "row",
-    gap: 14,
-    marginTop: 18,
-  },
-  memoryCard: {
-    borderRadius: ds.radius.hero,
-    overflow: "hidden",
-    ...ds.shadow.soft,
-  },
-  memoryCopy: {
-    flex: 1,
-    minWidth: 0,
-  },
-  memoryCta: {
-    alignItems: "center",
-    alignSelf: "flex-end",
-    backgroundColor: ds.color.action,
-    borderRadius: ds.radius.full,
+    backgroundColor: withAlpha(appTheme.color.danger, 0.1),
+    borderColor: withAlpha(appTheme.color.danger, 0.18),
+    borderRadius: appTheme.radius.control,
+    borderWidth: 1,
     flexDirection: "row",
     gap: 8,
-    marginTop: 18,
-    minHeight: 42,
-    paddingHorizontal: 15,
+    padding: 13,
   },
-  memoryCtaText: {
-    color: "#06111d",
-    fontSize: ds.typography.caption,
-    fontWeight: ds.weight.bold,
-  },
-  memoryGradient: {
-    minHeight: ds.size.quizHero,
-    padding: ds.space.md,
-  },
-  modeMeta: {
-    color: "rgba(248,250,252,0.66)",
-    fontSize: 13,
-    fontWeight: ds.weight.medium,
-    marginTop: 5,
-  },
-  modeTitle: {
-    color: ds.color.text,
-    fontSize: 27,
-    fontWeight: ds.weight.bold,
-    lineHeight: 30,
-  },
-  nextButton: {
+  feedbackGood: {
     alignItems: "center",
-    backgroundColor: ds.color.action,
-    borderRadius: ds.radius.control,
+    backgroundColor: withAlpha(appTheme.color.green, 0.1),
+    borderColor: withAlpha(appTheme.color.green, 0.2),
+    borderRadius: appTheme.radius.control,
+    borderWidth: 1,
+    flexDirection: "row",
+    gap: 8,
+    padding: 13,
+  },
+  feedbackText: {
+    color: appTheme.color.ink,
+    flex: 1,
+    fontSize: 14,
+    fontWeight: appTheme.weight.semibold,
+    lineHeight: 20,
+  },
+  header: {
+    gap: 3,
+    paddingBottom: 8,
+    paddingTop: 8,
+  },
+  hubContent: {
+    gap: 18,
+  },
+  kicker: {
+    color: appTheme.color.teal,
+    fontSize: 12,
+    fontWeight: appTheme.weight.bold,
+    textTransform: "uppercase",
+  },
+  notice: {
+    backgroundColor: withAlpha(appTheme.color.yellow, 0.16),
+    borderColor: withAlpha(appTheme.color.yellow, 0.28),
+    borderRadius: appTheme.radius.control,
+    borderWidth: 1,
+    padding: 13,
+  },
+  noticeText: {
+    color: appTheme.color.ink,
+    fontSize: 14,
+    fontWeight: appTheme.weight.semibold,
+  },
+  primaryButton: {
+    alignItems: "center",
+    backgroundColor: appTheme.color.ink,
+    borderRadius: appTheme.radius.control,
     justifyContent: "center",
     minHeight: 52,
     paddingHorizontal: 18,
   },
-  nextButtonText: {
-    color: "#06111d",
-    fontSize: ds.typography.body,
-    fontWeight: ds.weight.bold,
-    textAlign: "center",
-  },
-  pressed: {
-    opacity: 0.82,
-    transform: [{ scale: 0.985 }],
-  },
-  primaryGrid: {
-    flexDirection: "row",
-    gap: ds.space.sm,
-  },
-  quickCard: {
-    alignItems: "center",
-    borderColor: ds.color.stroke,
-    borderRadius: ds.radius.card,
-    borderWidth: 1,
-    flexDirection: "row",
-    gap: ds.space.sm,
-    minHeight: 76,
-    overflow: "hidden",
-    padding: ds.space.md,
-  },
-  quickCardShell: {
-    borderRadius: ds.radius.card,
-    overflow: "hidden",
-  },
-  quickCopy: {
-    flex: 1,
-    minWidth: 0,
-  },
-  quickMeta: {
-    color: ds.color.muted,
-    fontSize: ds.typography.caption,
-    fontWeight: ds.weight.medium,
-    marginTop: 3,
-  },
-  quickPlay: {
-    alignItems: "center",
-    backgroundColor: ds.color.progress,
-    borderRadius: ds.radius.full,
-    height: 38,
-    justifyContent: "center",
-    width: 38,
-  },
-  quickTitle: {
-    color: ds.color.text,
-    fontSize: ds.typography.body,
-    fontWeight: ds.weight.semibold,
+  primaryButtonText: {
+    color: "#ffffff",
+    fontSize: 15,
+    fontWeight: appTheme.weight.bold,
   },
   questionCard: {
-    backgroundColor: ds.color.card,
-    borderColor: ds.color.stroke,
-    borderRadius: ds.radius.sheet,
+    backgroundColor: appTheme.color.cardSoft,
+    borderColor: appTheme.color.border,
+    borderRadius: appTheme.radius.card,
     borderWidth: 1,
-    padding: ds.space.md,
+    padding: 16,
+    ...appTheme.shadow.card,
   },
   questionCounter: {
-    color: ds.color.text,
-    fontSize: 34,
-    fontWeight: ds.weight.bold,
-    lineHeight: 38,
+    color: appTheme.color.ink,
+    fontSize: 18,
+    fontWeight: appTheme.weight.bold,
   },
-  questionHeader: {
+  questionText: {
+    color: appTheme.color.ink,
+    fontSize: 22,
+    fontWeight: appTheme.weight.bold,
+    lineHeight: 28,
+    marginTop: 16,
+  },
+  questionTop: {
     alignItems: "center",
     flexDirection: "row",
     justifyContent: "space-between",
-  },
-  questionPill: {
-    alignItems: "center",
-    backgroundColor: "rgba(255,209,102,0.12)",
-    borderRadius: ds.radius.full,
-    flexDirection: "row",
-    gap: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 7,
-  },
-  questionPillText: {
-    color: ds.color.text,
-    fontSize: ds.typography.small,
-    fontWeight: ds.weight.semibold,
-  },
-  questionText: {
-    color: ds.color.text,
-    fontSize: 22,
-    fontWeight: ds.weight.bold,
-    lineHeight: 27,
-  },
-  root: {
-    flex: 1,
+    paddingTop: 8,
   },
   resultActions: {
-    gap: ds.space.sm,
-    marginTop: ds.space.lg,
+    gap: 10,
+    marginTop: 22,
     width: "100%",
   },
   resultBadge: {
     alignItems: "center",
-    backgroundColor: "rgba(255,209,102,0.14)",
-    borderColor: "rgba(255,209,102,0.28)",
-    borderRadius: 28,
-    borderWidth: 1,
+    backgroundColor: withAlpha(appTheme.color.yellow, 0.18),
+    borderRadius: appTheme.radius.pill,
     height: 76,
     justifyContent: "center",
     width: 76,
   },
-  resultContent: {
-    alignItems: "center",
-    flex: 1,
-    justifyContent: "center",
-  },
-  resultPrimary: {
-    alignItems: "center",
-    backgroundColor: ds.color.action,
-    borderRadius: ds.radius.control,
-    justifyContent: "center",
-    minHeight: 52,
-  },
-  resultPrimaryText: {
-    color: "#06111d",
-    fontSize: ds.typography.body,
-    fontWeight: ds.weight.bold,
-  },
   resultScore: {
-    color: ds.color.text,
-    fontSize: 54,
-    fontWeight: ds.weight.bold,
-    lineHeight: 60,
-    marginTop: ds.space.lg,
+    color: appTheme.color.ink,
+    fontSize: 56,
+    fontWeight: appTheme.weight.bold,
+    lineHeight: 62,
+    marginTop: 18,
   },
-  resultSecondary: {
+  resultText: {
+    color: appTheme.color.muted,
+    fontSize: 15,
+    fontWeight: appTheme.weight.medium,
+    marginTop: 6,
+  },
+  resultTitle: {
+    color: appTheme.color.ink,
+    fontSize: 22,
+    fontWeight: appTheme.weight.bold,
+  },
+  secondaryButton: {
     alignItems: "center",
-    backgroundColor: ds.color.card,
-    borderColor: ds.color.stroke,
-    borderRadius: ds.radius.control,
+    backgroundColor: appTheme.color.card,
+    borderColor: appTheme.color.border,
+    borderRadius: appTheme.radius.control,
     borderWidth: 1,
     justifyContent: "center",
     minHeight: 50,
   },
-  resultSecondaryText: {
-    color: ds.color.text,
-    fontSize: ds.typography.body,
-    fontWeight: ds.weight.semibold,
+  secondaryButtonText: {
+    color: appTheme.color.ink,
+    fontSize: 15,
+    fontWeight: appTheme.weight.semibold,
   },
-  resultText: {
-    color: ds.color.muted,
-    fontSize: ds.typography.body,
-    fontWeight: ds.weight.medium,
+  sectionHeader: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 8,
     marginTop: 8,
-    textAlign: "center",
-  },
-  resultTitle: {
-    color: ds.color.text,
-    fontSize: ds.typography.title,
-    fontWeight: ds.weight.bold,
-    marginTop: 4,
   },
   sectionTitle: {
-    color: ds.color.text,
-    fontSize: ds.typography.section,
-    fontWeight: ds.weight.semibold,
+    color: appTheme.color.ink,
+    fontSize: 17,
+    fontWeight: appTheme.weight.bold,
   },
-  sectionIntro: {
-    alignItems: "center",
+  statsGrid: {
     flexDirection: "row",
-    justifyContent: "space-between",
-    marginTop: 2,
+    flexWrap: "wrap",
+    gap: 10,
   },
-  sectionLink: {
-    color: ds.color.muted,
-    fontSize: ds.typography.caption,
-    fontWeight: ds.weight.medium,
-  },
-  sectionSubtitle: {
-    color: ds.color.muted,
-    fontSize: ds.typography.caption,
-    fontWeight: ds.weight.medium,
-  },
-  screenTitle: {
-    color: ds.color.text,
-    fontSize: 30,
-    fontWeight: ds.weight.bold,
-    lineHeight: 34,
-  },
-  statCard: {
-    backgroundColor: ds.color.card,
-    borderColor: ds.color.stroke,
-    borderRadius: 18,
-    borderWidth: 1,
-    flex: 1,
-    minHeight: 82,
-    padding: 10,
-  },
-  statIcon: {
-    alignItems: "center",
-    borderRadius: 12,
-    height: 28,
-    justifyContent: "center",
-    width: 28,
-  },
-  statLabel: {
-    color: ds.color.muted,
-    fontSize: 10,
-    fontWeight: ds.weight.medium,
-    marginTop: 2,
-  },
-  statsRow: {
-    flexDirection: "row",
-    gap: 8,
-  },
-  statValue: {
-    color: ds.color.text,
-    fontSize: 19,
-    fontWeight: ds.weight.bold,
-    marginTop: 8,
-  },
-  streakPill: {
-    backgroundColor: ds.color.card,
-    borderColor: ds.color.stroke,
-    borderRadius: ds.radius.full,
-    borderWidth: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-  streakText: {
-    color: ds.color.text,
-    fontSize: ds.typography.caption,
-    fontWeight: ds.weight.bold,
-  },
-  title: {
-    color: ds.color.text,
-    fontSize: ds.typography.hero,
-    fontWeight: ds.weight.bold,
-    lineHeight: 30,
-    marginTop: 4,
-    maxWidth: 245,
-  },
-  toast: {
+  themePill: {
     alignItems: "center",
     alignSelf: "flex-start",
-    backgroundColor: ds.color.card,
-    borderColor: ds.color.stroke,
-    borderRadius: ds.radius.full,
-    borderWidth: 1,
+    backgroundColor: withAlpha(appTheme.color.violet, 0.11),
+    borderRadius: appTheme.radius.pill,
     flexDirection: "row",
-    gap: 8,
-    paddingHorizontal: 13,
-    paddingVertical: 10,
+    gap: 7,
+    maxWidth: "80%",
+    paddingHorizontal: 10,
+    paddingVertical: 7,
   },
-  toastText: {
-    color: colors.text,
-    fontSize: 13,
-    fontWeight: ds.weight.semibold,
+  themePillText: {
+    color: appTheme.color.ink,
+    fontSize: 12,
+    fontWeight: appTheme.weight.semibold,
+  },
+  title: {
+    color: appTheme.color.ink,
+    fontSize: 24,
+    fontWeight: appTheme.weight.bold,
+    lineHeight: 29,
   },
 });

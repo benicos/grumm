@@ -3,6 +3,7 @@
 import type { Dispatch, SetStateAction } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Inter } from "next/font/google";
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { discoverConfig, userMessages } from "@/config/app";
@@ -30,13 +31,14 @@ import {
 } from "@/lib/facts";
 import type { CategorySummary, FeedFact } from "@/lib/facts";
 import { rememberAuthRedirect } from "@/lib/authRedirect";
-import { getGoalCelebrationMessage } from "@/lib/badges";
+import { getGoalCelebrationMessage, type GradeDefinition } from "@/lib/badges";
 import { logAppError } from "@/lib/errors";
 import { getToneBackground } from "@/lib/gradients";
 import { useAuth } from "../auth/AuthProvider";
 import { AppState, FeedSkeleton } from "../components/AppState";
 import FactSource from "../components/FactSource";
 import FactShareModal from "../components/share/FactShareModal";
+import GradeIcon from "../components/GradeIcon";
 import Navbar from "../components/Navbar";
 
 const inter = Inter({
@@ -63,6 +65,44 @@ const celebrationBursts = [
   { left: "69%", top: "66%", size: "h-1.5 w-1.5", delay: "240ms" },
   { left: "82%", top: "42%", size: "h-2.5 w-2.5", delay: "110ms" },
 ];
+
+type GradeUnlockState = {
+  fromAvatarSrc: string;
+  toAvatarSrc: string;
+  gradeName: string;
+} | null;
+
+function getGradeRank(completedGoals: number, grades?: GradeDefinition[]) {
+  const source = grades && grades.length > 0 ? [...grades] : [];
+
+  return source
+    .sort(
+      (a, b) =>
+        a.requiredGoals - b.requiredGoals ||
+        (a.displayOrder ?? 0) - (b.displayOrder ?? 0),
+    )
+    .reduce(
+      (activeRank, grade, index) =>
+        completedGoals >= grade.requiredGoals ? index + 1 : activeRank,
+      1,
+    );
+}
+
+function getUnlockedGrade(
+  previousCompletedGoals: number,
+  nextCompletedGoals: number,
+  grades?: GradeDefinition[],
+) {
+  const source = grades && grades.length > 0 ? [...grades] : [];
+
+  return source
+    .filter(
+      (grade) =>
+        grade.requiredGoals > previousCompletedGoals &&
+        grade.requiredGoals <= nextCompletedGoals,
+    )
+    .sort((a, b) => b.requiredGoals - a.requiredGoals)[0] ?? null;
+}
 
 const actionIcons = {
   like: (
@@ -243,6 +283,11 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
   });
   const [goalCelebrationMessage, setGoalCelebrationMessage] =
     useState("Premier pas.");
+  const [gradeUnlock, setGradeUnlock] = useState<GradeUnlockState>(null);
+  const [readFeedback, setReadFeedback] = useState<{
+    count: number;
+    goal: number;
+  } | null>(null);
   const [showGoalAnimation, setShowGoalAnimation] = useState(false);
   const touchStartY = useRef<number | null>(null);
   const dragOffsetRef = useRef(0);
@@ -258,6 +303,7 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
   const factReadTokenRef = useRef<FactReadToken | null>(null);
   const hasSwipedRef = useRef(false);
   const swipeHintTimerRef = useRef<number | null>(null);
+  const readFeedbackTimerRef = useRef<number | null>(null);
 
   const hasFacts = facts.length > 0;
   const activeFactIndex = hasFacts ? Math.min(currentStep, facts.length - 1) : 0;
@@ -310,6 +356,18 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
   const showTemporaryNotice = useCallback((message: string) => {
     setNotice(message);
     window.setTimeout(() => setNotice(null), 2600);
+  }, []);
+
+  const showReadFeedback = useCallback((count: number, goal: number) => {
+    if (readFeedbackTimerRef.current !== null) {
+      window.clearTimeout(readFeedbackTimerRef.current);
+    }
+
+    setReadFeedback({ count, goal });
+    readFeedbackTimerRef.current = window.setTimeout(() => {
+      setReadFeedback(null);
+      readFeedbackTimerRef.current = null;
+    }, 1000);
   }, []);
 
   const toggleRemoteAction = async (
@@ -535,6 +593,9 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
 
     return () => {
       isMountedRef.current = false;
+      if (readFeedbackTimerRef.current !== null) {
+        window.clearTimeout(readFeedbackTimerRef.current);
+      }
     };
   }, []);
 
@@ -696,6 +757,10 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
           goal: result.dailyGoal,
         }));
 
+        if (result.uniqueViewCreated) {
+          showReadFeedback(result.viewedTodayCount, result.dailyGoal);
+        }
+
         if (result.completedToday && !goalAnimationShownRef.current) {
           void trackAnalyticsEvent({
             eventName: "daily_goal_completed",
@@ -705,15 +770,48 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
             },
           });
           goalAnimationShownRef.current = true;
+          const previousCompletedGoals = Math.max(
+            result.completedDailyGoals - 1,
+            profile?.completedDailyGoals ?? 0,
+          );
+          const unlockedGrade = getUnlockedGrade(
+            previousCompletedGoals,
+            result.completedDailyGoals,
+            profile?.grades,
+          );
+
+          if (unlockedGrade) {
+            const previousRank = getGradeRank(previousCompletedGoals, profile?.grades);
+            const nextRank = getGradeRank(result.completedDailyGoals, profile?.grades);
+            setGradeUnlock({
+              fromAvatarSrc: `/avatar/avatar_rank_${previousRank}.png`,
+              gradeName: unlockedGrade.name,
+              toAvatarSrc: `/avatar/avatar_rank_${nextRank}.png`,
+            });
+          } else {
+            setGradeUnlock(null);
+          }
+
           setGoalCelebrationMessage(
             getGoalCelebrationMessage(result.completedDailyGoals),
           );
           setShowGoalAnimation(true);
-          window.setTimeout(() => setShowGoalAnimation(false), 3600);
+          window.setTimeout(() => {
+            setShowGoalAnimation(false);
+            setGradeUnlock(null);
+          }, unlockedGrade ? 5200 : 3600);
         }
       })
       .catch(() => undefined);
-  }, [activeFact, isAuthenticated, isLoadingAuth, profile?.daily_goal]);
+  }, [
+    activeFact,
+    isAuthenticated,
+    isLoadingAuth,
+    profile?.completedDailyGoals,
+    profile?.daily_goal,
+    profile?.grades,
+    showReadFeedback,
+  ]);
 
   useEffect(() => {
     let cancelled = false;
@@ -947,6 +1045,13 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
               }}
             >
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.22),transparent_28%),linear-gradient(180deg,rgba(0,0,0,0.05),rgba(0,0,0,0.64))]" />
+              <div
+                className="absolute inset-0 opacity-70 mix-blend-screen"
+                style={{
+                  backgroundImage: `radial-gradient(circle at 82% 18%, ${fact.accent}28, transparent 32%), radial-gradient(circle at 12% 82%, rgba(106,227,192,0.16), transparent 30%)`,
+                }}
+              />
+              <div className="absolute inset-0 opacity-[0.055] [background-image:linear-gradient(90deg,rgba(255,255,255,0.65)_1px,transparent_1px),linear-gradient(0deg,rgba(255,255,255,0.65)_1px,transparent_1px)] [background-size:42px_42px]" />
               <div className="absolute inset-x-0 bottom-0 h-2/5 bg-gradient-to-t from-black/70 to-transparent" />
 
               <div className="relative z-10 flex h-full w-full max-w-6xl flex-col pb-24 pt-36 sm:pb-20">
@@ -978,6 +1083,18 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
                       Thème
                     </div>
                   )}
+                  {isAuthenticated && profile?.gradeName ? (
+                    <Link
+                      href="/profil"
+                      className="inline-flex w-fit items-center gap-2 rounded-full border border-[#ffd166]/18 bg-black/18 px-3 py-2 text-xs font-black uppercase tracking-[0.16em] text-[#ffe2a3] backdrop-blur-xl transition hover:border-[#ffd166]/34 hover:bg-[#ffd166]/10"
+                    >
+                      <GradeIcon
+                        badge={profile.gradeBadge}
+                        className="h-3.5 w-3.5 shrink-0"
+                      />
+                      {profile.gradeName}
+                    </Link>
+                  ) : null}
                 </div>
 
                 <div className="flex min-h-0 flex-1 items-center py-7 sm:py-8">
@@ -1078,11 +1195,22 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
                   ) : isAuthenticated ? (
                     <>
                       <div className="mb-3 flex items-center justify-between text-xs text-white/72">
-                        <span className="font-semibold">Progression</span>
+                        <span className="font-semibold">Objectif quotidien</span>
                         <span className="font-bold text-white">
                           {dailyProgress.count}/{currentDailyGoal}
                         </span>
                       </div>
+                      {readFeedback ? (
+                        <div className="pointer-events-none mb-3 inline-flex items-center gap-2 rounded-full border border-white/12 bg-black/24 px-3 py-2 text-xs font-black text-white/82 shadow-[0_16px_44px_rgba(0,0,0,0.18)] backdrop-blur-xl read-feedback">
+                          <span className="grid h-5 w-5 place-items-center rounded-full bg-[#6ae3c0] text-[#07111f]">
+                            +1
+                          </span>
+                          <span>Fait découvert</span>
+                          <span className="text-white/48">
+                            {readFeedback.count}/{readFeedback.goal}
+                          </span>
+                        </div>
+                      ) : null}
                       <div
                         className="mb-5 h-1.5 overflow-hidden rounded-full bg-white/12"
                         data-fact-progress
@@ -1232,8 +1360,12 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
         <button
           type="button"
           aria-label="Fermer l'animation d'objectif"
-          onClick={() => setShowGoalAnimation(false)}
-          className="fixed inset-0 z-50 grid cursor-default place-items-center overflow-hidden bg-black/20 backdrop-blur-[2px]"
+          onClick={() => {
+            if (!gradeUnlock) {
+              setShowGoalAnimation(false);
+            }
+          }}
+          className="fixed inset-0 z-50 grid cursor-default place-items-center overflow-hidden bg-black/68 backdrop-blur-md"
         >
           {confettiPieces.map((piece, index) => (
             <span
@@ -1263,32 +1395,84 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
             />
           ))}
 
-          <div className="relative w-[min(310px,calc(100vw-40px))] overflow-hidden rounded-[24px] border border-white/15 bg-[#07111f]/86 p-6 text-center shadow-[0_0_90px_rgba(255,209,102,0.22)]">
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(255,209,102,0.22),transparent_42%)]" />
-            <div className="absolute left-1/2 top-0 h-24 w-24 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#ffd166]/30 blur-2xl" />
-            <div className="relative">
-              <div className="mx-auto mb-5 grid h-16 w-16 place-items-center rounded-full bg-[#ffd166] text-[#07111f] shadow-[0_16px_50px_rgba(255,209,102,0.34)] goal-pop">
-                <svg viewBox="0 0 24 24" aria-hidden="true" className="h-8 w-8">
-                  <path
-                    d="m5 12.4 4.1 4.1L19 6.8"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2.6"
-                  />
-                </svg>
+          <div className={`relative overflow-hidden rounded-[34px] border border-white/15 bg-[#07111f]/92 p-7 text-center shadow-[0_0_140px_rgba(255,209,102,0.28)] ${
+            gradeUnlock
+              ? "w-[min(460px,calc(100vw-32px))]"
+              : "w-[min(310px,calc(100vw-40px))]"
+          }`}>
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(255,209,102,0.30),transparent_42%),radial-gradient(circle_at_18%_82%,rgba(106,227,192,0.18),transparent_34%)]" />
+            <div className="absolute left-1/2 top-0 h-40 w-40 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#ffd166]/36 blur-3xl" />
+            {gradeUnlock ? (
+              <div className="relative">
+                <p className="text-xs font-black uppercase tracking-[0.24em] text-[#ffd166]">
+                  Nouveau rang débloqué
+                </p>
+                <h2 className="mt-4 text-[clamp(3rem,13vw,5.6rem)] font-black uppercase leading-none tracking-[-0.075em] text-white grade-title-pop">
+                  {gradeUnlock.gradeName}
+                </h2>
+                <div className="mt-8 flex items-center justify-center gap-4">
+                  <div className="grade-avatar-old h-20 w-20 overflow-hidden rounded-[24px] border border-white/10 bg-white/[0.06] opacity-55">
+                    <Image
+                      alt="Ancien avatar de rang"
+                      height={80}
+                      src={gradeUnlock.fromAvatarSrc}
+                      width={80}
+                      className="h-full w-full object-cover"
+                      onError={(event) => {
+                        event.currentTarget.onerror = null;
+                        event.currentTarget.src = "/avatar/avatar.png";
+                      }}
+                    />
+                  </div>
+                  <span className="grade-arrow text-2xl font-black text-[#ffd166]">
+                    {"→"}
+                  </span>
+                  <div className="grade-avatar-new h-32 w-32 overflow-hidden rounded-[34px] border-[4px] border-[#ffd166]/54 bg-white/[0.08] shadow-[0_0_70px_rgba(255,209,102,0.42)]">
+                    <Image
+                      alt="Nouvel avatar de rang"
+                      height={128}
+                      src={gradeUnlock.toAvatarSrc}
+                      width={128}
+                      className="h-full w-full object-cover"
+                      onError={(event) => {
+                        event.currentTarget.onerror = null;
+                        event.currentTarget.src = "/avatar/avatar.png";
+                      }}
+                    />
+                  </div>
+                </div>
+                <p className="mx-auto mt-6 max-w-[300px] text-sm font-semibold leading-6 text-white/66">
+                  Ton avatar Grumm évolue. Continue ta série pour atteindre le prochain rang.
+                </p>
+                <div className="mt-6 h-1.5 overflow-hidden rounded-full bg-white/10">
+                  <div className="h-full w-full rounded-full bg-gradient-to-r from-[#ffd166] to-[#6ae3c0] goal-fill" />
+                </div>
               </div>
-              <p className="text-sm font-bold uppercase tracking-[0.24em] text-[#ffd166]">
-                Objectif atteint
-              </p>
-              <h2 className="mt-4 text-3xl font-extrabold leading-tight tracking-[-0.04em] text-white">
-                {goalCelebrationMessage}
-              </h2>
-              <div className="mt-6 h-1.5 overflow-hidden rounded-full bg-white/10">
-                <div className="h-full w-full rounded-full bg-gradient-to-r from-[#ffd166] to-[#6ae3c0] goal-fill" />
+            ) : (
+              <div className="relative">
+                <div className="mx-auto mb-5 grid h-16 w-16 place-items-center rounded-full bg-[#ffd166] text-[#07111f] shadow-[0_16px_50px_rgba(255,209,102,0.34)] goal-pop">
+                  <svg viewBox="0 0 24 24" aria-hidden="true" className="h-8 w-8">
+                    <path
+                      d="m5 12.4 4.1 4.1L19 6.8"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2.6"
+                    />
+                  </svg>
+                </div>
+                <p className="text-sm font-bold uppercase tracking-[0.24em] text-[#ffd166]">
+                  Objectif atteint
+                </p>
+                <h2 className="mt-4 text-3xl font-extrabold leading-tight tracking-[-0.04em] text-white">
+                  {goalCelebrationMessage}
+                </h2>
+                <div className="mt-6 h-1.5 overflow-hidden rounded-full bg-white/10">
+                  <div className="h-full w-full rounded-full bg-gradient-to-r from-[#ffd166] to-[#6ae3c0] goal-fill" />
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </button>
       )}
@@ -1346,6 +1530,42 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
           animation: goalPop 0.55s cubic-bezier(0.16, 1, 0.3, 1) both;
         }
 
+        .read-feedback {
+          animation: readFeedback 1s cubic-bezier(0.16, 1, 0.3, 1) both;
+        }
+
+        .grade-title-pop {
+          animation: gradeTitlePop 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+        }
+
+        .grade-avatar-old {
+          animation: gradeAvatarOld 1.05s cubic-bezier(0.16, 1, 0.3, 1) both;
+        }
+
+        .grade-avatar-new {
+          animation: gradeAvatarNew 1.05s 0.12s cubic-bezier(0.16, 1, 0.3, 1) both;
+        }
+
+        .grade-arrow {
+          animation: gradeArrow 1.05s 0.08s cubic-bezier(0.16, 1, 0.3, 1) both;
+        }
+
+        @keyframes readFeedback {
+          0% {
+            opacity: 0;
+            transform: translate3d(0, 8px, 0) scale(0.98);
+          }
+          18%,
+          78% {
+            opacity: 1;
+            transform: translate3d(0, 0, 0) scale(1);
+          }
+          100% {
+            opacity: 0;
+            transform: translate3d(0, -6px, 0) scale(0.985);
+          }
+        }
+
         @keyframes goalFill {
           from {
             transform: translateX(-100%);
@@ -1367,6 +1587,66 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
           100% {
             opacity: 1;
             transform: scale(1);
+          }
+        }
+
+        @keyframes gradeTitlePop {
+          0% {
+            opacity: 0;
+            transform: translate3d(0, 10px, 0) scale(0.96);
+          }
+          100% {
+            opacity: 1;
+            transform: translate3d(0, 0, 0) scale(1);
+          }
+        }
+
+        @keyframes gradeAvatarOld {
+          0% {
+            opacity: 0;
+            transform: translate3d(18px, 0, 0) scale(0.92);
+          }
+          100% {
+            opacity: 0.7;
+            transform: translate3d(0, 0, 0) scale(1);
+          }
+        }
+
+        @keyframes gradeAvatarNew {
+          0% {
+            opacity: 0;
+            transform: translate3d(-18px, 0, 0) scale(0.9);
+          }
+          62% {
+            opacity: 1;
+            transform: translate3d(0, 0, 0) scale(1.06);
+          }
+          100% {
+            opacity: 1;
+            transform: translate3d(0, 0, 0) scale(1);
+          }
+        }
+
+        @keyframes gradeArrow {
+          0% {
+            opacity: 0;
+            transform: translateX(-10px);
+          }
+          100% {
+            opacity: 1;
+            transform: translateX(0);
+          }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .goal-fill,
+          .goal-pop,
+          .read-feedback,
+          .grade-title-pop,
+          .grade-avatar-old,
+          .grade-avatar-new,
+          .grade-arrow {
+            animation: none;
           }
         }
       `}</style>

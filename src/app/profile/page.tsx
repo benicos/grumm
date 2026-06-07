@@ -8,7 +8,6 @@ import {
   BookOpen,
   Brain,
   Check,
-  CheckCircle2,
   ChevronRight,
   Compass,
   Flame,
@@ -26,6 +25,7 @@ import type { LucideIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 import { trackAnalyticsEvent, trackAnalyticsEventOnce } from "@/lib/analytics/web";
 import { getBadgeInfo } from "@/lib/badges";
+import type { GradeDefinition } from "@/lib/badges";
 import { MIN_MEMORY_FACTS } from "@/lib/memoryChallenge";
 import { getUserProfileSummary } from "@/lib/profile";
 import type { UserProfileSummary } from "@/lib/profile";
@@ -46,17 +46,200 @@ const inter = Inter({
 
 function ProfileSkeleton() {
   return (
-    <div className="grid gap-4 lg:grid-cols-4">
-      {Array.from({ length: 4 }).map((_, index) => (
-        <div
-          key={index}
-          className="rounded-lg border border-white/10 bg-white/[0.055] p-5"
-        >
-          <div className="h-3 w-24 animate-pulse rounded-full bg-white/10" />
-          <div className="mt-5 h-10 w-20 animate-pulse rounded-full bg-white/10" />
+    <div className="grid gap-5">
+      <div className="rounded-[34px] border border-white/10 bg-white/[0.055] p-5">
+        <div className="flex items-center gap-5">
+          <div className="h-28 w-28 animate-pulse rounded-[30px] bg-white/10" />
+          <div className="flex-1">
+            <div className="h-4 w-28 animate-pulse rounded-full bg-white/10" />
+            <div className="mt-4 h-9 w-44 animate-pulse rounded-full bg-white/10" />
+            <div className="mt-5 h-2 w-full animate-pulse rounded-full bg-white/10" />
+          </div>
         </div>
-      ))}
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, index) => (
+          <div
+            key={index}
+            className="rounded-[22px] border border-white/10 bg-white/[0.045] p-4"
+          >
+            <div className="h-3 w-20 animate-pulse rounded-full bg-white/10" />
+            <div className="mt-4 h-7 w-16 animate-pulse rounded-full bg-white/10" />
+          </div>
+        ))}
+      </div>
     </div>
+  );
+}
+
+function getGradeSnapshot(profile: UserProfileSummary) {
+  const orderedGrades = [...profile.grades].sort(
+    (a, b) =>
+      a.requiredGoals - b.requiredGoals ||
+      (a.displayOrder ?? 0) - (b.displayOrder ?? 0),
+  );
+  const currentIndex = orderedGrades.reduce(
+    (activeIndex, grade, index) =>
+      profile.completedDailyGoals >= grade.requiredGoals ? index : activeIndex,
+    0,
+  );
+  const currentGrade = orderedGrades[currentIndex] ?? orderedGrades[0];
+  const nextGrade = orderedGrades[currentIndex + 1] ?? null;
+  const currentThreshold = currentGrade?.requiredGoals ?? 0;
+  const nextThreshold = nextGrade?.requiredGoals ?? currentThreshold;
+  const progressPercent = nextGrade
+    ? Math.min(
+        ((profile.completedDailyGoals - currentThreshold) /
+          Math.max(nextThreshold - currentThreshold, 1)) *
+          100,
+        100,
+      )
+    : 100;
+
+  return {
+    currentGrade,
+    currentThreshold,
+    nextGrade,
+    nextThreshold,
+    progressPercent,
+    rank: currentIndex + 1,
+    remainingGoals: nextGrade
+      ? Math.max(nextGrade.requiredGoals - profile.completedDailyGoals, 0)
+      : 0,
+  };
+}
+
+function gradeAvatarSrc(rank: number) {
+  return `/avatar/avatar_rank_${Math.max(rank, 1)}.png`;
+}
+
+function NextUnlockPanel({
+  activeGradeTitle,
+  nextGrade,
+  nextGradeTitle,
+  nextRank,
+  progressPercent,
+  remainingGoals,
+}: {
+  activeGradeTitle: string;
+  nextGrade: GradeDefinition | null;
+  nextGradeTitle: string;
+  nextRank: number;
+  progressPercent: number;
+  remainingGoals: number;
+}) {
+  return (
+    <section className="mt-5 overflow-hidden rounded-[30px] border border-white/10 bg-[radial-gradient(circle_at_90%_10%,rgba(106,227,192,0.18),transparent_30%),linear-gradient(145deg,rgba(255,255,255,0.064),rgba(255,255,255,0.022))] p-5 shadow-[0_24px_80px_rgba(0,0,0,0.20)] backdrop-blur-xl">
+      <div className="flex items-center gap-4">
+        <div className="relative grid h-24 w-24 shrink-0 place-items-center overflow-hidden rounded-[28px] border border-white/12 bg-black/20 grayscale">
+          <Image
+            alt="Avatar du prochain rang"
+            height={96}
+            src={gradeAvatarSrc(nextRank)}
+            width={96}
+            className="h-full w-full object-cover opacity-42"
+            onError={(event) => {
+              event.currentTarget.onerror = null;
+              event.currentTarget.src = "/avatar/avatar.png";
+            }}
+          />
+          <div className="absolute inset-0 bg-black/32" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-xs font-black uppercase tracking-[0.22em] text-[#6ae3c0]">
+            Prochain grade
+          </p>
+          <h2 className="mt-2 text-2xl font-black tracking-[-0.045em] text-white">
+            {nextGrade?.name ?? "Tous les rangs sont débloqués"}
+          </h2>
+          <p className="mt-2 text-sm font-semibold leading-6 text-white/58">
+            {nextGrade
+              ? `Plus que ${remainingGoals} objectif${remainingGoals > 1 ? "s" : ""} pour débloquer ce rang.`
+              : "Ton avatar a atteint le dernier palier disponible."}
+          </p>
+        </div>
+        {nextGrade?.badge ? (
+          <span className="hidden h-12 w-12 shrink-0 place-items-center rounded-2xl border border-white/10 bg-white/[0.045] text-[#6ae3c0] sm:grid">
+            <GradeIcon badge={nextGrade.badge} className="h-6 w-6" />
+          </span>
+        ) : null}
+      </div>
+      <div className="mt-5 rounded-[24px] border border-white/10 bg-black/18 p-4">
+        <div className="flex items-center justify-between gap-3 text-xs font-black uppercase tracking-[0.16em] text-white/52">
+          <span>{activeGradeTitle}</span>
+          <span>{Math.round(progressPercent)}%</span>
+          <span>{nextGradeTitle}</span>
+        </div>
+        <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-white/10">
+          <div
+            className="h-full rounded-full bg-gradient-to-r from-[#ffd166] via-[#6ae3c0] to-[#a78bfa] transition-[width] duration-700"
+            style={{ width: `${progressPercent}%` }}
+          />
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function DailyStreakPanel({ profile }: { profile: UserProfileSummary }) {
+  const now = new Date();
+  const todayKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+  const today = profile.weeklyDailyProgress.find((day) => day.date === todayKey);
+  const statusLabel =
+    today?.status === "completed"
+      ? "Objectif atteint aujourd'hui"
+      : today?.status === "current"
+        ? "Aujourd'hui est en cours"
+        : "Semaine en cours";
+
+  return (
+    <section className="mt-5 rounded-[26px] border border-white/10 bg-white/[0.045] p-5 shadow-[0_24px_80px_rgba(0,0,0,0.18)] backdrop-blur-xl">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-[0.18em] text-[#ffb45f]">
+            <Flame className="h-4 w-4" aria-hidden="true" />
+            Série quotidienne
+          </p>
+          <h2 className="mt-2 text-2xl font-black tracking-[-0.045em] text-white">
+            {profile.currentStreakDays} jour{profile.currentStreakDays > 1 ? "s" : ""} consécutif{profile.currentStreakDays > 1 ? "s" : ""}
+          </h2>
+        </div>
+        <span className="rounded-full border border-white/10 bg-black/18 px-3 py-1.5 text-xs font-black text-white/56">
+          {statusLabel}
+        </span>
+      </div>
+
+      <div className="mt-5 grid grid-cols-7 gap-2">
+        {profile.weeklyDailyProgress.map((day) => {
+          const statusClassName =
+            day.status === "completed"
+              ? "border-[#6ae3c0]/40 bg-[#6ae3c0]/18 text-[#b8fff0]"
+              : day.status === "current"
+                ? "border-[#ffd166]/45 bg-[#ffd166]/14 text-[#ffe2a3]"
+                : day.status === "missed"
+                  ? "border-white/10 bg-black/18 text-white/34"
+                  : "border-white/10 bg-white/[0.035] text-white/42";
+
+          return (
+            <div key={day.date} className="min-w-0">
+              <div
+                className={`grid aspect-square place-items-center rounded-full border text-sm font-black ${statusClassName}`}
+                title={`${day.readCount}/${day.goal} faits`}
+              >
+                {day.status === "completed" ? (
+                  <Check className="h-4 w-4" aria-hidden="true" />
+                ) : (
+                  day.label
+                )}
+              </div>
+              <p className="mt-2 text-center text-[10px] font-black uppercase tracking-[0.08em] text-white/36">
+                {day.label}
+              </p>
+            </div>
+          );
+        })}
+      </div>
+    </section>
   );
 }
 
@@ -540,8 +723,8 @@ function SavedFactsPanel({ profile }: { profile: UserProfileSummary }) {
   );
 }
 
-function SuccessPanel({ profile }: { profile: UserProfileSummary }) {
-  const successes: {
+function ProfileStatsPanel({ profile }: { profile: UserProfileSummary }) {
+  const stats: {
     accent: string;
     accentSoft: string;
     icon: LucideIcon;
@@ -553,86 +736,69 @@ function SuccessPanel({ profile }: { profile: UserProfileSummary }) {
       accentSoft: "rgba(106,227,192,0.12)",
       icon: BookOpen,
       label: "Faits lus",
-      value: `${profile.uniqueViewsCount} fait${profile.uniqueViewsCount > 1 ? "s" : ""}`,
+      value: String(profile.uniqueViewsCount),
+    },
+    {
+      accent: "#ffd166",
+      accentSoft: "rgba(255,209,102,0.12)",
+      icon: BookMarked,
+      label: "Enregistrés",
+      value: String(profile.savedCount),
     },
     {
       accent: "#ff9f43",
       accentSoft: "rgba(255,159,67,0.12)",
       icon: Flame,
-      label: "Série quotidienne",
-      value: `${profile.currentStreakDays} jour${profile.currentStreakDays > 1 ? "s" : ""} de suite`,
+      label: "Série",
+      value: `${profile.currentStreakDays} j`,
     },
     {
       accent: "#a78bfa",
       accentSoft: "rgba(167,139,250,0.12)",
       icon: Brain,
-      label: "Score quiz",
-      value:
-        profile.memoryStats.averageScorePercent !== null
-          ? `${profile.memoryStats.averageScorePercent}% moyen`
-          : "Aucun score",
-    },
-    {
-      accent: "#7dd3fc",
-      accentSoft: "rgba(125,211,252,0.12)",
-      icon: Compass,
-      label: "Thèmes explorés",
-      value: `${profile.exploredThemeCount} thème${profile.exploredThemeCount > 1 ? "s" : ""}`,
+      label: "Quiz joués",
+      value: String(profile.memoryStats.challengesCompleted),
     },
   ];
 
   return (
-    <section className="mt-6 rounded-[28px] border border-white/10 bg-black/18 p-5 shadow-[0_24px_80px_rgba(0,0,0,0.16)]">
-      <p className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-[0.2em] text-white/48">
-        <Trophy className="h-4 w-4 text-[#ffd166]" aria-hidden="true" />
-        Réussites récentes
-      </p>
-      <div className="mt-4 divide-y divide-white/10">
-        {successes.map((success) => {
-          const Icon = success.icon;
+    <section className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      {stats.map((stat) => {
+        const Icon = stat.icon;
 
-          return (
-            <div
-              key={success.label}
-              className="flex items-center gap-4 py-3 first:pt-0 last:pb-0"
-            >
+        return (
+          <div
+            key={stat.label}
+            className="rounded-[22px] border border-white/10 bg-black/16 p-4 shadow-[0_18px_55px_rgba(0,0,0,0.12)]"
+          >
+            <div className="flex items-center justify-between gap-3">
               <span
-                className="grid h-10 w-10 shrink-0 place-items-center rounded-full border"
+                className="grid h-10 w-10 place-items-center rounded-2xl border"
                 style={{
-                  backgroundColor: success.accentSoft,
-                  borderColor: `${success.accent}36`,
-                  color: success.accent,
+                  backgroundColor: stat.accentSoft,
+                  borderColor: `${stat.accent}36`,
+                  color: stat.accent,
                 }}
               >
                 <Icon className="h-5 w-5" aria-hidden="true" />
               </span>
-              <span className="min-w-0 flex-1">
-                <span
-                  className="block text-[11px] font-black uppercase tracking-[0.16em]"
-                  style={{ color: success.accent }}
-                >
-                  {success.label}
-                </span>
-                <span
-                  className="mt-1 block text-sm font-extrabold leading-6 tracking-[-0.02em] text-white"
-                >
-                  {success.value}
-                </span>
+              <span className="text-2xl font-black tracking-[-0.05em] text-white">
+                {stat.value}
               </span>
-              <span
-                className="hidden h-1.5 w-16 shrink-0 rounded-full sm:block"
-                style={{
-                  backgroundImage: `linear-gradient(90deg, ${success.accent}, transparent)`,
-                }}
-                aria-hidden="true"
-              />
             </div>
-          );
-        })}
-      </div>
+            <p
+              className="mt-4 text-[11px] font-black uppercase tracking-[0.16em]"
+              style={{ color: stat.accent }}
+            >
+              {stat.label}
+            </p>
+          </div>
+        );
+      })}
     </section>
   );
 }
+
 
 function ProfileContent() {
   const { profile: authProfile } = useAuth();
@@ -706,11 +872,11 @@ function ProfileContent() {
     return (
       <AppState
         eyebrow="Profil"
-        title="Impossible de charger ton profil."
+        title="Profil en synchronisation."
         description={
           error === "auth_required"
-            ? "Connecte-toi pour consulter ton profil."
-            : error
+            ? "Connecte-toi pour retrouver ta progression."
+            : "Tes données seront disponibles dans un instant."
         }
         primaryHref="/login"
         primaryLabel="Se connecter"
@@ -723,11 +889,7 @@ function ProfileContent() {
   const badge = profile
     ? getBadgeInfo(profile.completedDailyGoals, profile.grades)
     : null;
-  const gradeBadge = authProfile?.gradeBadge ?? badge?.badge ?? null;
   const gradeTitle = authProfile?.gradeName ?? badge?.title ?? null;
-  const dailyProgressPercent = profile
-    ? Math.min((profile.todayReadCount / Math.max(profile.dailyGoal, 1)) * 100, 100)
-    : 0;
   const gradeRank = profile
     ? [...profile.grades]
         .sort(
@@ -743,24 +905,13 @@ function ProfileContent() {
           1,
         )
     : 1;
-  const avatarSrc = `/avatar/avatar_rank_${gradeRank}.png`;
-  const remainingDailyFacts = profile
-    ? Math.max(profile.dailyGoal - profile.todayReadCount, 0)
-    : 0;
-  const isDailyGoalCompleted = profile
-    ? profile.todayReadCount >= profile.dailyGoal
-    : false;
-  const dailyProgressMessage =
-    !profile || profile.todayReadCount <= 0
-      ? "Commence ta série du jour."
-      : remainingDailyFacts <= 0
-        ? `${profile.todayReadCount} fait${profile.todayReadCount > 1 ? "s" : ""} lu${profile.todayReadCount > 1 ? "s" : ""} aujourd'hui.`
-        : `Plus que ${remainingDailyFacts} fait${remainingDailyFacts > 1 ? "s" : ""} pour valider ton objectif.`;
-  const weekLabels = ["L", "M", "M", "J", "V", "S", "D"];
-  const todayIndex = (new Date().getDay() + 6) % 7;
-  const completedWeekDays = profile
-    ? Math.min(profile.currentStreakDays, todayIndex + 1)
-    : 0;
+  const gradeSnapshot = profile ? getGradeSnapshot(profile) : null;
+  const activeGradeTitle =
+    gradeSnapshot?.currentGrade?.name ?? gradeTitle ?? "Curieux";
+  const nextGradeTitle = gradeSnapshot?.nextGrade?.name ?? "Dernier rang";
+  const activeGradeRank = gradeSnapshot?.rank ?? gradeRank;
+  const remainingGradeGoals = gradeSnapshot?.remainingGoals ?? 0;
+  const avatarSrc = gradeAvatarSrc(activeGradeRank);
 
   return (
     <div
@@ -775,16 +926,16 @@ function ProfileContent() {
         ) : (
           <>
 
-            <section className="mb-7">
-              <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
-                <div className="flex min-w-0 items-center gap-4">
-                  <div className="h-32 w-32 shrink-0 overflow-hidden rounded-[34px] border-[3px] border-[#ffd166]/30 bg-white/[0.06] shadow-[0_0_0_1px_rgba(255,255,255,0.08),0_24px_84px_rgba(0,0,0,0.32),0_0_64px_rgba(255,209,102,0.18)]">
+            <section className="mb-7 rounded-[34px] border border-white/10 bg-[radial-gradient(circle_at_86%_10%,rgba(255,209,102,0.18),transparent_30%),radial-gradient(circle_at_10%_80%,rgba(106,227,192,0.14),transparent_32%),linear-gradient(145deg,rgba(255,255,255,0.07),rgba(255,255,255,0.024))] p-5 shadow-[0_32px_110px_rgba(0,0,0,0.28)] backdrop-blur-xl sm:p-6">
+              <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+                <div className="flex min-w-0 items-center gap-5">
+                  <div className="relative h-[136px] w-[136px] shrink-0 overflow-hidden rounded-[36px] border-[4px] border-[#ffd166]/38 bg-white/[0.06] shadow-[0_0_0_1px_rgba(255,255,255,0.10),0_28px_90px_rgba(0,0,0,0.36),0_0_78px_rgba(255,209,102,0.22)]">
                     {/* Les avatars sont liés au rang, pas modifiables par l'utilisateur. */}
                     <Image
                       alt="Avatar de rang Grumm"
-                      height={128}
+                      height={136}
                       src={avatarSrc}
-                      width={128}
+                      width={136}
                       onError={(event) => {
                         event.currentTarget.onerror = null;
                         event.currentTarget.src = "/avatar/avatar.png";
@@ -792,30 +943,24 @@ function ProfileContent() {
                       className="h-full w-full object-cover"
                     />
                   </div>
-                  <div className="min-w-0 pt-1">
-                    <h1 className="truncate text-[clamp(2.35rem,6vw,4.5rem)] font-semibold leading-[0.96] tracking-[-0.055em] text-white">
+                  <div className="min-w-0">
+                    <h1 className="truncate text-[clamp(2rem,6vw,3.25rem)] font-black leading-none tracking-[-0.055em] text-white">
                       {profile.username ?? "Profil"}
                     </h1>
-                    {profile.email && (
-                      <p className="mt-3 flex min-w-0 items-center gap-2 text-sm font-semibold text-white/48">
-                        <Mail className="h-4 w-4 shrink-0" aria-hidden="true" />
-                        <span className="truncate">{profile.email}</span>
-                      </p>
-                    )}
                     <button
                       type="button"
                       onClick={() => setIsGradeModalOpen(true)}
-                      className="mt-3 inline-flex max-w-full items-center gap-3 rounded-[18px] border border-[#ffd166]/18 bg-[#ffd166]/10 px-3 py-2 text-left text-[#ffe2a3] transition hover:border-[#ffd166]/36 hover:bg-[#ffd166]/16"
+                      className="mt-3 inline-flex max-w-full items-center gap-2 rounded-full border border-[#ffd166]/18 bg-[#ffd166]/10 px-3 py-1.5 text-left text-sm font-black text-[#ffe2a3] transition hover:border-[#ffd166]/32 hover:bg-[#ffd166]/14"
                     >
-                      <GradeIcon
-                        badge={gradeBadge}
-                        className="h-5 w-5 shrink-0 text-[#ffd166]"
-                      />
-                      <span className="whitespace-normal break-words text-sm font-black leading-5 text-white">
-                        {gradeTitle}
-                      </span>
-                      <Info className="h-3.5 w-3.5 shrink-0 text-[#ffd166]/70" aria-hidden="true" />
+                      {activeGradeTitle}
+                      <Info className="h-4 w-4 shrink-0 text-[#ffd166]/70" aria-hidden="true" />
                     </button>
+                    {profile.email ? (
+                      <p className="mt-2 flex min-w-0 items-center gap-2 text-xs font-semibold text-white/38">
+                        <Mail className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                        <span className="truncate">{profile.email}</span>
+                      </p>
+                    ) : null}
                   </div>
                 </div>
 
@@ -827,62 +972,20 @@ function ProfileContent() {
                   Modifier
                 </Link>
               </div>
-
-              <div className="mt-7 w-full rounded-[24px] border border-white/10 bg-[linear-gradient(135deg,rgba(255,255,255,0.07),rgba(255,255,255,0.026))] p-4 shadow-[0_18px_70px_rgba(0,0,0,0.18)] backdrop-blur-xl">
-                <div className="flex items-center justify-between gap-4 text-sm font-bold">
-                  <span className="flex items-center gap-2 text-white/70">
-                    {isDailyGoalCompleted ? (
-                      <CheckCircle2 className="h-4 w-4 text-[#6ae3c0]" aria-hidden="true" />
-                    ) : (
-                      <Target className="h-4 w-4 text-[#ffd166]" aria-hidden="true" />
-                    )}
-                    Objectif du jour : {isDailyGoalCompleted ? "Validé !" : `${profile.todayReadCount} / ${profile.dailyGoal} faits`}
-                  </span>
-                  <span className="hidden text-white/48 sm:inline">
-                    {Math.round(dailyProgressPercent)}%
-                  </span>
-                </div>
-                <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/10">
-                  <div
-                    className="profile-daily-progress h-full rounded-full bg-gradient-to-r from-[#ffd166] to-[#6ae3c0] transition-[width] duration-700"
-                    style={{ width: `${dailyProgressPercent}%` }}
-                  />
-                </div>
-                <p className="mt-3 text-sm font-semibold leading-6 text-white/52">
-                  {dailyProgressMessage}
-                </p>
-                <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-                  <span className="inline-flex items-center gap-2 rounded-full border border-[#ff9f43]/18 bg-[#ff9f43]/10 px-3 py-1.5 text-xs font-black text-[#ffd7ad]">
-                    <Flame className="h-3.5 w-3.5" aria-hidden="true" />
-                    Série quotidienne : {profile.currentStreakDays} jour{profile.currentStreakDays > 1 ? "s" : ""} de suite
-                  </span>
-                  <div className="flex items-center gap-1.5">
-                    {weekLabels.map((label, index) => {
-                      const isDone =
-                        index <= todayIndex &&
-                        index >= todayIndex - completedWeekDays + 1;
-                      const isToday = index === todayIndex;
-
-                      return (
-                        <span
-                          key={`${label}-${index}`}
-                          className={`grid h-8 w-8 place-items-center rounded-full border text-[11px] font-black ${
-                            isDone
-                              ? "border-[#6ae3c0]/36 bg-[#6ae3c0]/18 text-[#c9fff1]"
-                              : isToday
-                                ? "border-[#ffd166]/34 bg-[#ffd166]/10 text-[#ffe2a3]"
-                                : "border-white/10 bg-black/14 text-white/38"
-                          }`}
-                        >
-                          {isDone ? <Check className="h-3.5 w-3.5" aria-hidden="true" /> : label}
-                        </span>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-
             </section>
+
+            <NextUnlockPanel
+              activeGradeTitle={activeGradeTitle}
+              nextGrade={gradeSnapshot?.nextGrade ?? null}
+              nextGradeTitle={nextGradeTitle}
+              nextRank={activeGradeRank + 1}
+              progressPercent={gradeSnapshot?.progressPercent ?? 100}
+              remainingGoals={remainingGradeGoals}
+            />
+
+            <DailyStreakPanel profile={profile} />
+
+            <ProfileStatsPanel profile={profile} />
 
             {isGradeModalOpen ? (
               <div
@@ -913,7 +1016,6 @@ function ProfileContent() {
             <SavedFactsPanel profile={profile} />
             <ThemeInsightsPanel profile={profile} />
             <QuickAccessPanel />
-            <SuccessPanel profile={profile} />
           </>
         )}
       </main>

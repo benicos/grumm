@@ -23,7 +23,7 @@ import {
   type PermissionKey,
   type UserRole,
 } from "@/lib/roles";
-import { getBadgeInfo, type GradeDefinition } from "@/lib/badges";
+import { DEFAULT_GRADES, getBadgeInfo, type GradeDefinition } from "@/lib/badges";
 import { type LearningGoal, normalizeLearningGoal } from "@/lib/learning";
 
 type AuthContextValue = {
@@ -41,7 +41,9 @@ type UserProfile = {
   daily_goal: number;
   learning_goal: LearningGoal;
   avatar_url: string | null;
+  completedDailyGoals?: number;
   gradeBadge?: string | null;
+  grades?: GradeDefinition[];
   gradeName?: string | null;
   role: UserRole;
   roleName?: string | null;
@@ -131,6 +133,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       let roleName: string | null = null;
       let gradeBadge: string | null = null;
       let gradeName: string | null = null;
+      let completedDailyGoals = 0;
+      let grades: GradeDefinition[] = [];
 
       try {
         const [roleResult, completedGoalsResult, gradesResult] =
@@ -173,7 +177,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             : permissions;
         }
 
-        const grades = (gradesResult.data ?? []).map((grade) => ({
+        grades = (gradesResult.data ?? []).map((grade) => ({
           badge: grade.badge,
           description: grade.description,
           displayOrder: grade.display_order,
@@ -182,16 +186,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           requiredGoals: grade.required_goals,
           slug: grade.slug,
         })) satisfies GradeDefinition[];
-        const badge = getBadgeInfo(completedGoalsResult.count ?? 0, grades);
+        if (grades.length === 0) {
+          grades = DEFAULT_GRADES;
+        }
+        completedDailyGoals = completedGoalsResult.count ?? 0;
+        const badge = getBadgeInfo(completedDailyGoals, grades);
         gradeBadge = badge.badge;
         gradeName = badge.title;
       } catch {
         permissions = getDefaultRolePermissions(data.role) as PermissionKey[];
+        grades = DEFAULT_GRADES;
       }
 
       return {
         ...data,
+        completedDailyGoals,
         gradeBadge,
+        grades,
         gradeName,
         learning_goal: normalizeLearningGoal(data.learning_goal),
         permissions,

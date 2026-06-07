@@ -1,291 +1,333 @@
 import { LinearGradient } from "expo-linear-gradient";
-import { Bookmark, ExternalLink, Eye, Heart, Share2, type LucideIcon } from "lucide-react-native";
+import { Bookmark, ExternalLink, Heart, Share2 } from "lucide-react-native";
 import { Linking, Pressable, StyleSheet, Text, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { isCommercialCollaborationFact } from "../lib/commercial";
 import { cleanFactSource } from "../lib/source";
-import { colors } from "../theme/colors";
+import { appTheme, withAlpha } from "../theme/appTheme";
 import type { FactActions, FeedFact } from "../types/domain";
 
 type FactCardProps = {
   actions: FactActions;
+  expanded?: boolean;
   fact: FeedFact;
-  height: number;
+  height?: number;
+  immersive?: boolean;
+  onReadMore?: () => void;
   onShare: () => void;
   onSourcePress?: () => void;
   onToggleLike: () => void;
   onToggleSave: () => void;
-  onView: () => void;
+  onView?: () => void;
 };
+
+export function FactCard({
+  actions,
+  expanded = false,
+  fact,
+  immersive = false,
+  onReadMore,
+  onShare,
+  onSourcePress,
+  onToggleLike,
+  onToggleSave,
+  onView,
+}: FactCardProps) {
+  const source = cleanFactSource(fact.source);
+  const hasMore = Boolean(fact.longContent && fact.longContent !== fact.detail);
+  const body = expanded ? fact.longContent ?? fact.detail : fact.detail;
+  const isImmersive = immersive;
+
+  return (
+    <Pressable
+      accessibilityRole={onView ? "button" : undefined}
+      onPress={onView}
+      style={({ pressed }) => [
+        isImmersive ? styles.immersiveCard : styles.card,
+        !isImmersive && { borderColor: withAlpha(fact.accent, 0.24) },
+        pressed && onView ? styles.pressed : null,
+      ]}
+    >
+      {isImmersive ? (
+        <>
+          <LinearGradient
+            colors={getGradientColors(fact)}
+            end={{ x: 1, y: 1 }}
+            start={{ x: 0.05, y: 0 }}
+            style={StyleSheet.absoluteFill}
+          />
+          <View style={styles.immersiveOverlay} />
+        </>
+      ) : (
+        <View style={[styles.accentWash, { backgroundColor: withAlpha(fact.accent, 0.11) }]} />
+      )}
+      <View style={styles.topRow}>
+        <View
+          style={[
+            styles.badge,
+            { backgroundColor: withAlpha(fact.accent, isImmersive ? 0.22 : 0.14) },
+            isImmersive && styles.immersiveBadge,
+          ]}
+        >
+          <View style={[styles.badgeDot, { backgroundColor: fact.accent }]} />
+          <Text
+            numberOfLines={1}
+            style={[
+              styles.badgeText,
+              { color: isImmersive ? "#ffffff" : fact.accent },
+            ]}
+          >
+            {fact.category}
+          </Text>
+        </View>
+      </View>
+
+      <View style={[styles.textBlock, immersive && styles.immersiveTextBlock]}>
+        <Text style={[styles.title, immersive && styles.immersiveTitle]}>{fact.title}</Text>
+        <Text
+          numberOfLines={expanded ? undefined : immersive ? 7 : 4}
+          style={[styles.detail, immersive && styles.immersiveDetail]}
+        >
+          {body}
+        </Text>
+
+        {hasMore && !expanded ? (
+          <Pressable accessibilityRole="button" onPress={onReadMore} style={styles.readMore}>
+            <Text style={styles.readMoreText}>Lire plus</Text>
+          </Pressable>
+        ) : null}
+      </View>
+
+      {source ? (
+        fact.sourceUrl ? (
+          <Pressable
+            accessibilityRole="link"
+            onPress={() => {
+              onSourcePress?.();
+              void Linking.openURL(fact.sourceUrl ?? "");
+            }}
+            style={styles.sourceLink}
+          >
+            <Text numberOfLines={1} style={[styles.source, isImmersive && styles.immersiveSource]}>
+              Source : {source}
+            </Text>
+            <ExternalLink
+              color={isImmersive ? "rgba(255,255,255,0.70)" : appTheme.color.muted}
+              size={13}
+              strokeWidth={2.2}
+            />
+          </Pressable>
+        ) : (
+          <Text numberOfLines={1} style={[styles.source, isImmersive && styles.immersiveSource]}>
+            Source : {source}
+          </Text>
+        )
+      ) : null}
+
+      <View style={[styles.actions, immersive && styles.immersiveActions]}>
+        <IconAction
+          active={actions.liked}
+          accent={fact.accent}
+          Icon={Heart}
+          label="Aimer"
+          onPress={onToggleLike}
+        />
+        <IconAction
+          active={actions.saved}
+          accent={fact.accent}
+          Icon={Bookmark}
+          label="Enregistrer"
+          onPress={onToggleSave}
+        />
+        <IconAction accent={fact.accent} Icon={Share2} label="Partager" onPress={onShare} />
+      </View>
+    </Pressable>
+  );
+}
 
 function getGradientColors(fact: FeedFact): [string, string, string] {
   const hexColors = fact.tone.match(/#[0-9a-fA-F]{3,8}/g);
 
   if (hexColors && hexColors.length >= 2) {
-    return [hexColors[0], hexColors[1], hexColors[2] ?? "#050812"];
+    return [hexColors[0], hexColors[1], hexColors[2] ?? fact.accent];
   }
 
-  return ["#07111f", fact.accent, "#050812"];
+  return ["#172033", fact.accent, "#0f172a"];
 }
 
-export function FactCard({ actions, fact, height, onShare, onSourcePress, onToggleLike, onToggleSave, onView }: FactCardProps) {
-  const insets = useSafeAreaInsets();
-  const source = cleanFactSource(fact.source);
-  const sourceUrl = fact.sourceUrl?.trim();
-  const isSponsored = isCommercialCollaborationFact(fact);
-
-  return (
-    <View style={[styles.page, { height }]}>
-      <LinearGradient colors={getGradientColors(fact)} start={{ x: 0.1, y: 0 }} end={{ x: 0.95, y: 1 }} style={styles.card}>
-        <View style={styles.scrim} />
-        <View style={[styles.glowLarge, { backgroundColor: fact.accent }]} />
-        <View style={[styles.glowSmall, { backgroundColor: fact.accent }]} />
-
-        <View style={[styles.content, { paddingTop: insets.top + 18 }]}>
-          <View style={[styles.category, { borderColor: `${fact.accent}73` }]}>
-            <Text style={[styles.categoryText, { color: fact.accent }]} numberOfLines={1}>
-              {fact.category}
-            </Text>
-          </View>
-
-          <View style={styles.centerContent}>
-            <Text style={styles.title} numberOfLines={6}>
-              {fact.title}
-            </Text>
-            <Text style={styles.detail} numberOfLines={8}>
-              {fact.detail}
-            </Text>
-          </View>
-
-          <View style={styles.bottomContent}>
-            {isSponsored ? (
-              <Pressable
-                accessibilityRole="link"
-                onPress={() => {
-                  if (sourceUrl) {
-                    Linking.openURL(sourceUrl);
-                  }
-                }}
-                style={({ pressed }) => [styles.sponsoredButton, pressed && styles.pressed]}
-              >
-                <Text style={styles.sponsoredButtonText}>En savoir plus</Text>
-                <ExternalLink color="#07111f" size={15} strokeWidth={2.4} />
-              </Pressable>
-            ) : (
-              <View style={styles.actions}>
-                <ActionButton accent={fact.accent} active={actions.liked} Icon={Heart} label="Aimer" onPress={onToggleLike} />
-                <ActionButton accent={fact.accent} active={actions.saved} Icon={Bookmark} label="Enregistrer" onPress={onToggleSave} />
-                <ActionButton accent={fact.accent} Icon={Eye} label="Voir" onPress={onView} />
-                <ActionButton accent={fact.accent} Icon={Share2} label="Partager" onPress={onShare} />
-              </View>
-            )}
-
-            {source ? (
-              sourceUrl ? (
-                <Pressable
-                  onPress={() => {
-                    if (!isSponsored) {
-                      onSourcePress?.();
-                    }
-                    Linking.openURL(sourceUrl);
-                  }}
-                  style={styles.sourceLink}
-                >
-                  <Text style={styles.source} numberOfLines={1}>
-                    {isSponsored ? "Partenaire" : "Source"} : {source}
-                  </Text>
-                  <ExternalLink color="rgba(248,250,252,0.58)" size={13} strokeWidth={2.2} />
-                </Pressable>
-              ) : (
-                <Text style={styles.source} numberOfLines={1}>
-                  {isSponsored ? "Partenaire" : "Source"} : {source}
-                </Text>
-              )
-            ) : null}
-          </View>
-        </View>
-      </LinearGradient>
-    </View>
-  );
-}
-
-function ActionButton({
-  active = false,
+function IconAction({
   accent,
+  active = false,
   Icon,
   label,
   onPress,
 }: {
   accent: string;
   active?: boolean;
-  Icon: LucideIcon;
+  Icon: typeof Heart;
   label: string;
   onPress: () => void;
 }) {
   return (
     <Pressable
-      accessibilityRole="button"
       accessibilityLabel={label}
+      accessibilityRole="button"
       onPress={onPress}
       style={({ pressed }) => [
-        styles.actionButton,
-        { shadowColor: active ? accent : "#000" },
-        active && styles.actionButtonActive,
-        pressed && styles.pressed,
+        styles.iconButton,
+        active && { backgroundColor: withAlpha(accent, 0.15), borderColor: withAlpha(accent, 0.34) },
+        pressed && styles.iconPressed,
       ]}
     >
-      <LinearGradient
-        colors={active ? [colors.accent, "#ffe4a1"] : ["rgba(255,255,255,0.16)", "rgba(255,255,255,0.055)"]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.actionGradient}
-      >
-        <Icon
-          color={active ? "#06111d" : colors.text}
-          fill={active ? colors.accent : "transparent"}
-          size={23}
-          strokeWidth={2.15}
-        />
-      </LinearGradient>
+      <Icon
+        color={active ? accent : appTheme.color.ink}
+        fill={active ? withAlpha(accent, 0.22) : "transparent"}
+        size={20}
+        strokeWidth={2.25}
+      />
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  actionButton: {
-    alignItems: "center",
-    borderColor: "rgba(255,255,255,0.18)",
-    borderRadius: 999,
-    borderWidth: 1,
-    height: 58,
-    justifyContent: "center",
-    width: 58,
-    shadowColor: "#000",
-    shadowOffset: { height: 12, width: 0 },
-    shadowOpacity: 0.28,
-    shadowRadius: 18,
-  },
-  actionButtonActive: {
-    borderColor: "rgba(255,255,255,0.38)",
-    shadowOpacity: 0.34,
-  },
-  actionGradient: {
-    alignItems: "center",
-    borderRadius: 999,
-    height: "100%",
-    justifyContent: "center",
-    overflow: "hidden",
-    width: "100%",
+  accentWash: {
+    borderRadius: 120,
+    height: 190,
+    position: "absolute",
+    right: -80,
+    top: -84,
+    width: 190,
   },
   actions: {
     flexDirection: "row",
-    gap: 12,
+    gap: 10,
+    marginTop: 16,
   },
-  bottomContent: {
-    gap: 14,
+  badge: {
+    alignItems: "center",
+    borderRadius: appTheme.radius.pill,
+    flexDirection: "row",
+    gap: 7,
+    maxWidth: "82%",
+    paddingHorizontal: 11,
+    paddingVertical: 7,
   },
-  card: {
-    flex: 1,
-    overflow: "hidden",
+  badgeDot: {
+    borderRadius: appTheme.radius.pill,
+    height: 8,
+    width: 8,
   },
-  category: {
-    alignSelf: "flex-start",
-    backgroundColor: "rgba(5,8,18,0.34)",
-    borderRadius: 999,
-    borderWidth: 1,
-    maxWidth: "72%",
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-  },
-  categoryText: {
+  badgeText: {
     fontSize: 11,
-    fontWeight: "900",
+    fontWeight: appTheme.weight.bold,
     letterSpacing: 0,
     textTransform: "uppercase",
   },
-  centerContent: {
-    flex: 1,
-    justifyContent: "center",
-    paddingRight: 0,
-  },
-  content: {
-    flex: 1,
-    justifyContent: "space-between",
-    paddingBottom: 22,
-    paddingHorizontal: 20,
+  card: {
+    backgroundColor: appTheme.color.cardSoft,
+    borderRadius: appTheme.radius.card,
+    borderWidth: 1,
+    overflow: "hidden",
+    padding: 16,
+    ...appTheme.shadow.card,
   },
   detail: {
-    color: "rgba(248,250,252,0.80)",
-    fontSize: 17,
-    lineHeight: 26,
-    marginTop: 20,
+    color: appTheme.color.muted,
+    fontSize: 15,
+    fontWeight: appTheme.weight.medium,
+    lineHeight: 22,
+    marginTop: 10,
   },
-  glowLarge: {
-    borderRadius: 999,
-    height: 360,
-    opacity: 0.24,
-    position: "absolute",
-    right: -120,
-    top: -70,
-    width: 360,
+  iconButton: {
+    alignItems: "center",
+    backgroundColor: "rgba(255,255,255,0.72)",
+    borderColor: appTheme.color.border,
+    borderRadius: appTheme.radius.pill,
+    borderWidth: 1,
+    height: 44,
+    justifyContent: "center",
+    width: 44,
   },
-  glowSmall: {
-    borderRadius: 999,
-    bottom: 80,
-    height: 240,
-    left: -120,
-    opacity: 0.16,
-    position: "absolute",
-    width: 240,
+  iconPressed: {
+    opacity: 0.72,
+    transform: [{ scale: 0.94 }],
   },
-  page: {
-    backgroundColor: colors.background,
+  immersiveActions: {
+    justifyContent: "center",
+  },
+  immersiveBadge: {
+    borderColor: "rgba(255,255,255,0.20)",
+    borderWidth: 1,
+  },
+  immersiveCard: {
+    backgroundColor: "#172033",
+    flex: 1,
+    justifyContent: "space-between",
+    overflow: "hidden",
+    paddingBottom: 28,
+    paddingHorizontal: 22,
+    paddingTop: 22,
+  },
+  immersiveDetail: {
+    color: "rgba(255,255,255,0.82)",
+    fontSize: 16,
+    lineHeight: 24,
+  },
+  immersiveOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.24)",
+  },
+  immersiveSource: {
+    color: "rgba(255,255,255,0.70)",
+  },
+  immersiveTextBlock: {
+    flex: 1,
+    justifyContent: "center",
+    paddingVertical: 14,
+  },
+  immersiveTitle: {
+    color: "#ffffff",
+    fontSize: 27,
+    lineHeight: 33,
   },
   pressed: {
-    opacity: 0.76,
-    transform: [{ scale: 0.98 }],
+    opacity: 0.9,
+    transform: [{ scale: 0.992 }],
   },
-  scrim: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.30)",
+  readMore: {
+    alignSelf: "flex-start",
+    marginTop: 10,
+    paddingVertical: 4,
+  },
+  readMoreText: {
+    color: appTheme.color.ink,
+    fontSize: 13,
+    fontWeight: appTheme.weight.bold,
   },
   source: {
-    color: "rgba(248,250,252,0.58)",
+    color: appTheme.color.muted,
     flexShrink: 1,
     fontSize: 12,
-    fontWeight: "700",
+    fontWeight: appTheme.weight.medium,
   },
   sourceLink: {
     alignItems: "center",
     flexDirection: "row",
     gap: 6,
-  },
-  sponsoredButton: {
-    alignItems: "center",
-    alignSelf: "flex-start",
-    backgroundColor: "rgba(255,255,255,0.92)",
-    borderRadius: 999,
-    flexDirection: "row",
-    gap: 8,
-    paddingHorizontal: 18,
-    paddingVertical: 12,
-    shadowColor: "#fff",
-    shadowOffset: { height: 12, width: 0 },
-    shadowOpacity: 0.18,
-    shadowRadius: 24,
-  },
-  sponsoredButtonText: {
-    color: "#07111f",
-    fontSize: 13,
-    fontWeight: "900",
-    letterSpacing: 0,
+    marginTop: 12,
   },
   title: {
-    color: colors.text,
-    fontSize: 33,
-    fontWeight: "900",
-    letterSpacing: 0,
-    lineHeight: 38,
+    color: appTheme.color.ink,
+    fontSize: 21,
+    fontWeight: appTheme.weight.bold,
+    lineHeight: 26,
+    marginTop: 14,
+  },
+  textBlock: {
+    minWidth: 0,
+  },
+  topRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "space-between",
   },
 });

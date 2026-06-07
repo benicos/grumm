@@ -8,7 +8,7 @@ import type { Database } from "../../../../src/types/database";
 import { logStructuredError } from "./logger";
 
 let mobileSupabaseClient: SupabaseClient<Database> | null = null;
-const SUPABASE_TIMEOUT_MS = 9000;
+const SUPABASE_TIMEOUT_MS = 18000;
 
 export async function clearSupabaseAuthStorage() {
   const keys = await AsyncStorage.getAllKeys();
@@ -56,19 +56,26 @@ export async function withSupabaseTimeout<T>(
   timeoutMs = SUPABASE_TIMEOUT_MS,
   perfLabel?: string,
 ): Promise<T> {
-  if (__DEV__ && perfLabel) {
-    console.time(`[Supabase] ${perfLabel}`);
+  const requestId = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  const timerLabel = __DEV__ && perfLabel ? `[Supabase] ${perfLabel}:${requestId}` : null;
+
+  if (timerLabel) {
+    console.time(timerLabel);
   }
 
   return new Promise((resolve, reject) => {
-    const timeout = setTimeout(() => {
-      const error = new Error(message);
-      logStructuredError(error, {
-        operation: "supabase request timeout",
-        source: "Network",
-      });
-      reject(error);
-    }, timeoutMs);
+    const timeout =
+      timeoutMs > 0
+        ? setTimeout(() => {
+            const error = new Error(message);
+            logStructuredError(error, {
+              operation: "supabase request timeout",
+              payload: { label: perfLabel ?? "unlabeled", timeoutMs },
+              source: "Network",
+            });
+            reject(error);
+          }, timeoutMs)
+        : null;
 
     Promise.resolve(promise)
       .then(resolve)
@@ -82,9 +89,11 @@ export async function withSupabaseTimeout<T>(
         reject(error);
       })
       .finally(() => {
-        clearTimeout(timeout);
-        if (__DEV__ && perfLabel) {
-          console.timeEnd(`[Supabase] ${perfLabel}`);
+        if (timeout) {
+          clearTimeout(timeout);
+        }
+        if (timerLabel) {
+          console.timeEnd(timerLabel);
         }
       });
   });

@@ -8,7 +8,6 @@ import {
 import Footer from "../components/Footer";
 import HeroBackground from "../components/HeroBackground";
 import Navbar from "../components/Navbar";
-import PageHero from "../components/PageHero";
 import QuizStatsPanel from "./QuizStatsPanel";
 
 export const metadata: Metadata = buildDefaultMetadata({
@@ -50,12 +49,26 @@ export default function QuizHubPage() {
       <HeroBackground />
       <Navbar />
       <main className="relative z-10 mx-auto flex min-h-[calc(100vh-92px)] w-full max-w-[1120px] flex-col justify-center px-5 py-12 sm:px-6 lg:px-8">
-        <PageHero
-          Icon={Trophy}
-          eyebrow="Grumm Quiz"
-          title="Mémorise ce que tu découvres."
-          description="Deux formats courts pour transformer les faits lus en repères qui restent."
-        />
+        <section className="mx-auto grid w-full max-w-5xl gap-6 rounded-[34px] border border-white/10 bg-[radial-gradient(circle_at_82%_12%,rgba(106,227,192,0.18),transparent_30%),radial-gradient(circle_at_14%_82%,rgba(167,139,250,0.18),transparent_32%),linear-gradient(145deg,rgba(255,255,255,0.07),rgba(255,255,255,0.024))] p-6 shadow-[0_32px_110px_rgba(0,0,0,0.26)] backdrop-blur-2xl md:grid-cols-[minmax(0,1fr)_220px] md:items-center">
+          <div>
+            <p className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-[0.22em] text-[#6ae3c0]">
+              <Trophy className="h-4 w-4" aria-hidden="true" />
+              Grumm Quiz
+            </p>
+            <h1 className="mt-4 max-w-2xl text-[clamp(2.35rem,7vw,4.75rem)] font-black leading-[0.94] tracking-[-0.07em] text-white">
+              Entraîne ta mémoire.
+            </h1>
+            <p className="mt-4 max-w-xl text-sm font-semibold leading-7 text-white/62 sm:text-base">
+              Deux formats courts pour retenir ce que tu découvres et faire progresser ton avatar Grumm.
+            </p>
+          </div>
+          <div className="relative mx-auto grid h-44 w-44 place-items-center rounded-[44px] border border-white/10 bg-black/18 text-[#6ae3c0] shadow-[0_24px_90px_rgba(0,0,0,0.28)]">
+            <div className="absolute inset-4 rounded-[34px] bg-[#6ae3c0]/10 blur-xl" />
+            <Brain className="relative h-20 w-20" aria-hidden="true" />
+            <Sparkles className="absolute right-8 top-7 h-5 w-5 text-[#ffd166]" aria-hidden="true" />
+            <Zap className="absolute bottom-8 left-8 h-5 w-5 text-[#a78bfa]" aria-hidden="true" />
+          </div>
+        </section>
 
         <section className="mx-auto mt-10 grid w-full max-w-5xl gap-4">
           {quizEntries.map(({ Icon, accent, cta, description, href, kicker, title, tone }) => (
