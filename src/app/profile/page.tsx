@@ -223,7 +223,7 @@ function DailyStreakPanel({ profile }: { profile: UserProfileSummary }) {
           return (
             <div key={day.date} className="min-w-0">
               <div
-                className={`grid aspect-square place-items-center rounded-full border text-sm font-black ${statusClassName}`}
+                className={`grid aspect-square place-items-center rounded-full border text-sm font-black lg:mx-auto lg:h-9 lg:w-9 lg:text-xs ${statusClassName}`}
                 title={`${day.readCount}/${day.goal} faits`}
               >
                 {day.status === "completed" ? (

@@ -13,8 +13,11 @@ export const metadata: Metadata = buildDefaultMetadata({
 
 export default function DecouvrirPage() {
   return (
-    <Suspense>
-      <DecouvrirClient />
-    </Suspense>
+    <>
+      <h1 className="sr-only">Faits culturels et anecdotes à découvrir</h1>
+      <Suspense>
+        <DecouvrirClient />
+      </Suspense>
+    </>
   );
 }

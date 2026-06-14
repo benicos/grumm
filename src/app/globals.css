@@ -150,6 +150,27 @@ body {
     inset 0 1px 4px rgba(7, 17, 31, 0.12);
 }
 
+.grumm-home-cta {
+  border-color: rgba(255, 209, 102, 0.58);
+  background-image: linear-gradient(
+    135deg,
+    #ffd166 0%,
+    #f8ead0 42%,
+    #6ae3c0 100%
+  );
+  box-shadow:
+    0 28px 82px rgba(255, 209, 102, 0.20),
+    0 16px 54px rgba(106, 227, 192, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.72);
+}
+
+.grumm-home-cta:hover {
+  box-shadow:
+    0 34px 98px rgba(255, 209, 102, 0.28),
+    0 18px 62px rgba(106, 227, 192, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.92);
+}
+
 .grumm-title-gradient {
   color: #e5e7eb;
   background-image: linear-gradient(

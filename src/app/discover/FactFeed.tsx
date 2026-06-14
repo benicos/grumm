@@ -124,25 +124,20 @@ const actionIcons = {
   share: (
     <svg viewBox="0 0 24 24" aria-hidden="true" className="h-5 w-5">
       <path
-        d="M17.5 15.1c-1.2 0-2.2.6-2.8 1.5L9.3 13.8c.1-.4.1-.7.1-1.1s0-.7-.1-1.1l5.3-2.8c.6.9 1.7 1.5 2.9 1.5 1.9 0 3.5-1.6 3.5-3.5S19.4 3.3 17.5 3.3 14 4.9 14 6.8v.3L8.5 10C7.9 9.4 7 9 6 9c-2 0-3.6 1.6-3.6 3.6S4 16.2 6 16.2c1 0 1.9-.4 2.5-1l5.5 2.9v.3c0 1.9 1.6 3.5 3.5 3.5s3.5-1.6 3.5-3.5-1.6-3.3-3.5-3.3Z"
-        fill="currentColor"
-      />
-    </svg>
-  ),
-  view: (
-    <svg viewBox="0 0 24 24" aria-hidden="true" className="h-5 w-5">
-      <path
-        d="M3 12s3.2-5.6 9-5.6S21 12 21 12s-3.2 5.6-9 5.6S3 12 3 12Z"
+        d="M12 3v10.5m0-10.5L8.2 6.8M12 3l3.8 3.8"
         fill="none"
         stroke="currentColor"
+        strokeLinecap="round"
         strokeLinejoin="round"
-        strokeWidth="2"
+        strokeWidth="2.2"
       />
       <path
-        d="M12 14.6a2.6 2.6 0 1 0 0-5.2 2.6 2.6 0 0 0 0 5.2Z"
+        d="M7.2 9.8H6.1c-1.2 0-2.1.9-2.1 2.1v6c0 1.2.9 2.1 2.1 2.1h11.8c1.2 0 2.1-.9 2.1-2.1v-6c0-1.2-.9-2.1-2.1-2.1h-1.1"
         fill="none"
         stroke="currentColor"
-        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2.2"
       />
     </svg>
   ),
@@ -1083,29 +1078,30 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
                       Thème
                     </div>
                   )}
-                  {isAuthenticated && profile?.gradeName ? (
-                    <Link
-                      href="/profil"
-                      className="inline-flex w-fit items-center gap-2 rounded-full border border-[#ffd166]/18 bg-black/18 px-3 py-2 text-xs font-black uppercase tracking-[0.16em] text-[#ffe2a3] backdrop-blur-xl transition hover:border-[#ffd166]/34 hover:bg-[#ffd166]/10"
-                    >
-                      <GradeIcon
-                        badge={profile.gradeBadge}
-                        className="h-3.5 w-3.5 shrink-0"
-                      />
-                      {profile.gradeName}
-                    </Link>
-                  ) : null}
                 </div>
 
                 <div className="flex min-h-0 flex-1 items-center py-7 sm:py-8">
                   <div className="w-full max-w-3xl">
-                    <h1 className="max-w-[21ch] text-[clamp(1.75rem,4.6vw,3.45rem)] font-extrabold leading-[1.08] tracking-[-0.025em] [text-wrap:balance]">
+                    <h2 className="max-w-[21ch] text-[clamp(1.75rem,4.6vw,3.45rem)] font-extrabold leading-[1.08] tracking-[-0.025em] [text-wrap:balance]">
                       {fact.title}
-                    </h1>
+                    </h2>
 
                     <p className="mt-5 max-w-2xl text-base leading-relaxed text-white/78 sm:text-lg">
                       {fact.detail}
                     </p>
+
+                    {!isSponsored ? (
+                      <Link
+                        href={`/fait/${fact.slug || fact.id}`}
+                        onClick={(event) => {
+                          event.preventDefault();
+                          openFactDetail(fact);
+                        }}
+                        className="mt-5 inline-flex text-sm font-black text-white/72 underline decoration-white/25 underline-offset-4 transition hover:text-white hover:decoration-white/60"
+                      >
+                        En apprendre plus...
+                      </Link>
+                    ) : null}
 
                     {isSponsored ? (
                       <a
@@ -1118,7 +1114,7 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
                       </a>
                     ) : (
                       <div
-                        className="mt-7 flex items-center gap-3 lg:hidden"
+                        className="mt-7 flex flex-wrap items-center gap-3 lg:hidden"
                         data-mobile-actions
                       >
                         <button
@@ -1173,15 +1169,6 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
                         >
                           {actionIcons.share}
                         </button>
-
-                        <button
-                          type="button"
-                          aria-label="Voir le fait"
-                          onClick={() => openFactDetail(fact)}
-                          className="grid h-14 w-14 place-items-center rounded-full border border-white/15 bg-white/10 text-white backdrop-blur-xl transition hover:scale-105"
-                        >
-                          {actionIcons.view}
-                        </button>
                       </div>
                     )}
                   </div>
@@ -1195,7 +1182,21 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
                   ) : isAuthenticated ? (
                     <>
                       <div className="mb-3 flex items-center justify-between text-xs text-white/72">
-                        <span className="font-semibold">Objectif quotidien</span>
+                        <span className="flex min-w-0 flex-wrap items-center gap-2 font-semibold">
+                          Objectif quotidien
+                          {profile?.gradeName ? (
+                            <Link
+                              href="/profil"
+                              className="inline-flex max-w-[180px] items-center gap-1.5 truncate rounded-full border border-[#ffd166]/14 bg-black/16 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-[#ffe2a3]/78 transition hover:border-[#ffd166]/28 hover:text-[#ffe2a3]"
+                            >
+                              <GradeIcon
+                                badge={profile.gradeBadge}
+                                className="h-3 w-3 shrink-0"
+                              />
+                              <span className="truncate">{profile.gradeName}</span>
+                            </Link>
+                          ) : null}
+                        </span>
                         <span className="font-bold text-white">
                           {dailyProgress.count}/{currentDailyGoal}
                         </span>
@@ -1321,15 +1322,6 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
                     >
                       {actionIcons.share}
                     </button>
-
-                    <button
-                      type="button"
-                      aria-label="Voir le fait"
-                      onClick={() => openFactDetail(fact)}
-                      className="grid h-14 w-14 place-items-center rounded-full border border-white/15 bg-white/10 text-white backdrop-blur-xl transition hover:scale-105"
-                    >
-                      {actionIcons.view}
-                    </button>
                   </div>
                 )}
               </div>
@@ -1343,9 +1335,9 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
               <p className="text-xs font-bold uppercase tracking-[0.22em] text-[#ffd166]">
                 Découvrir est vide
               </p>
-              <h1 className="mt-4 text-3xl font-extrabold tracking-[-0.04em]">
+              <h2 className="mt-4 text-3xl font-extrabold tracking-[-0.04em]">
                 Aucun fait disponible pour le moment.
-              </h1>
+              </h2>
               <p className="mt-4 text-sm leading-6 text-white/62">
                 {process.env.NODE_ENV === "production"
                   ? userMessages.emptyFactsPublic

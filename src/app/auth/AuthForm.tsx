@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { Eye, EyeOff, MailCheck } from "lucide-react";
 import { appRoutes, dailyGoalConfig, signupDailyGoalOptions } from "@/config/app";
 import { trackAnalyticsEvent } from "@/lib/analytics/web";
 import { signInWithEmail, signUpWithEmail } from "@/lib/auth";
@@ -28,7 +29,10 @@ type AuthFormProps = {
 type SignupStep = "username" | "learningGoal" | "dailyGoal" | "credentials";
 
 type FieldErrors = Partial<
-  Record<"username" | "email" | "password" | "dailyGoal", string>
+  Record<
+    "username" | "email" | "password" | "passwordConfirmation" | "dailyGoal",
+    string
+  >
 >;
 
 const signupSteps: SignupStep[] = [
@@ -77,6 +81,10 @@ export default function AuthForm({ mode }: AuthFormProps) {
     dailyGoalConfig.defaultGoal,
   );
   const [password, setPassword] = useState("");
+  const [passwordConfirmation, setPasswordConfirmation] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showPasswordConfirmation, setShowPasswordConfirmation] =
+    useState(false);
   const [signupStep, setSignupStep] = useState<SignupStep>("username");
   const [username, setUsername] = useState("");
   const [message, setMessage] = useState<string | null>(null);
@@ -142,6 +150,13 @@ export default function AuthForm({ mode }: AuthFormProps) {
 
       if (!isPasswordValid(password)) {
         nextFieldErrors.password = passwordValidationMessage;
+      }
+
+      if (!passwordConfirmation) {
+        nextFieldErrors.passwordConfirmation = "Confirme ton mot de passe.";
+      } else if (password !== passwordConfirmation) {
+        nextFieldErrors.passwordConfirmation =
+          "Les deux mots de passe ne correspondent pas.";
       }
     }
 
@@ -230,7 +245,10 @@ export default function AuthForm({ mode }: AuthFormProps) {
 
     if (result.requiresEmailConfirmation) {
       setMessageTone("success");
-      setMessage(result.message ?? "Bienvenue sur Grumm. Confirme ton email pour commencer.");
+      setMessage(
+        result.message ??
+          "Compte créé. Pour continuer, valide ton adresse email depuis le lien que nous venons de t'envoyer.",
+      );
       return;
     }
 
@@ -379,21 +397,80 @@ export default function AuthForm({ mode }: AuthFormProps) {
           <span className="text-sm font-semibold text-white/72">
             Mot de passe
           </span>
-          <input
-            value={password}
-            onChange={(event) => {
-              setPassword(event.target.value);
-              setFieldError("password");
-            }}
-            type="password"
-            autoComplete="new-password"
-            required
-            minLength={8}
-            className="mt-2 w-full rounded-[16px] border border-white/10 bg-white/[0.055] px-4 py-3 text-white outline-none transition placeholder:text-white/35 focus:border-[#ffd166] focus:bg-white/[0.08]"
-            placeholder="Mot de passe securise"
-          />
+          <div className="relative mt-2">
+            <input
+              value={password}
+              onChange={(event) => {
+                setPassword(event.target.value);
+                setFieldError("password");
+                setFieldError("passwordConfirmation");
+              }}
+              type={showPassword ? "text" : "password"}
+              autoComplete="new-password"
+              required
+              minLength={8}
+              className="w-full rounded-[16px] border border-white/10 bg-white/[0.055] px-4 py-3 pr-14 text-white outline-none transition placeholder:text-white/35 focus:border-[#ffd166] focus:bg-white/[0.08]"
+              placeholder="Mot de passe securise"
+            />
+            <button
+              type="button"
+              aria-label={
+                showPassword
+                  ? "Masquer le mot de passe"
+                  : "Afficher le mot de passe"
+              }
+              onClick={() => setShowPassword((current) => !current)}
+              className="absolute inset-y-0 right-2 my-auto grid h-10 w-10 place-items-center rounded-full text-white/58 transition hover:bg-white/10 hover:text-white"
+            >
+              {showPassword ? (
+                <EyeOff className="h-4 w-4" aria-hidden="true" />
+              ) : (
+                <Eye className="h-4 w-4" aria-hidden="true" />
+              )}
+            </button>
+          </div>
           <PasswordRuleChecklist password={password} />
           <FieldError message={fieldErrors.password} />
+        </label>
+
+        <label className="block">
+          <span className="text-sm font-semibold text-white/72">
+            Confirmer le mot de passe
+          </span>
+          <div className="relative mt-2">
+            <input
+              value={passwordConfirmation}
+              onChange={(event) => {
+                setPasswordConfirmation(event.target.value);
+                setFieldError("passwordConfirmation");
+              }}
+              type={showPasswordConfirmation ? "text" : "password"}
+              autoComplete="new-password"
+              required
+              minLength={8}
+              className="w-full rounded-[16px] border border-white/10 bg-white/[0.055] px-4 py-3 pr-14 text-white outline-none transition placeholder:text-white/35 focus:border-[#ffd166] focus:bg-white/[0.08]"
+              placeholder="Confirme le mot de passe"
+            />
+            <button
+              type="button"
+              aria-label={
+                showPasswordConfirmation
+                  ? "Masquer la confirmation du mot de passe"
+                  : "Afficher la confirmation du mot de passe"
+              }
+              onClick={() =>
+                setShowPasswordConfirmation((current) => !current)
+              }
+              className="absolute inset-y-0 right-2 my-auto grid h-10 w-10 place-items-center rounded-full text-white/58 transition hover:bg-white/10 hover:text-white"
+            >
+              {showPasswordConfirmation ? (
+                <EyeOff className="h-4 w-4" aria-hidden="true" />
+              ) : (
+                <Eye className="h-4 w-4" aria-hidden="true" />
+              )}
+            </button>
+          </div>
+          <FieldError message={fieldErrors.passwordConfirmation} />
         </label>
       </>
     );
@@ -472,19 +549,20 @@ export default function AuthForm({ mode }: AuthFormProps) {
 
       {message && (
         messageTone === "success" ? (
-          <div className="mt-5 rounded-[22px] border border-emerald-300/20 bg-emerald-400/10 px-4 py-4 text-emerald-50 shadow-[0_18px_60px_rgba(16,185,129,0.12)]">
-            <p className="text-lg font-black tracking-[-0.03em]">
-              Bienvenue sur Grumm.
-            </p>
-            <p className="mt-2 text-sm font-semibold leading-6 text-emerald-50/78">
-              {message}
-            </p>
-            <Link
-              href="/decouvrir"
-              className="mt-4 inline-flex rounded-full border border-emerald-200/20 bg-white/10 px-4 py-2 text-sm font-black text-white transition hover:bg-white/15"
-            >
-              Commencer à découvrir
-            </Link>
+          <div className="mt-5 rounded-[22px] border border-[#ffd166]/30 bg-[#ffd166]/12 px-4 py-4 text-white shadow-[0_18px_60px_rgba(255,209,102,0.14)]">
+            <div className="flex items-start gap-3">
+              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#ffd166] text-[#07111f]">
+                <MailCheck className="h-5 w-5" aria-hidden="true" />
+              </span>
+              <span>
+                <span className="block text-lg font-black tracking-[-0.03em]">
+                  Vérifie ta boîte mail
+                </span>
+                <span className="mt-1 block text-sm font-semibold leading-6 text-white/78">
+                  {message}
+                </span>
+              </span>
+            </div>
           </div>
         ) : (
           <p className="mt-5 rounded-md border border-red-300/20 bg-red-500/10 px-4 py-3 text-sm text-red-100">

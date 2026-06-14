@@ -320,9 +320,9 @@ function ChallengeContent() {
           <Brain className="h-4 w-4" />
           Résultat
         </p>
-        <h1 className="mt-4 text-[clamp(3rem,10vw,6rem)] font-black leading-none tracking-[-0.07em] text-white">
+        <h2 className="mt-4 text-[clamp(3rem,10vw,6rem)] font-black leading-none tracking-[-0.07em] text-white">
           {score}/{session.questions.length}
-        </h1>
+        </h2>
         <p className="mx-auto mt-5 max-w-xl text-base font-semibold leading-8 text-white/66">
           {resultMessage}
         </p>
@@ -415,9 +415,9 @@ function ChallengeContent() {
           <p className="text-sm font-bold uppercase tracking-[0.14em] text-white/44">
             {currentQuestion.prompt}
           </p>
-          <h1 className="mt-3 max-w-2xl text-[clamp(1.65rem,4.8vw,3.1rem)] font-black leading-[1.02] tracking-[-0.045em] text-white">
+          <h2 className="mt-3 max-w-2xl text-[clamp(1.65rem,4.8vw,3.1rem)] font-black leading-[1.02] tracking-[-0.045em] text-white">
             {currentQuestion.title}
-          </h1>
+          </h2>
 
           <div className="mt-8 grid gap-3">
             {currentQuestion.options.map((option) => {

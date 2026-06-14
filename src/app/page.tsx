@@ -95,9 +95,9 @@ export default function GrummLanding() {
             <div className="mt-10 flex flex-wrap items-center justify-center gap-6">
               <Link
                 href="/decouvrir"
-                className={`${premiumPrimaryCtaClassName} min-h-[58px] px-10 text-base shadow-2xl`}
+                className={`${premiumPrimaryCtaClassName} grumm-home-cta min-h-[62px] rounded-[22px] px-11 text-base shadow-2xl ring-1 ring-[#ffd166]/25`}
               >
-                {"D\u00e9couvrir le flux"}
+                {"D\u00e9marrer"}
               </Link>
             </div>
 

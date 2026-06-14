@@ -56,8 +56,11 @@ export default async function TodayPage() {
         />
 
         <div className="mx-auto flex justify-center">
-          <Link href="/decouvrir" className={`${premiumPrimaryCtaClassName} inline-flex`}>
-            Découvrir le flux
+          <Link
+            href="/decouvrir"
+            className={`${premiumPrimaryCtaClassName} grumm-home-cta inline-flex min-h-[58px] rounded-[22px] px-9 ring-1 ring-[#ffd166]/25`}
+          >
+            Démarrer
           </Link>
         </div>
 

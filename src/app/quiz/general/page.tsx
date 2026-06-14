@@ -11,5 +11,10 @@ export const metadata: Metadata = buildDefaultMetadata({
 });
 
 export default function QuizGeneralPage() {
-  return <QuizExperience />;
+  return (
+    <>
+      <h1 className="sr-only">Quiz de culture générale</h1>
+      <QuizExperience />
+    </>
+  );
 }

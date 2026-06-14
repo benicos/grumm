@@ -280,7 +280,8 @@ export async function signUpWithEmail(
     return {
       ok: true,
       requiresEmailConfirmation: true,
-      message: "Compte créé. Confirme ton email avant de te connecter.",
+      message:
+        "Compte créé. Pour continuer, valide ton adresse email depuis le lien que nous venons de t'envoyer.",
     };
   }
 

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { buildDefaultMetadata } from "@/lib/serverMetadata";
+import MemoryChallengePage from "./MemoryChallengePage";
 
 export const metadata: Metadata = buildDefaultMetadata({
   canonicalPath: "/quiz/memoire",
@@ -8,4 +9,11 @@ export const metadata: Metadata = buildDefaultMetadata({
   title: "Défi mémoire",
 });
 
-export { default } from "./MemoryChallengePage";
+export default function QuizMemoirePage() {
+  return (
+    <>
+      <h1 className="sr-only">Quiz mémoire et apprentissage</h1>
+      <MemoryChallengePage />
+    </>
+  );
+}

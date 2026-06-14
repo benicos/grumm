@@ -2,6 +2,7 @@
 
 import { Inter } from "next/font/google";
 import Link from "next/link";
+import { Eye, EyeOff } from "lucide-react";
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import {
   getUserProfileSummary,
@@ -43,6 +44,31 @@ function FieldError({ message }: { message?: string }) {
   );
 }
 
+function PasswordToggle({
+  isVisible,
+  label,
+  onClick,
+}: {
+  isVisible: boolean;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      onClick={onClick}
+      className="absolute inset-y-0 right-2 my-auto grid h-10 w-10 place-items-center rounded-full text-white/58 transition hover:bg-white/10 hover:text-white"
+    >
+      {isVisible ? (
+        <EyeOff className="h-4 w-4" aria-hidden="true" />
+      ) : (
+        <Eye className="h-4 w-4" aria-hidden="true" />
+      )}
+    </button>
+  );
+}
+
 function EditSkeleton() {
   return (
     <div className="grid gap-5 lg:grid-cols-2">
@@ -73,6 +99,10 @@ function SettingsForms({
   const [currentPassword, setCurrentPassword] = useState("");
   const [password, setPassword] = useState("");
   const [passwordConfirmation, setPasswordConfirmation] = useState("");
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showPasswordConfirmation, setShowPasswordConfirmation] =
+    useState(false);
   const [errors, setErrors] = useState<FieldErrors>({});
   const [message, setMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState<string | null>(null);
@@ -286,14 +316,25 @@ function SettingsForms({
             <span className="text-sm font-semibold text-white/72">
               Mot de passe actuel
             </span>
-            <input
-              value={currentPassword}
-              onChange={(event) => setCurrentPassword(event.target.value)}
-              autoComplete="current-password"
-              className="mt-2 w-full rounded-md border border-white/10 bg-black/20 px-4 py-3 text-white outline-none transition placeholder:text-white/35 focus:border-[#ffd166]"
-              placeholder="Mot de passe actuel"
-              type="password"
-            />
+            <div className="relative mt-2">
+              <input
+                value={currentPassword}
+                onChange={(event) => setCurrentPassword(event.target.value)}
+                autoComplete="current-password"
+                className="w-full rounded-md border border-white/10 bg-black/20 px-4 py-3 pr-14 text-white outline-none transition placeholder:text-white/35 focus:border-[#ffd166]"
+                placeholder="Mot de passe actuel"
+                type={showCurrentPassword ? "text" : "password"}
+              />
+              <PasswordToggle
+                isVisible={showCurrentPassword}
+                label={
+                  showCurrentPassword
+                    ? "Masquer le mot de passe actuel"
+                    : "Afficher le mot de passe actuel"
+                }
+                onClick={() => setShowCurrentPassword((current) => !current)}
+              />
+            </div>
             <FieldError message={errors.currentPassword} />
           </label>
 
@@ -301,15 +342,26 @@ function SettingsForms({
             <span className="text-sm font-semibold text-white/72">
               Nouveau mot de passe
             </span>
-            <input
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              autoComplete="new-password"
-              className="mt-2 w-full rounded-md border border-white/10 bg-black/20 px-4 py-3 text-white outline-none transition placeholder:text-white/35 focus:border-[#ffd166]"
-              minLength={8}
-              placeholder="Mot de passe securise"
-              type="password"
-            />
+            <div className="relative mt-2">
+              <input
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                autoComplete="new-password"
+                className="w-full rounded-md border border-white/10 bg-black/20 px-4 py-3 pr-14 text-white outline-none transition placeholder:text-white/35 focus:border-[#ffd166]"
+                minLength={8}
+                placeholder="Mot de passe securise"
+                type={showPassword ? "text" : "password"}
+              />
+              <PasswordToggle
+                isVisible={showPassword}
+                label={
+                  showPassword
+                    ? "Masquer le nouveau mot de passe"
+                    : "Afficher le nouveau mot de passe"
+                }
+                onClick={() => setShowPassword((current) => !current)}
+              />
+            </div>
             <PasswordRuleChecklist password={password} />
             <FieldError message={errors.password} />
           </label>
@@ -318,15 +370,28 @@ function SettingsForms({
             <span className="text-sm font-semibold text-white/72">
               Confirmer le nouveau mot de passe
             </span>
-            <input
-              value={passwordConfirmation}
-              onChange={(event) => setPasswordConfirmation(event.target.value)}
-              autoComplete="new-password"
-              className="mt-2 w-full rounded-md border border-white/10 bg-black/20 px-4 py-3 text-white outline-none transition placeholder:text-white/35 focus:border-[#ffd166]"
-              minLength={8}
-              placeholder="Confirmation"
-              type="password"
-            />
+            <div className="relative mt-2">
+              <input
+                value={passwordConfirmation}
+                onChange={(event) => setPasswordConfirmation(event.target.value)}
+                autoComplete="new-password"
+                className="w-full rounded-md border border-white/10 bg-black/20 px-4 py-3 pr-14 text-white outline-none transition placeholder:text-white/35 focus:border-[#ffd166]"
+                minLength={8}
+                placeholder="Confirmation"
+                type={showPasswordConfirmation ? "text" : "password"}
+              />
+              <PasswordToggle
+                isVisible={showPasswordConfirmation}
+                label={
+                  showPasswordConfirmation
+                    ? "Masquer la confirmation du mot de passe"
+                    : "Afficher la confirmation du mot de passe"
+                }
+                onClick={() =>
+                  setShowPasswordConfirmation((current) => !current)
+                }
+              />
+            </div>
             <FieldError message={errors.passwordConfirmation} />
           </label>
           <button

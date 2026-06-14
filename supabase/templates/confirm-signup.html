@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Confirme ton email Grumm</title>
+  </head>
+  <body style="margin:0;padding:0;background:#07111f;font-family:Arial,Helvetica,sans-serif;color:#111827;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="width:100%;background:#07111f;margin:0;padding:0;">
+      <tr>
+        <td align="center" style="padding:32px 16px;">
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="width:100%;max-width:560px;background:#ffffff;border-radius:24px;overflow:hidden;border:1px solid #e5e7eb;">
+            <tr>
+              <td style="padding:32px 28px 12px 28px;">
+                <p style="margin:0 0 14px 0;color:#b68100;font-size:13px;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;">Grumm.</p>
+                <h1 style="margin:0;color:#07111f;font-size:28px;line-height:1.15;font-weight:900;">Valide ton adresse email</h1>
+                <p style="margin:16px 0 0 0;color:#42526b;font-size:16px;line-height:1.55;font-weight:600;">
+                  Ton compte est presque prêt. Clique sur le bouton ci-dessous pour confirmer ton email et continuer sur Grumm.
+                </p>
+              </td>
+            </tr>
+            <tr>
+              <td align="center" style="padding:24px 28px 8px 28px;">
+                <table role="presentation" cellspacing="0" cellpadding="0" style="margin:0 auto;">
+                  <tr>
+                    <td align="center" bgcolor="#ffd166" style="border-radius:16px;background:#ffd166;mso-padding-alt:18px 30px;">
+                      <a href="{{ .ConfirmationURL }}" target="_blank" style="display:inline-block;padding:18px 30px;border-radius:16px;background:#ffd166;color:#07111f;font-size:17px;line-height:1.2;font-weight:900;text-decoration:none;">
+                        Valider mon email
+                      </a>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:18px 28px 32px 28px;">
+                <p style="margin:0;color:#667085;font-size:13px;line-height:1.55;">
+                  Si le bouton ne fonctionne pas, copie ce lien dans ton navigateur :
+                </p>
+                <p style="margin:8px 0 0 0;color:#334155;font-size:13px;line-height:1.55;word-break:break-all;">
+                  <a href="{{ .ConfirmationURL }}" target="_blank" style="color:#0f766e;text-decoration:underline;">{{ .ConfirmationURL }}</a>
+                </p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>
