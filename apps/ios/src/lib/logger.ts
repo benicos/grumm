@@ -42,6 +42,10 @@ function getErrorField(error: unknown, key: string) {
 }
 
 export function logStructuredError(error: unknown, context: LogContext = {}) {
+  if (!__DEV__) {
+    return;
+  }
+
   console.error(
     "[ERROR]",
     sanitizeForLog({

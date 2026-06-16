@@ -31,13 +31,63 @@ import type { FactActions, FeedFact } from "../types/domain";
 type FeedScreenProps = {
   onClearTheme: () => void;
   onRequireAuth: () => void;
+  onSystemBarChange?: (theme: FeedSystemBarTheme) => void;
   themeName?: string | null;
   themeSlug?: string | null;
 };
 
+export type FeedSystemBarTheme = {
+  backgroundColor: string;
+  style: "dark" | "light";
+};
+
+const defaultFeedSystemBarTheme: FeedSystemBarTheme = {
+  backgroundColor: "#172033",
+  style: "light",
+};
+
+function getTopFeedColor(fact?: FeedFact | null) {
+  const hexColors = fact?.tone.match(/#[0-9a-fA-F]{3,8}/g);
+
+  return hexColors?.[0] ?? defaultFeedSystemBarTheme.backgroundColor;
+}
+
+function getHexLuminance(hexColor: string) {
+  const normalized = hexColor.replace("#", "");
+  const expanded =
+    normalized.length === 3
+      ? normalized
+          .split("")
+          .map((part) => `${part}${part}`)
+          .join("")
+      : normalized.slice(0, 6);
+
+  if (expanded.length !== 6) {
+    return 0;
+  }
+
+  const [r, g, b] = [0, 2, 4].map((start) => {
+    const value = Number.parseInt(expanded.slice(start, start + 2), 16) / 255;
+
+    return value <= 0.03928 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+  });
+
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+function getFeedSystemBarTheme(fact?: FeedFact | null): FeedSystemBarTheme {
+  const backgroundColor = getTopFeedColor(fact);
+
+  return {
+    backgroundColor,
+    style: getHexLuminance(backgroundColor) > 0.62 ? "dark" : "light",
+  };
+}
+
 export function FeedScreen({
   onClearTheme,
   onRequireAuth,
+  onSystemBarChange,
   themeSlug,
 }: FeedScreenProps) {
   const { isLoading: isAuthLoading, profile, session } = useAuth();
@@ -49,6 +99,9 @@ export function FeedScreen({
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [systemBarTheme, setSystemBarTheme] = useState<FeedSystemBarTheme>(
+    defaultFeedSystemBarTheme,
+  );
   const [viewportHeight, setViewportHeight] = useState(0);
   const recordedIds = useRef(new Set<string>());
   const inFlightLoadKeyRef = useRef<string | null>(null);
@@ -58,13 +111,31 @@ export function FeedScreen({
   const loadKey = `${session?.user.id ?? "anonymous"}:${learningGoal ?? "default"}:${themeSlug ?? "all"}`;
 
   const viewabilityConfig = useMemo(() => ({ itemVisiblePercentThreshold: 64 }), []);
+  const applySystemBarTheme = useCallback(
+    (fact?: FeedFact | null) => {
+      const nextTheme = getFeedSystemBarTheme(fact);
+
+      setSystemBarTheme((current) =>
+        current.backgroundColor === nextTheme.backgroundColor &&
+        current.style === nextTheme.style
+          ? current
+          : nextTheme,
+      );
+      onSystemBarChange?.(nextTheme);
+    },
+    [onSystemBarChange],
+  );
   const onViewableItemsChanged = useCallback(({ viewableItems }: { viewableItems: ViewToken[] }) => {
     const fact = viewableItems[0]?.item as FeedFact | undefined;
 
     if (!fact || recordedIds.current.has(fact.id)) {
+      if (fact) {
+        applySystemBarTheme(fact);
+      }
       return;
     }
 
+    applySystemBarTheme(fact);
     recordedIds.current.add(fact.id);
     void trackMobileAnalyticsEvent({
       entityId: fact.id,
@@ -72,7 +143,7 @@ export function FeedScreen({
       eventName: "fact_viewed",
     });
     void recordFactView(fact.id, dailyGoal).catch(() => undefined);
-  }, [dailyGoal]);
+  }, [applySystemBarTheme, dailyGoal]);
 
   const mergeActions = useCallback((nextActions: Map<string, FactActions>) => {
     setActions((current) => {
@@ -172,6 +243,10 @@ export function FeedScreen({
     return () => cancelAnimationFrame(frame);
   }, [isAuthLoading, loadFeed]);
 
+  useEffect(() => {
+    applySystemBarTheme(facts[0] ?? null);
+  }, [applySystemBarTheme, facts]);
+
   async function handleToggleLike(fact: FeedFact) {
     if (!session) {
       onRequireAuth();
@@ -259,7 +334,7 @@ export function FeedScreen({
   }
 
   return (
-    <AppScreen contentStyle={styles.screen}>
+    <AppScreen contentStyle={styles.screen} topSafeAreaColor={systemBarTheme.backgroundColor}>
       <View onLayout={handleViewportLayout} style={styles.viewport}>
         <FlatList
         ListEmptyComponent={

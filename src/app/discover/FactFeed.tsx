@@ -95,13 +95,15 @@ function getUnlockedGrade(
 ) {
   const source = grades && grades.length > 0 ? [...grades] : [];
 
-  return source
-    .filter(
-      (grade) =>
-        grade.requiredGoals > previousCompletedGoals &&
-        grade.requiredGoals <= nextCompletedGoals,
-    )
-    .sort((a, b) => b.requiredGoals - a.requiredGoals)[0] ?? null;
+  return (
+    source
+      .filter(
+        (grade) =>
+          grade.requiredGoals > previousCompletedGoals &&
+          grade.requiredGoals <= nextCompletedGoals,
+      )
+      .sort((a, b) => b.requiredGoals - a.requiredGoals)[0] ?? null
+  );
 }
 
 const actionIcons = {
@@ -163,10 +165,9 @@ function createFeedSessionId() {
   }
 
   return "10000000-1000-4000-8000-100000000000".replace(/[018]/g, (value) =>
-    (
-      Number(value) ^
-      (Math.random() * 16) >> (Number(value) / 4)
-    ).toString(16),
+    (Number(value) ^ ((Math.random() * 16) >> (Number(value) / 4))).toString(
+      16,
+    ),
   );
 }
 
@@ -198,7 +199,9 @@ function getRememberedFactIds(scope: string) {
     const parsedValue = rawValue ? JSON.parse(rawValue) : [];
 
     return Array.isArray(parsedValue)
-      ? parsedValue.filter((value): value is string => typeof value === "string")
+      ? parsedValue.filter(
+          (value): value is string => typeof value === "string",
+        )
       : [];
   } catch {
     return [];
@@ -301,7 +304,9 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
   const readFeedbackTimerRef = useRef<number | null>(null);
 
   const hasFacts = facts.length > 0;
-  const activeFactIndex = hasFacts ? Math.min(currentStep, facts.length - 1) : 0;
+  const activeFactIndex = hasFacts
+    ? Math.min(currentStep, facts.length - 1)
+    : 0;
   const activeFact = facts[activeFactIndex];
   const currentLearningGoal = profile?.learning_goal ?? null;
   const currentDailyGoal = profile?.daily_goal ?? dailyProgress.goal;
@@ -314,39 +319,44 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
     [currentDailyGoal, dailyProgress.count],
   );
   const visibleCards = hasFacts
-    ? [-1, 0, 1].map((offset) => {
-        const step = currentStep + offset;
-        const fact = step >= 0 && step < facts.length ? facts[step] : null;
+    ? [-1, 0, 1]
+        .map((offset) => {
+          const step = currentStep + offset;
+          const fact = step >= 0 && step < facts.length ? facts[step] : null;
 
-        return {
-          fact,
-          offset,
-          step,
-        };
-      }).filter(
-        (card): card is { fact: FeedFact; offset: number; step: number } =>
-          Boolean(card.fact),
-      )
+          return {
+            fact,
+            offset,
+            step,
+          };
+        })
+        .filter(
+          (card): card is { fact: FeedFact; offset: number; step: number } =>
+            Boolean(card.fact),
+        )
     : [];
 
-  const moveTo = useCallback((direction: 1 | -1) => {
-    setCurrentStep((current) => {
-      const maxStep = Math.max(facts.length - 1, 0);
-      const nextStep = Math.max(current + direction, 0);
+  const moveTo = useCallback(
+    (direction: 1 | -1) => {
+      setCurrentStep((current) => {
+        const maxStep = Math.max(facts.length - 1, 0);
+        const nextStep = Math.max(current + direction, 0);
 
-      const resolvedStep = Math.min(nextStep, maxStep);
+        const resolvedStep = Math.min(nextStep, maxStep);
 
-      if (resolvedStep !== current) {
-        hasSwipedRef.current = true;
-        setShowSwipeHint(false);
-      }
+        if (resolvedStep !== current) {
+          hasSwipedRef.current = true;
+          setShowSwipeHint(false);
+        }
 
-      return resolvedStep;
-    });
-    setDragOffset(0);
-    dragOffsetRef.current = 0;
-    setIsDragging(false);
-  }, [facts.length]);
+        return resolvedStep;
+      });
+      setDragOffset(0);
+      dragOffsetRef.current = 0;
+      setIsDragging(false);
+    },
+    [facts.length],
+  );
 
   const showTemporaryNotice = useCallback((message: string) => {
     setNotice(message);
@@ -412,7 +422,8 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
           {
             entityId: factId,
             entityType: "fact",
-            eventName: analyticsEventName === "fact_like" ? "first_like" : "first_save",
+            eventName:
+              analyticsEventName === "fact_like" ? "first_like" : "first_save",
           },
         );
       }
@@ -467,9 +478,7 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
       setFeedError(null);
 
       const rememberedFactIds = isReset ? getRememberedFactIds(scope) : [];
-      const excludeIds = isReset
-        ? rememberedFactIds
-        : loadedFactIdsRef.current;
+      const excludeIds = isReset ? rememberedFactIds : loadedFactIdsRef.current;
 
       try {
         const sessionId = getFeedSessionId(scope);
@@ -485,7 +494,11 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
         });
         let recycledCycle = false;
 
-        if (isReset && result.facts.length === 0 && rememberedFactIds.length > 0) {
+        if (
+          isReset &&
+          result.facts.length === 0 &&
+          rememberedFactIds.length > 0
+        ) {
           clearRememberedFactIds(scope);
           result = await getFeedFacts({
             excludeIds: [],
@@ -497,7 +510,11 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
           });
         }
 
-        if (!isReset && result.facts.length === 0 && loadedFactIdsRef.current.length > 0) {
+        if (
+          !isReset &&
+          result.facts.length === 0 &&
+          loadedFactIdsRef.current.length > 0
+        ) {
           loadedFactIdsRef.current = [];
           recycledCycle = true;
           result = await getFeedFacts({
@@ -541,20 +558,18 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
             return [...currentFacts, ...uniqueBatchFacts];
           }
 
-          return [
-            ...currentFacts,
-            ...batchFacts,
-          ];
+          return [...currentFacts, ...batchFacts];
         });
 
-        loadedFactIdsRef.current = isReset || recycledCycle
-          ? batchFactIds
-          : [
-              ...loadedFactIdsRef.current,
-              ...batchFactIds.filter(
-                (factId) => !loadedFactIdsRef.current.includes(factId),
-              ),
-            ];
+        loadedFactIdsRef.current =
+          isReset || recycledCycle
+            ? batchFactIds
+            : [
+                ...loadedFactIdsRef.current,
+                ...batchFactIds.filter(
+                  (factId) => !loadedFactIdsRef.current.includes(factId),
+                ),
+              ];
         rememberFactIds(scope, batchFactIds);
         setTheme(result.theme ?? null);
         setHasMoreFacts(batchFacts.length > 0);
@@ -776,8 +791,14 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
           );
 
           if (unlockedGrade) {
-            const previousRank = getGradeRank(previousCompletedGoals, profile?.grades);
-            const nextRank = getGradeRank(result.completedDailyGoals, profile?.grades);
+            const previousRank = getGradeRank(
+              previousCompletedGoals,
+              profile?.grades,
+            );
+            const nextRank = getGradeRank(
+              result.completedDailyGoals,
+              profile?.grades,
+            );
             setGradeUnlock({
               fromAvatarSrc: `/avatar/avatar_rank_${previousRank}.png`,
               gradeName: unlockedGrade.name,
@@ -791,10 +812,13 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
             getGoalCelebrationMessage(result.completedDailyGoals),
           );
           setShowGoalAnimation(true);
-          window.setTimeout(() => {
-            setShowGoalAnimation(false);
-            setGradeUnlock(null);
-          }, unlockedGrade ? 5200 : 3600);
+          window.setTimeout(
+            () => {
+              setShowGoalAnimation(false);
+              setGradeUnlock(null);
+            },
+            unlockedGrade ? 5200 : 3600,
+          );
         }
       })
       .catch(() => undefined);
@@ -1018,6 +1042,7 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
           const depth = Math.abs(offset);
           const toneBackground = getToneBackground(fact.tone);
           const isSponsored = isCommercialCollaborationFact(fact);
+          const hasDetailedContent = Boolean(fact.longContent?.trim());
 
           return (
             <article
@@ -1049,73 +1074,142 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
               <div className="absolute inset-0 opacity-[0.055] [background-image:linear-gradient(90deg,rgba(255,255,255,0.65)_1px,transparent_1px),linear-gradient(0deg,rgba(255,255,255,0.65)_1px,transparent_1px)] [background-size:42px_42px]" />
               <div className="absolute inset-x-0 bottom-0 h-2/5 bg-gradient-to-t from-black/70 to-transparent" />
 
-              <div className="relative z-10 flex h-full w-full max-w-6xl flex-col pb-24 pt-36 sm:pb-20">
-                <div className="flex flex-wrap items-center gap-3">
-                  {isSponsored ? (
-                    <span className="w-fit rounded-full border border-[#ffd166]/20 bg-[#ffd166]/12 px-4 py-2 text-xs font-bold uppercase tracking-[0.22em] text-[#ffe3a4] backdrop-blur-xl">
-                      Collaboration commerciale
-                    </span>
-                  ) : (
-                    <Link
-                      href={`/decouvrir/theme/${fact.categorySlug}`}
-                      onClick={() =>
-                        void trackAnalyticsEvent({
-                          entityType: "category",
-                          eventName: "category_opened",
-                          metadata: {
-                            name: fact.category,
-                            slug: fact.categorySlug,
-                          },
-                        })
-                      }
-                      className="w-fit rounded-full border border-white/15 bg-white/10 px-4 py-2 text-xs font-bold uppercase tracking-[0.22em] text-white/85 backdrop-blur-xl transition hover:-translate-y-0.5 hover:border-white/25 hover:bg-white/15"
-                    >
-                      {fact.category}
-                    </Link>
-                  )}
-                  {theme && (
-                    <div className="w-fit rounded-full border border-white/10 bg-black/16 px-4 py-2 text-xs font-bold uppercase tracking-[0.18em] text-white/62 backdrop-blur-xl">
-                      Thème
+              <div className="relative z-10 flex h-full w-full max-w-6xl flex-col pb-24 pt-36 sm:pb-20 md:pb-16 md:pt-28 lg:pb-20 lg:pt-36">
+                <div className="flex min-h-0 flex-1 flex-col justify-center py-7 sm:py-8 md:py-0">
+                  <div className="flex w-full max-w-3xl flex-col gap-5 md:gap-[clamp(0.75rem,2vh,1.25rem)]">
+                    <div className="flex flex-wrap items-center gap-3">
+                      {isSponsored ? (
+                        <span className="w-fit rounded-full border border-[#ffd166]/20 bg-[#ffd166]/12 px-4 py-2 text-xs font-bold uppercase tracking-[0.22em] text-[#ffe3a4] backdrop-blur-xl">
+                          Collaboration commerciale
+                        </span>
+                      ) : (
+                        <Link
+                          href={`/decouvrir/theme/${fact.categorySlug}`}
+                          onClick={() =>
+                            void trackAnalyticsEvent({
+                              entityType: "category",
+                              eventName: "category_opened",
+                              metadata: {
+                                name: fact.category,
+                                slug: fact.categorySlug,
+                              },
+                            })
+                          }
+                          className="w-fit rounded-full border border-white/15 bg-white/10 px-4 py-2 text-xs font-bold uppercase tracking-[0.22em] text-white/85 backdrop-blur-xl transition hover:-translate-y-0.5 hover:border-white/25 hover:bg-white/15"
+                        >
+                          {fact.category}
+                        </Link>
+                      )}
+                      {theme && (
+                        <div className="w-fit rounded-full border border-white/10 bg-black/16 px-4 py-2 text-xs font-bold uppercase tracking-[0.18em] text-white/62 backdrop-blur-xl">
+                          Thème
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
 
-                <div className="flex min-h-0 flex-1 items-center py-7 sm:py-8">
-                  <div className="w-full max-w-3xl">
-                    <h2 className="max-w-[21ch] text-[clamp(1.75rem,4.6vw,3.45rem)] font-extrabold leading-[1.08] tracking-[-0.025em] [text-wrap:balance]">
-                      {fact.title}
-                    </h2>
+                    <div className="flex flex-col gap-5 md:gap-[clamp(0.75rem,2vh,1.25rem)]">
+                      <h2 className="max-w-[21ch] text-[clamp(1.75rem,4.6vw,3.45rem)] font-extrabold leading-[1.08] tracking-[-0.025em] [text-wrap:balance]">
+                        {fact.title}
+                      </h2>
 
-                    <p className="mt-5 max-w-2xl text-base leading-relaxed text-white/78 sm:text-lg">
-                      {fact.detail}
-                    </p>
+                      <p className="max-w-2xl text-base leading-relaxed text-white/78 sm:text-lg">
+                        {fact.detail}
+                      </p>
 
+                      {!isSponsored && hasDetailedContent ? (
+                        <Link
+                          href={`/fait/${fact.slug || fact.id}`}
+                          onClick={(event) => {
+                            event.preventDefault();
+                            openFactDetail(fact);
+                          }}
+                          className="inline-flex text-sm font-black text-white/72 underline decoration-white/25 underline-offset-4 transition hover:text-white hover:decoration-white/60"
+                        >
+                          En apprendre plus...
+                        </Link>
+                      ) : null}
+
+                      {isSponsored ? (
+                        <a
+                          href={fact.sourceUrl ?? "#"}
+                          target={fact.sourceUrl ? "_blank" : undefined}
+                          rel={
+                            fact.sourceUrl ? "noopener noreferrer" : undefined
+                          }
+                          className="mt-2 inline-flex rounded-full bg-white px-5 py-3 text-sm font-extrabold text-[#07111f] shadow-[0_18px_55px_rgba(255,255,255,0.16)] transition hover:-translate-y-0.5 hover:bg-[#ffe7ad] lg:hidden"
+                        >
+                          En savoir plus
+                        </a>
+                      ) : (
+                        <div
+                          className="mt-2 flex flex-wrap items-center gap-3 md:hidden"
+                          data-mobile-actions
+                        >
+                          <button
+                            type="button"
+                            aria-label="Aimer"
+                            onClick={() =>
+                              toggleRemoteAction(
+                                fact,
+                                liked.includes(fact.id),
+                                setLiked,
+                                likeFact,
+                                unlikeFact,
+                                "fact_like",
+                              )
+                            }
+                            className={`grid h-14 w-14 place-items-center rounded-full border border-white/15 backdrop-blur-xl transition hover:scale-105 ${
+                              liked.includes(fact.id)
+                                ? "bg-white text-[#07111f]"
+                                : "bg-white/10 text-white"
+                            }`}
+                          >
+                            {actionIcons.like}
+                          </button>
+
+                          <button
+                            type="button"
+                            aria-label="Enregistrer"
+                            onClick={() =>
+                              toggleRemoteAction(
+                                fact,
+                                saved.includes(fact.id),
+                                setSaved,
+                                saveFact,
+                                unsaveFact,
+                                "fact_save",
+                              )
+                            }
+                            className={`grid h-14 w-14 place-items-center rounded-full border border-white/15 backdrop-blur-xl transition hover:scale-105 ${
+                              saved.includes(fact.id)
+                                ? "bg-[#ffd166] text-[#07111f]"
+                                : "bg-white/10 text-white"
+                            }`}
+                          >
+                            {actionIcons.save}
+                          </button>
+
+                          <button
+                            type="button"
+                            aria-label="Partager"
+                            onClick={shareFact}
+                            className="grid h-14 w-14 place-items-center rounded-full border border-white/15 bg-white/10 text-white backdrop-blur-xl transition hover:scale-105"
+                          >
+                            {actionIcons.share}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div
+                    className="mt-[clamp(1.25rem,4vh,2.75rem)] w-full max-w-2xl md:flex md:flex-col md:gap-[clamp(0.75rem,2vh,1.25rem)]"
+                    data-fact-progress-source
+                  >
                     {!isSponsored ? (
-                      <Link
-                        href={`/fait/${fact.slug || fact.id}`}
-                        onClick={(event) => {
-                          event.preventDefault();
-                          openFactDetail(fact);
-                        }}
-                        className="mt-5 inline-flex text-sm font-black text-white/72 underline decoration-white/25 underline-offset-4 transition hover:text-white hover:decoration-white/60"
-                      >
-                        En apprendre plus...
-                      </Link>
-                    ) : null}
-
-                    {isSponsored ? (
-                      <a
-                href={fact.sourceUrl ?? "#"}
-                        target={fact.sourceUrl ? "_blank" : undefined}
-                        rel={fact.sourceUrl ? "noopener noreferrer" : undefined}
-                        className="mt-7 inline-flex rounded-full bg-white px-5 py-3 text-sm font-extrabold text-[#07111f] shadow-[0_18px_55px_rgba(255,255,255,0.16)] transition hover:-translate-y-0.5 hover:bg-[#ffe7ad] lg:hidden"
-                      >
-                        En savoir plus
-                      </a>
-                    ) : (
                       <div
-                        className="mt-7 flex flex-wrap items-center gap-3 lg:hidden"
-                        data-mobile-actions
+                        className="hidden items-center gap-3 md:flex lg:hidden"
+                        data-tablet-actions
                       >
                         <button
                           type="button"
@@ -1170,95 +1264,97 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
                           {actionIcons.share}
                         </button>
                       </div>
-                    )}
-                  </div>
-                </div>
+                    ) : null}
 
-                <div className="w-full max-w-2xl" data-fact-progress-source>
-                  {isSponsored ? null : isLoadingAuth ? (
-                    <div className="mb-5 rounded-full border border-white/10 bg-white/10 px-4 py-3 text-sm font-semibold text-white/72 backdrop-blur-xl">
-                      Chargement de ta progression
-                    </div>
-                  ) : isAuthenticated ? (
-                    <>
-                      <div className="mb-3 flex items-center justify-between text-xs text-white/72">
-                        <span className="flex min-w-0 flex-wrap items-center gap-2 font-semibold">
-                          Objectif quotidien
-                          {profile?.gradeName ? (
-                            <Link
-                              href="/profil"
-                              className="inline-flex max-w-[180px] items-center gap-1.5 truncate rounded-full border border-[#ffd166]/14 bg-black/16 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-[#ffe2a3]/78 transition hover:border-[#ffd166]/28 hover:text-[#ffe2a3]"
-                            >
-                              <GradeIcon
-                                badge={profile.gradeBadge}
-                                className="h-3 w-3 shrink-0"
-                              />
-                              <span className="truncate">{profile.gradeName}</span>
-                            </Link>
-                          ) : null}
-                        </span>
-                        <span className="font-bold text-white">
-                          {dailyProgress.count}/{currentDailyGoal}
-                        </span>
+                    {isSponsored ? null : isLoadingAuth ? (
+                      <div className="mb-5 rounded-full border border-white/10 bg-white/10 px-4 py-3 text-sm font-semibold text-white/72 backdrop-blur-xl md:mb-0">
+                        Chargement de ta progression
                       </div>
-                      {readFeedback ? (
-                        <div className="pointer-events-none mb-3 inline-flex items-center gap-2 rounded-full border border-white/12 bg-black/24 px-3 py-2 text-xs font-black text-white/82 shadow-[0_16px_44px_rgba(0,0,0,0.18)] backdrop-blur-xl read-feedback">
-                          <span className="grid h-5 w-5 place-items-center rounded-full bg-[#6ae3c0] text-[#07111f]">
-                            +1
+                    ) : isAuthenticated ? (
+                      <>
+                        <div className="mb-3 flex items-center justify-between text-xs text-white/72">
+                          <span className="flex min-w-0 flex-wrap items-center gap-2 font-semibold">
+                            Objectif quotidien
+                            {profile?.gradeName ? (
+                              <Link
+                                href="/profil"
+                                className="inline-flex max-w-[180px] items-center gap-1.5 truncate rounded-full border border-[#ffd166]/14 bg-black/16 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-[#ffe2a3]/78 transition hover:border-[#ffd166]/28 hover:text-[#ffe2a3]"
+                              >
+                                <GradeIcon
+                                  badge={profile.gradeBadge}
+                                  className="h-3 w-3 shrink-0"
+                                />
+                                <span className="truncate">
+                                  {profile.gradeName}
+                                </span>
+                              </Link>
+                            ) : null}
                           </span>
-                          <span>Fait découvert</span>
-                          <span className="text-white/48">
-                            {readFeedback.count}/{readFeedback.goal}
+                          <span className="font-bold text-white">
+                            {dailyProgress.count}/{currentDailyGoal}
                           </span>
                         </div>
-                      ) : null}
-                      <div
-                        className="mb-5 h-1.5 overflow-hidden rounded-full bg-white/12"
-                        data-fact-progress
-                      >
+                        {readFeedback ? (
+                          <div className="pointer-events-none mb-3 inline-flex items-center gap-2 rounded-full border border-white/12 bg-black/24 px-3 py-2 text-xs font-black text-white/82 shadow-[0_16px_44px_rgba(0,0,0,0.18)] backdrop-blur-xl read-feedback">
+                            <span className="grid h-5 w-5 place-items-center rounded-full bg-[#6ae3c0] text-[#07111f]">
+                              +1
+                            </span>
+                            <span>Fait découvert</span>
+                            <span className="text-white/48">
+                              {readFeedback.count}/{readFeedback.goal}
+                            </span>
+                          </div>
+                        ) : null}
                         <div
-                          className="h-full rounded-full bg-[#ffd166] transition-[width] duration-500 ease-out"
-                          style={{ width: `${progress}%` }}
+                          className="mb-5 h-1.5 overflow-hidden rounded-full bg-white/12 md:mb-0"
+                          data-fact-progress
+                        >
+                          <div
+                            className="h-full rounded-full bg-[#ffd166] transition-[width] duration-500 ease-out"
+                            style={{ width: `${progress}%` }}
+                          />
+                        </div>
+                      </>
+                    ) : (
+                      <Link
+                        href="/login"
+                        onClick={() =>
+                          rememberAuthRedirect(window.location.pathname)
+                        }
+                        className="mb-5 inline-flex rounded-full border border-white/10 bg-white/[0.07] px-4 py-2 text-xs font-semibold text-white/68 backdrop-blur-xl transition hover:border-white/18 hover:text-white md:mb-0"
+                      >
+                        Connectez-vous pour sauvegarder votre progression
+                      </Link>
+                    )}
+
+                    {cleanFactSource(fact.source) ? (
+                      <div data-fact-source>
+                        <FactSource
+                          accent={fact.accent}
+                          onSourceClick={() => {
+                            if (isSponsored) {
+                              return;
+                            }
+
+                            markFactReadInteraction(factReadTokenRef.current);
+                            void trackAnalyticsEvent({
+                              entityId: fact.id,
+                              entityType: "fact",
+                              eventName: "source_clicked",
+                            });
+                          }}
+                          label={isSponsored ? "Partenaire:" : undefined}
+                          source={fact.source}
+                          sourceUrl={fact.sourceUrl}
                         />
                       </div>
-                    </>
-                  ) : (
-                    <Link
-                      href="/login"
-                      onClick={() => rememberAuthRedirect(window.location.pathname)}
-                      className="mb-5 inline-flex rounded-full border border-white/10 bg-white/[0.07] px-4 py-2 text-xs font-semibold text-white/68 backdrop-blur-xl transition hover:border-white/18 hover:text-white"
-                    >
-                      Connectez-vous pour sauvegarder votre progression
-                    </Link>
-                  )}
-
-                  {cleanFactSource(fact.source) ? (
-                    <div data-fact-source>
-                      <FactSource
-                        accent={fact.accent}
-                        onSourceClick={() => {
-                          if (isSponsored) {
-                            return;
-                          }
-
-                          markFactReadInteraction(factReadTokenRef.current);
-                          void trackAnalyticsEvent({
-                            entityId: fact.id,
-                            entityType: "fact",
-                            eventName: "source_clicked",
-                          });
-                        }}
-                        label={isSponsored ? "Partenaire:" : undefined}
-                        source={fact.source}
-                        sourceUrl={fact.sourceUrl}
-                      />
-                    </div>
-                  ) : null}
+                    ) : null}
+                  </div>
                 </div>
 
                 {isSponsored ? (
                   <a
-                href={fact.sourceUrl ?? "#"}
+                    href={fact.sourceUrl ?? "#"}
                     target={fact.sourceUrl ? "_blank" : undefined}
                     rel={fact.sourceUrl ? "noopener noreferrer" : undefined}
                     className="absolute right-5 top-1/2 hidden -translate-y-1/2 rounded-full bg-white px-5 py-3 text-sm font-extrabold text-[#07111f] shadow-[0_18px_55px_rgba(255,255,255,0.16)] transition hover:scale-[1.03] hover:bg-[#ffe7ad] sm:right-8 lg:inline-flex"
@@ -1364,7 +1460,8 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
               key={`${piece.left}-${piece.top}`}
               className="absolute h-3 w-1.5 rounded-full opacity-80"
               style={{
-                animation: "confettiFloat 1.95s cubic-bezier(0.16,1,0.3,1) both",
+                animation:
+                  "confettiFloat 1.95s cubic-bezier(0.16,1,0.3,1) both",
                 animationDelay: piece.delay,
                 backgroundColor: piece.color,
                 left: piece.left,
@@ -1387,11 +1484,13 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
             />
           ))}
 
-          <div className={`relative overflow-hidden rounded-[34px] border border-white/15 bg-[#07111f]/92 p-7 text-center shadow-[0_0_140px_rgba(255,209,102,0.28)] ${
-            gradeUnlock
-              ? "w-[min(460px,calc(100vw-32px))]"
-              : "w-[min(310px,calc(100vw-40px))]"
-          }`}>
+          <div
+            className={`relative overflow-hidden rounded-[34px] border border-white/15 bg-[#07111f]/92 p-7 text-center shadow-[0_0_140px_rgba(255,209,102,0.28)] ${
+              gradeUnlock
+                ? "w-[min(460px,calc(100vw-32px))]"
+                : "w-[min(310px,calc(100vw-40px))]"
+            }`}
+          >
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(255,209,102,0.30),transparent_42%),radial-gradient(circle_at_18%_82%,rgba(106,227,192,0.18),transparent_34%)]" />
             <div className="absolute left-1/2 top-0 h-40 w-40 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#ffd166]/36 blur-3xl" />
             {gradeUnlock ? (
@@ -1434,7 +1533,8 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
                   </div>
                 </div>
                 <p className="mx-auto mt-6 max-w-[300px] text-sm font-semibold leading-6 text-white/66">
-                  Ton avatar Grumm évolue. Continue ta série pour atteindre le prochain rang.
+                  Ton avatar Grumm évolue. Continue ta série pour atteindre le
+                  prochain rang.
                 </p>
                 <div className="mt-6 h-1.5 overflow-hidden rounded-full bg-white/10">
                   <div className="h-full w-full rounded-full bg-gradient-to-r from-[#ffd166] to-[#6ae3c0] goal-fill" />
@@ -1443,7 +1543,11 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
             ) : (
               <div className="relative">
                 <div className="mx-auto mb-5 grid h-16 w-16 place-items-center rounded-full bg-[#ffd166] text-[#07111f] shadow-[0_16px_50px_rgba(255,209,102,0.34)] goal-pop">
-                  <svg viewBox="0 0 24 24" aria-hidden="true" className="h-8 w-8">
+                  <svg
+                    viewBox="0 0 24 24"
+                    aria-hidden="true"
+                    className="h-8 w-8"
+                  >
                     <path
                       d="m5 12.4 4.1 4.1L19 6.8"
                       fill="none"
@@ -1475,9 +1579,7 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
             <span className="h-7 w-[1px] overflow-hidden rounded-full bg-white/25">
               <span className="block h-3 w-full animate-[pulse_1.2s_ease-in-out_infinite] rounded-full bg-white" />
             </span>
-            {isLoadingMoreFacts
-              ? "Chargement..."
-              : "Swiper pour continuer"}
+            {isLoadingMoreFacts ? "Chargement..." : "Swiper pour continuer"}
           </div>
         </div>
       )}
@@ -1535,7 +1637,8 @@ export default function FactFeed({ themeSlug }: FactFeedProps) {
         }
 
         .grade-avatar-new {
-          animation: gradeAvatarNew 1.05s 0.12s cubic-bezier(0.16, 1, 0.3, 1) both;
+          animation: gradeAvatarNew 1.05s 0.12s cubic-bezier(0.16, 1, 0.3, 1)
+            both;
         }
 
         .grade-arrow {

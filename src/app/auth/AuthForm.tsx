@@ -90,6 +90,8 @@ export default function AuthForm({ mode }: AuthFormProps) {
   const [message, setMessage] = useState<string | null>(null);
   const [messageTone, setMessageTone] = useState<"error" | "success">("error");
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
+  const [isAwaitingEmailConfirmation, setIsAwaitingEmailConfirmation] =
+    useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const isLogin = mode === "login";
   const normalizedUsername = useMemo(
@@ -247,8 +249,9 @@ export default function AuthForm({ mode }: AuthFormProps) {
       setMessageTone("success");
       setMessage(
         result.message ??
-          "Compte créé. Pour continuer, valide ton adresse email depuis le lien que nous venons de t'envoyer.",
+          "Ton compte a bien été créé. Pour continuer, ouvre l'email de confirmation que nous venons de t'envoyer et clique sur le bouton de validation.",
       );
+      setIsAwaitingEmailConfirmation(true);
       return;
     }
 
@@ -473,6 +476,39 @@ export default function AuthForm({ mode }: AuthFormProps) {
           <FieldError message={fieldErrors.passwordConfirmation} />
         </label>
       </>
+    );
+  }
+
+  if (!isLogin && isAwaitingEmailConfirmation) {
+    return (
+      <section className="relative w-full max-w-md overflow-hidden rounded-[28px] border border-white/12 bg-[#07111f]/62 p-6 shadow-[0_30px_100px_rgba(0,0,0,0.34),inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-2xl sm:p-7">
+        <div className="absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-[#ffd166]/55 to-transparent" />
+        <div className="absolute -right-16 -top-16 h-48 w-48 rounded-full bg-[#ffd166]/12 blur-3xl" />
+        <div className="relative">
+          <span className="grid h-12 w-12 place-items-center rounded-full bg-[#ffd166] text-[#07111f] shadow-[0_18px_55px_rgba(255,209,102,0.22)]">
+            <MailCheck className="h-6 w-6" aria-hidden="true" />
+          </span>
+          <p className="mt-6 text-xs font-bold uppercase tracking-[0.18em] text-[#ffd166]">
+            Compte créé
+          </p>
+          <h2 className="mt-3 text-2xl font-black leading-tight tracking-[-0.04em] text-white">
+            Vérifie ton adresse email
+          </h2>
+          <p className="mt-4 text-sm font-semibold leading-6 text-white/72">
+            {message}
+          </p>
+          <p className="mt-3 rounded-[16px] border border-white/10 bg-white/[0.055] px-4 py-3 text-sm font-semibold leading-6 text-white/62">
+            Pense à vérifier tes spams ou courriers indésirables si tu ne vois
+            pas l&apos;email.
+          </p>
+          <Link
+            href="/login"
+            className="mt-6 inline-flex w-full justify-center rounded-full border border-white/12 px-5 py-3 text-sm font-black text-white/72 transition hover:border-white/24 hover:text-white"
+          >
+            Retour à la connexion
+          </Link>
+        </div>
+      </section>
     );
   }
 

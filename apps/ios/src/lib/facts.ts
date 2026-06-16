@@ -47,6 +47,7 @@ type RelatedCategory = {
   id?: string;
   name: string;
   slug: string;
+  theme_icon?: string | null;
   tone: string;
 };
 
@@ -116,7 +117,7 @@ type ExplorerThemeRpcRow = CategoryRow & {
 };
 
 const relatedFactSelect =
-  "fact_id,facts(id,slug,title,hook,content,long_content,source,source_url,tone,accent_color,categories(name,slug,tone,accent_color))";
+  "fact_id,facts(id,slug,title,hook,content,long_content,source,source_url,tone,accent_color,categories(name,slug,tone,accent_color,theme_icon))";
 const CACHE_TTL_MS = 45_000;
 
 type CacheEntry<T> = {
@@ -193,6 +194,7 @@ function mapFeedFact(row: FeedRpcRow): FeedFact {
     slug: row.slug || slugify(row.title),
     source: cleanFactSource(row.source),
     sourceUrl: cleanOptionalText(row.source_url),
+    themeIcon: null,
     title: row.title,
     tone: row.tone ?? row.category_tone ?? "premium",
   };
@@ -218,6 +220,7 @@ function mapRelatedFact(row: RelatedFactRow): FeedFact | null {
     slug: fact.slug || slugify(fact.title),
     source: cleanFactSource(fact.source),
     sourceUrl: cleanOptionalText(fact.source_url),
+    themeIcon: cleanOptionalText(category?.theme_icon),
     title: fact.title,
     tone: fact.tone ?? category?.tone ?? "premium",
   };
@@ -402,7 +405,7 @@ async function readFeedFacts(
       }),
       userMessages.genericLoadError,
       0,
-      "feed:get_personalized_feed",
+      "rpc.get_personalized_feed",
     );
     rows = personalizedResult.data as FeedRpcRow[] | null;
     error = personalizedResult.error;
@@ -423,7 +426,7 @@ async function readFeedFacts(
       }),
       userMessages.genericLoadError,
       0,
-      "feed:get_discover_feed",
+      "rpc.get_discover_feed",
     );
 
     rows = fallbackResult.data as FeedRpcRow[] | null;
@@ -450,7 +453,12 @@ export async function getQuizStatsSummary(): Promise<QuizStatsSummary> {
   const supabase = getSupabaseClient();
   const {
     data: { user },
-  } = await supabase.auth.getUser();
+  } = await withSupabaseTimeout(
+    supabase.auth.getUser(),
+    userMessages.genericLoadError,
+    undefined,
+    "auth.getUser",
+  );
 
   if (!user) {
     return {
@@ -469,6 +477,9 @@ export async function getQuizStatsSummary(): Promise<QuizStatsSummary> {
       .not("completed_at", "is", null)
       .order("created_at", { ascending: false })
       .limit(20),
+    userMessages.genericLoadError,
+    undefined,
+    "quiz_sessions.select.stats",
   );
 
   if (error) {
@@ -518,7 +529,7 @@ export async function getExplorerData(options?: {
     }),
     userMessages.genericLoadError,
     undefined,
-    "themes:get_explorer_themes",
+    "rpc.get_explorer_themes",
   );
 
   if (themesResult.error) {
@@ -533,7 +544,7 @@ export async function getExplorerData(options?: {
         }),
         userMessages.genericLoadError,
         undefined,
-        "themes:search_published_facts",
+        "rpc.search_published_facts",
       )
     : null;
 
@@ -580,7 +591,12 @@ async function readFactActions(factIds: string[]) {
   const supabase = getSupabaseClient();
   const {
     data: { user },
-  } = await supabase.auth.getUser();
+  } = await withSupabaseTimeout(
+    supabase.auth.getUser(),
+    userMessages.genericLoadError,
+    undefined,
+    "auth.getUser",
+  );
 
   const actions = new Map<string, FactActions>();
   factIds.forEach((id) => actions.set(id, { liked: false, saved: false }));
@@ -594,13 +610,13 @@ async function readFactActions(factIds: string[]) {
       supabase.from("likes").select("fact_id").eq("user_id", user.id).in("fact_id", factIds),
       userMessages.genericLoadError,
       0,
-      "feed:get_likes",
+      "likes.select.feed",
     ),
     withSupabaseTimeout(
       supabase.from("saves").select("fact_id").eq("user_id", user.id).in("fact_id", factIds),
       userMessages.genericLoadError,
       0,
-      "feed:get_saves",
+      "saves.select.feed",
     ),
   ]);
 
@@ -623,7 +639,12 @@ export async function toggleLike(factId: string, isLiked: boolean) {
   const supabase = getSupabaseClient();
   const {
     data: { user },
-  } = await supabase.auth.getUser();
+  } = await withSupabaseTimeout(
+    supabase.auth.getUser(),
+    userMessages.genericLoadError,
+    undefined,
+    "auth.getUser",
+  );
 
   if (!user) {
     throw new Error(userMessages.authRequired);
@@ -633,6 +654,9 @@ export async function toggleLike(factId: string, isLiked: boolean) {
     isLiked
       ? supabase.from("likes").delete().eq("user_id", user.id).eq("fact_id", factId)
       : supabase.from("likes").insert({ fact_id: factId, user_id: user.id }),
+    userMessages.genericLoadError,
+    undefined,
+    isLiked ? "likes.delete" : "likes.insert",
   );
 
   if (result.error) {
@@ -646,7 +670,12 @@ export async function toggleSave(factId: string, isSaved: boolean) {
   const supabase = getSupabaseClient();
   const {
     data: { user },
-  } = await supabase.auth.getUser();
+  } = await withSupabaseTimeout(
+    supabase.auth.getUser(),
+    userMessages.genericLoadError,
+    undefined,
+    "auth.getUser",
+  );
 
   if (!user) {
     throw new Error(userMessages.authRequired);
@@ -656,6 +685,9 @@ export async function toggleSave(factId: string, isSaved: boolean) {
     isSaved
       ? supabase.from("saves").delete().eq("user_id", user.id).eq("fact_id", factId)
       : supabase.from("saves").insert({ fact_id: factId, user_id: user.id }),
+    userMessages.genericLoadError,
+    undefined,
+    isSaved ? "saves.delete" : "saves.insert",
   );
 
   if (result.error) {
@@ -683,7 +715,12 @@ export async function getTodayDailyProgress(dailyGoal?: number): Promise<DailyPr
   const supabase = getSupabaseClient();
   const {
     data: { user },
-  } = await supabase.auth.getUser();
+  } = await withSupabaseTimeout(
+    supabase.auth.getUser(),
+    userMessages.genericLoadError,
+    undefined,
+    "auth.getUser",
+  );
   const fallbackGoal = dailyGoal ?? mobileConfig.dailyGoal;
 
   if (!user) {
@@ -698,6 +735,9 @@ export async function getTodayDailyProgress(dailyGoal?: number): Promise<DailyPr
         .eq("user_id", user.id)
         .eq("progress_date", todayKey())
         .maybeSingle(),
+      userMessages.genericLoadError,
+      undefined,
+      "user_daily_progress.select.today",
     ),
     withSupabaseTimeout(
       supabase
@@ -705,6 +745,9 @@ export async function getTodayDailyProgress(dailyGoal?: number): Promise<DailyPr
         .select("id", { count: "exact", head: true })
         .eq("user_id", user.id)
         .eq("goal_completed", true),
+      userMessages.genericLoadError,
+      undefined,
+      "user_daily_progress.count.completed",
     ),
   ]);
 
@@ -730,7 +773,12 @@ export async function recordFactView(factId: string, dailyGoal?: number): Promis
   const supabase = getSupabaseClient();
   const {
     data: { user },
-  } = await supabase.auth.getUser();
+  } = await withSupabaseTimeout(
+    supabase.auth.getUser(),
+    userMessages.genericLoadError,
+    undefined,
+    "auth.getUser",
+  );
 
   if (!user) {
     return emptyDailyProgress(dailyGoal);
@@ -742,7 +790,11 @@ export async function recordFactView(factId: string, dailyGoal?: number): Promis
       p_fact_id: factId,
       p_progress_date: todayKey(),
     }),
-  );
+    userMessages.genericLoadError,
+    5000,
+    "rpc.record_fact_read",
+    { logError: false, logTimeout: false },
+  ).catch(() => ({ data: null, error: true }));
 
   if (error) {
     return emptyDailyProgress(dailyGoal);
@@ -772,7 +824,12 @@ export async function getSavedFacts() {
   const supabase = getSupabaseClient();
   const {
     data: { user },
-  } = await supabase.auth.getUser();
+  } = await withSupabaseTimeout(
+    supabase.auth.getUser(),
+    userMessages.genericLoadError,
+    undefined,
+    "auth.getUser",
+  );
 
   if (!user) {
     throw new Error(userMessages.authRequired);
@@ -790,6 +847,9 @@ export async function getSavedFacts() {
       .select(relatedFactSelect)
       .eq("user_id", user.id)
       .order("created_at", { ascending: false }),
+    userMessages.genericLoadError,
+    undefined,
+    "saves.select.saved_facts",
   );
 
   if (error) {
@@ -809,7 +869,12 @@ export async function getProfileSummary(): Promise<ProfileSummary> {
   const supabase = getSupabaseClient();
   const {
     data: { user },
-  } = await supabase.auth.getUser();
+  } = await withSupabaseTimeout(
+    supabase.auth.getUser(),
+    userMessages.genericLoadError,
+    undefined,
+    "auth.getUser",
+  );
 
   if (!user) {
     throw new Error(userMessages.authRequired);
@@ -833,10 +898,10 @@ export async function getProfileSummary(): Promise<ProfileSummary> {
     savedFactsResult,
     viewedThemesResult,
   ] = await Promise.all([
-    withSupabaseTimeout(supabase.from("profiles").select("username,daily_goal,learning_goal,role,created_at").eq("id", user.id).maybeSingle(), userMessages.genericLoadError, undefined, "profile:read profile"),
-    withSupabaseTimeout(supabase.from("likes").select("id", { count: "exact", head: true }).eq("user_id", user.id), userMessages.genericLoadError, undefined, "profile:count likes"),
-    withSupabaseTimeout(supabase.from("saves").select("id", { count: "exact", head: true }).eq("user_id", user.id), userMessages.genericLoadError, undefined, "profile:count saves"),
-    withSupabaseTimeout(supabase.from("user_fact_views").select("id", { count: "exact", head: true }).eq("user_id", user.id), userMessages.genericLoadError, undefined, "profile:count views"),
+    withSupabaseTimeout(supabase.from("profiles").select("username,daily_goal,learning_goal,role,created_at").eq("id", user.id).maybeSingle(), userMessages.genericLoadError, undefined, "profiles.select.summary"),
+    withSupabaseTimeout(supabase.from("likes").select("id", { count: "exact", head: true }).eq("user_id", user.id), userMessages.genericLoadError, undefined, "likes.count.profile"),
+    withSupabaseTimeout(supabase.from("saves").select("id", { count: "exact", head: true }).eq("user_id", user.id), userMessages.genericLoadError, undefined, "saves.count.profile"),
+    withSupabaseTimeout(supabase.from("user_fact_views").select("id", { count: "exact", head: true }).eq("user_id", user.id), userMessages.genericLoadError, undefined, "user_fact_views.count.profile"),
     withSupabaseTimeout(
       supabase
         .from("user_daily_progress")
@@ -845,7 +910,7 @@ export async function getProfileSummary(): Promise<ProfileSummary> {
         .order("progress_date", { ascending: false }),
       userMessages.genericLoadError,
       undefined,
-      "profile:read daily progress",
+      "user_daily_progress.select.profile",
     ),
     withSupabaseTimeout(
       supabase
@@ -855,10 +920,10 @@ export async function getProfileSummary(): Promise<ProfileSummary> {
         .order("display_order", { ascending: true }),
       userMessages.genericLoadError,
       undefined,
-      "profile:read grades",
+      "grades.select.profile",
     ),
-    withSupabaseTimeout(supabase.from("likes").select(relatedFactSelect).eq("user_id", user.id).order("created_at", { ascending: false }).limit(8), userMessages.genericLoadError, undefined, "profile:read liked facts"),
-    withSupabaseTimeout(supabase.from("saves").select(relatedFactSelect).eq("user_id", user.id).order("created_at", { ascending: false }).limit(8), userMessages.genericLoadError, undefined, "profile:read saved facts"),
+    withSupabaseTimeout(supabase.from("likes").select(relatedFactSelect).eq("user_id", user.id).order("created_at", { ascending: false }).limit(8), userMessages.genericLoadError, undefined, "likes.select.profile"),
+    withSupabaseTimeout(supabase.from("saves").select(relatedFactSelect).eq("user_id", user.id).order("created_at", { ascending: false }).limit(8), userMessages.genericLoadError, undefined, "saves.select.profile"),
     withSupabaseTimeout(
       supabase
         .from("user_fact_views")
@@ -866,7 +931,7 @@ export async function getProfileSummary(): Promise<ProfileSummary> {
         .eq("user_id", user.id),
       userMessages.genericLoadError,
       undefined,
-      "profile:read top themes",
+      "user_fact_views.select.top_themes",
     ),
   ]);
 

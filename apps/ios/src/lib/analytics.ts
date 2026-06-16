@@ -40,6 +40,8 @@ const ANONYMOUS_ID_KEY = "grumm_anonymous_id";
 const SESSION_KEY = "grumm_analytics_session";
 const INACTIVITY_TIMEOUT_MS = 30 * 60 * 1000;
 const MIN_COMPLETED_READ_MS = 8000;
+const ANALYTICS_TIMEOUT_MS = 5000;
+const ANALYTICS_TIMEOUT_OPTIONS = { logError: false, logTimeout: false };
 
 let analyticsEnabled = true;
 let currentUserId: string | null = null;
@@ -130,6 +132,10 @@ async function createSession() {
       started_at: new Date(session.startedAt).toISOString(),
       user_id: currentUserId,
     }),
+    undefined,
+    ANALYTICS_TIMEOUT_MS,
+    "analytics.sessions.insert",
+    ANALYTICS_TIMEOUT_OPTIONS,
   ).catch(() => ({ error: true }));
 
   if (error) {
@@ -216,6 +222,10 @@ export async function trackMobileAnalyticsEvent({
       session_id: session.id,
       user_id: session.userId,
     }),
+    undefined,
+    ANALYTICS_TIMEOUT_MS,
+    "analytics.events.insert",
+    ANALYTICS_TIMEOUT_OPTIONS,
   ).catch(() => undefined);
 }
 
@@ -254,6 +264,10 @@ async function updateMobileSession(endSession = false) {
         pages_viewed: session.pagesViewed,
       })
       .eq("id", session.id),
+    undefined,
+    ANALYTICS_TIMEOUT_MS,
+    "analytics.sessions.update",
+    ANALYTICS_TIMEOUT_OPTIONS,
   ).catch(() => undefined);
 }
 
@@ -300,6 +314,10 @@ export async function startMobileFactRead(factId: string): Promise<MobileFactRea
       started_at: new Date(token.startedAt).toISOString(),
       user_id: session.userId,
     }),
+    undefined,
+    ANALYTICS_TIMEOUT_MS,
+    "analytics.fact_read_events.insert",
+    ANALYTICS_TIMEOUT_OPTIONS,
   ).catch(() => ({ error: true }));
 
   return error ? { ...token, id: null } : token;
@@ -330,6 +348,10 @@ export async function finishMobileFactRead(token: MobileFactReadToken | null) {
           ended_at: new Date(endedAt).toISOString(),
         })
         .eq("id", token.id),
+      undefined,
+      ANALYTICS_TIMEOUT_MS,
+      "analytics.fact_read_events.update",
+      ANALYTICS_TIMEOUT_OPTIONS,
     ).catch(() => undefined);
   }
 

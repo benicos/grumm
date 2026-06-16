@@ -16,9 +16,16 @@ type AppScreenProps = {
   contentStyle?: StyleProp<ViewStyle>;
   scroll?: boolean;
   style?: StyleProp<ViewStyle>;
+  topSafeAreaColor?: string;
 };
 
-export function AppScreen({ children, contentStyle, scroll = false, style }: AppScreenProps) {
+export function AppScreen({
+  children,
+  contentStyle,
+  scroll = false,
+  style,
+  topSafeAreaColor,
+}: AppScreenProps) {
   return (
     <LinearGradient
       colors={appTheme.gradient.screen}
@@ -26,7 +33,13 @@ export function AppScreen({ children, contentStyle, scroll = false, style }: App
       start={{ x: 0, y: 0 }}
       style={[styles.root, style]}
     >
-      <SafeAreaView edges={["top"]} style={styles.safeArea}>
+      <SafeAreaView
+        edges={["top"]}
+        style={[
+          styles.safeArea,
+          topSafeAreaColor ? { backgroundColor: topSafeAreaColor } : null,
+        ]}
+      >
         {scroll ? (
           <ScrollView
             contentContainerStyle={[styles.scrollContent, contentStyle]}

@@ -115,7 +115,7 @@ async function readQuizQuestions(limit: number, factIds?: string[]) {
     query,
     userMessages.genericLoadError,
     undefined,
-    factIds?.length ? "quiz:read targeted questions" : "quiz:read random questions",
+    factIds?.length ? "quiz_questions.select.targeted" : "quiz_questions.select.random",
   );
 
   if (error) {
@@ -144,7 +144,12 @@ export async function getMemoryChallengeQuestions() {
   const supabase = getSupabaseClient();
   const {
     data: { user },
-  } = await supabase.auth.getUser();
+  } = await withSupabaseTimeout(
+    supabase.auth.getUser(),
+    userMessages.genericLoadError,
+    undefined,
+    "auth.getUser",
+  );
   let viewedFactIds: string[] = [];
 
   if (user) {
@@ -157,7 +162,7 @@ export async function getMemoryChallengeQuestions() {
         .limit(80),
       userMessages.genericLoadError,
       undefined,
-      "quiz:read viewed facts",
+      "user_fact_views.select.quiz",
     );
     viewedFactIds = [...new Set((data ?? []).map((row) => row.fact_id).filter(Boolean))];
   }
@@ -181,7 +186,12 @@ export async function getMistakeReviewQuestions() {
   const supabase = getSupabaseClient();
   const {
     data: { user },
-  } = await supabase.auth.getUser();
+  } = await withSupabaseTimeout(
+    supabase.auth.getUser(),
+    userMessages.genericLoadError,
+    undefined,
+    "auth.getUser",
+  );
 
   if (!user) {
     return [];
@@ -197,7 +207,7 @@ export async function getMistakeReviewQuestions() {
       .limit(50),
     userMessages.genericLoadError,
     undefined,
-    "quiz:read mistakes",
+    "quiz_answers.select.mistakes",
   );
   const factIds = [...new Set((data ?? []).map((row) => row.fact_id).filter(Boolean))];
 
@@ -236,7 +246,12 @@ export async function saveQuizResult(answers: MobileQuizAnswer[], quizType: Mobi
   const supabase = getSupabaseClient();
   const {
     data: { user },
-  } = await supabase.auth.getUser();
+  } = await withSupabaseTimeout(
+    supabase.auth.getUser(),
+    userMessages.genericLoadError,
+    undefined,
+    "auth.getUser",
+  );
 
   if (!user) {
     return null;
@@ -257,7 +272,7 @@ export async function saveQuizResult(answers: MobileQuizAnswer[], quizType: Mobi
       .single(),
     userMessages.genericLoadError,
     undefined,
-    "quiz:insert session",
+    "quiz_sessions.insert",
   );
 
   if (sessionError || !session) {
@@ -277,7 +292,7 @@ export async function saveQuizResult(answers: MobileQuizAnswer[], quizType: Mobi
     ),
     userMessages.genericLoadError,
     undefined,
-    "quiz:insert answers",
+    "quiz_answers.insert",
   );
 
   return result;

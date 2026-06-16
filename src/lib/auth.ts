@@ -232,6 +232,7 @@ export async function signUpWithEmail(
         learning_goal: learningGoal,
         username,
       },
+      emailRedirectTo: `${siteConfig.publicUrl}/`,
     },
   });
 
@@ -281,7 +282,7 @@ export async function signUpWithEmail(
       ok: true,
       requiresEmailConfirmation: true,
       message:
-        "Compte créé. Pour continuer, valide ton adresse email depuis le lien que nous venons de t'envoyer.",
+        "Ton compte a bien été créé. Pour continuer, ouvre l'email de confirmation que nous venons de t'envoyer et clique sur le bouton de validation.",
     };
   }
 

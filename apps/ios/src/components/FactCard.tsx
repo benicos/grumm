@@ -3,8 +3,10 @@ import { Bookmark, ExternalLink, Heart, Share2 } from "lucide-react-native";
 import { Linking, Pressable, StyleSheet, Text, View } from "react-native";
 
 import { cleanFactSource } from "../lib/source";
+import { getThemeIconName } from "../lib/themeIcons";
 import { appTheme, withAlpha } from "../theme/appTheme";
 import type { FactActions, FeedFact } from "../types/domain";
+import { ThemeIcon } from "./ThemeIcon";
 
 type FactCardProps = {
   actions: FactActions;
@@ -33,9 +35,11 @@ export function FactCard({
   onView,
 }: FactCardProps) {
   const source = cleanFactSource(fact.source);
-  const hasMore = Boolean(fact.longContent && fact.longContent !== fact.detail);
+  const longContent = fact.longContent?.trim() || null;
+  const hasMore = Boolean(longContent && longContent !== fact.detail.trim());
   const body = expanded ? fact.longContent ?? fact.detail : fact.detail;
   const isImmersive = immersive;
+  const themeIconName = getThemeIconName(fact.categorySlug, fact.themeIcon);
 
   return (
     <Pressable
@@ -68,7 +72,19 @@ export function FactCard({
             isImmersive && styles.immersiveBadge,
           ]}
         >
-          <View style={[styles.badgeDot, { backgroundColor: fact.accent }]} />
+          <View
+            style={[
+              styles.badgeIcon,
+              { backgroundColor: withAlpha(fact.accent, isImmersive ? 0.2 : 0.12) },
+            ]}
+          >
+            <ThemeIcon
+              color={isImmersive ? "#ffffff" : fact.accent}
+              name={themeIconName}
+              size={13}
+              strokeWidth={2.5}
+            />
+          </View>
           <Text
             numberOfLines={1}
             style={[
@@ -91,8 +107,30 @@ export function FactCard({
         </Text>
 
         {hasMore && !expanded ? (
-          <Pressable accessibilityRole="button" onPress={onReadMore} style={styles.readMore}>
-            <Text style={styles.readMoreText}>Lire plus</Text>
+          <Pressable
+            accessibilityRole="button"
+            onPress={onReadMore}
+            style={[
+              styles.readMore,
+              isImmersive
+                ? {
+                    backgroundColor: withAlpha(fact.accent, 0.22),
+                    borderColor: "rgba(255,255,255,0.22)",
+                  }
+                : {
+                    backgroundColor: withAlpha(fact.accent, 0.1),
+                    borderColor: withAlpha(fact.accent, 0.22),
+                  },
+            ]}
+          >
+            <Text
+              style={[
+                styles.readMoreText,
+                { color: isImmersive ? "#ffffff" : fact.accent },
+              ]}
+            >
+              En apprendre plus
+            </Text>
           </Pressable>
         ) : null}
       </View>
@@ -211,10 +249,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 11,
     paddingVertical: 7,
   },
-  badgeDot: {
+  badgeIcon: {
+    alignItems: "center",
     borderRadius: appTheme.radius.pill,
-    height: 8,
-    width: 8,
+    height: 22,
+    justifyContent: "center",
+    width: 22,
   },
   badgeText: {
     fontSize: 11,
@@ -295,11 +335,13 @@ const styles = StyleSheet.create({
   },
   readMore: {
     alignSelf: "flex-start",
+    borderRadius: appTheme.radius.pill,
+    borderWidth: 1,
     marginTop: 10,
-    paddingVertical: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
   },
   readMoreText: {
-    color: appTheme.color.ink,
     fontSize: 13,
     fontWeight: appTheme.weight.bold,
   },

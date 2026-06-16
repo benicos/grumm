@@ -1,27 +1,25 @@
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
 import { AtSign, Check, ChevronLeft, Lock, UserRound } from "lucide-react-native";
-import { type ReactNode, useEffect, useMemo, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import {
   Animated,
   Image,
-  KeyboardAvoidingView,
   Linking,
-  Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 
 import grummDefault from "../../assets/grumm/default.png";
 import grummHappy from "../../assets/grumm/happy.png";
 import grummThinking from "../../assets/grumm/thinking.png";
 import grummWave from "../../assets/grumm/wave.png";
+import { AuthKeyboardLayout } from "../components/AuthKeyboardLayout";
 import { mobileConfig } from "../config/app";
+import { SwipeBackWrapper } from "../components/SwipeBackWrapper";
 import { useAuth } from "../context/AuthContext";
 import { DEFAULT_LEARNING_GOAL, type LearningGoal } from "../lib/learning";
 import { getUsernameValidationMessage, normalizeUsername } from "../lib/slug";
@@ -102,7 +100,7 @@ export function AuthScreen() {
     setMood(nextMode === "login" ? "wave" : "thinking");
   }
 
-  function goBack() {
+  const goBack = useCallback(() => {
     if (mode === "signup" && currentStepIndex > 0) {
       setSignupStep(signupSteps[currentStepIndex - 1]);
       setError(null);
@@ -113,7 +111,7 @@ export function AuthScreen() {
     setMode("welcome");
     setError(null);
     setMood("wave");
-  }
+  }, [currentStepIndex, mode]);
 
   async function flashHappy(next: () => void) {
     setMood("happy");
@@ -207,88 +205,86 @@ export function AuthScreen() {
   }
 
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={styles.keyboard}>
-      <LinearGradient colors={appTheme.gradient.screen} style={styles.background}>
-        <DecorativeBackground />
-        <SafeAreaView style={styles.safeArea}>
-          <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-            <Animated.View style={[styles.scene, { opacity: sceneOpacity }]}>
-              {mode === "welcome" ? (
-                <WelcomeScene onLogin={() => openMode("login")} onSignup={() => openMode("signup")} />
-              ) : (
-                <>
-                  <Pressable accessibilityRole="button" onPress={goBack} style={styles.backButton}>
-                    <ChevronLeft color={appTheme.color.ink} size={18} strokeWidth={2.2} />
-                    <Text style={styles.backText}>Retour</Text>
-                  </Pressable>
+    <LinearGradient colors={appTheme.gradient.screen} style={styles.background}>
+      <DecorativeBackground />
+      <AuthKeyboardLayout contentStyle={styles.content}>
+        <SwipeBackWrapper enabled={mode !== "welcome"} onSwipeBack={goBack} style={styles.swipeBackWrapper}>
+          <Animated.View style={[styles.scene, { opacity: sceneOpacity }]}>
+            {mode === "welcome" ? (
+              <WelcomeScene onLogin={() => openMode("login")} onSignup={() => openMode("signup")} />
+            ) : (
+              <>
+                <Pressable accessibilityRole="button" onPress={goBack} style={styles.backButton}>
+                  <ChevronLeft color={appTheme.color.ink} size={18} strokeWidth={2.2} />
+                  <Text style={styles.backText}>Retour</Text>
+                </Pressable>
 
-                  <GrummFigure mood={mood} />
+                <GrummFigure mood={mood} />
 
-                  {mode === "login" ? (
-                    <LoginScene
-                      email={email}
-                      error={error}
-                      isSubmitting={isSubmitting}
-                      onForgotPassword={() => void Linking.openURL(`${mobileConfig.siteUrl}/forgot-password`)}
-                      onSignup={() => openMode("signup")}
-                      onSubmit={() => void submitLogin()}
-                      password={password}
-                      setEmail={(value) => {
-                        setEmail(value);
-                        setError(null);
-                      }}
-                      setPassword={(value) => {
-                        setPassword(value);
-                        setError(null);
-                      }}
-                    />
-                  ) : (
-                    <SignupScene
-                      currentStepIndex={currentStepIndex}
-                      dailyGoal={dailyGoal}
-                      email={email}
-                      error={error}
-                      isSubmitting={isSubmitting}
-                      learningGoal={learningGoal}
-                      onNext={nextSignupStep}
-                      password={password}
-                      passwordChecks={passwordChecks}
-                      passwordConfirmation={passwordConfirmation}
-                      setDailyGoal={(value) => {
-                        setDailyGoal(value);
-                        setError(null);
-                      }}
-                      setEmail={(value) => {
-                        setEmail(value);
-                        setError(null);
-                      }}
-                      setLearningGoal={(value) => {
-                        setLearningGoal(value);
-                        setError(null);
-                      }}
-                      setPassword={(value) => {
-                        setPassword(value);
-                        setError(null);
-                      }}
-                      setPasswordConfirmation={(value) => {
-                        setPasswordConfirmation(value);
-                        setError(null);
-                      }}
-                      setUsername={(value) => {
-                        setUsername(value);
-                        setError(null);
-                      }}
-                      signupStep={signupStep}
-                      username={username}
-                    />
-                  )}
-                </>
-              )}
-            </Animated.View>
-          </ScrollView>
-        </SafeAreaView>
-      </LinearGradient>
-    </KeyboardAvoidingView>
+                {mode === "login" ? (
+                  <LoginScene
+                    email={email}
+                    error={error}
+                    isSubmitting={isSubmitting}
+                    onForgotPassword={() => void Linking.openURL(`${mobileConfig.siteUrl}/forgot-password`)}
+                    onSignup={() => openMode("signup")}
+                    onSubmit={() => void submitLogin()}
+                    password={password}
+                    setEmail={(value) => {
+                      setEmail(value);
+                      setError(null);
+                    }}
+                    setPassword={(value) => {
+                      setPassword(value);
+                      setError(null);
+                    }}
+                  />
+                ) : (
+                  <SignupScene
+                    currentStepIndex={currentStepIndex}
+                    dailyGoal={dailyGoal}
+                    email={email}
+                    error={error}
+                    isSubmitting={isSubmitting}
+                    learningGoal={learningGoal}
+                    onNext={nextSignupStep}
+                    password={password}
+                    passwordChecks={passwordChecks}
+                    passwordConfirmation={passwordConfirmation}
+                    setDailyGoal={(value) => {
+                      setDailyGoal(value);
+                      setError(null);
+                    }}
+                    setEmail={(value) => {
+                      setEmail(value);
+                      setError(null);
+                    }}
+                    setLearningGoal={(value) => {
+                      setLearningGoal(value);
+                      setError(null);
+                    }}
+                    setPassword={(value) => {
+                      setPassword(value);
+                      setError(null);
+                    }}
+                    setPasswordConfirmation={(value) => {
+                      setPasswordConfirmation(value);
+                      setError(null);
+                    }}
+                    setUsername={(value) => {
+                      setUsername(value);
+                      setError(null);
+                    }}
+                    signupStep={signupStep}
+                    username={username}
+                  />
+                )}
+              </>
+            )}
+          </Animated.View>
+        </SwipeBackWrapper>
+      </AuthKeyboardLayout>
+    </LinearGradient>
   );
 }
 
@@ -931,6 +927,10 @@ const styles = StyleSheet.create({
     color: appTheme.color.ink,
     fontSize: 15,
     fontWeight: appTheme.weight.bold,
+  },
+  swipeBackWrapper: {
+    flex: 1,
+    width: "100%",
   },
   textButton: {
     alignItems: "center",

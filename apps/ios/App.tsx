@@ -13,7 +13,7 @@ import {
   trackMobilePageView,
 } from "./src/lib/analytics";
 import { AuthScreen } from "./src/screens/AuthScreen";
-import { FeedScreen } from "./src/screens/FeedScreen";
+import { FeedScreen, type FeedSystemBarTheme } from "./src/screens/FeedScreen";
 import { ProfileScreen } from "./src/screens/ProfileScreen";
 import { QuizScreen } from "./src/screens/QuizScreen";
 import { ThemesScreen } from "./src/screens/ThemesScreen";
@@ -32,6 +32,10 @@ export default function App() {
 
 function GrummMobileApp() {
   const [activeTab, setActiveTab] = useState<MobileTab>("feed");
+  const [feedSystemBarTheme, setFeedSystemBarTheme] = useState<FeedSystemBarTheme>({
+    backgroundColor: "#172033",
+    style: "light",
+  });
   const [selectedTheme, setSelectedTheme] = useState<Pick<CategorySummary, "name" | "slug"> | null>(null);
   const { isLoading, profile, session } = useAuth();
   const openedRef = useRef(false);
@@ -118,12 +122,17 @@ function GrummMobileApp() {
 
   return (
     <View style={styles.root}>
-      <StatusBar style="dark" />
+      <StatusBar
+        backgroundColor={activeTab === "feed" ? feedSystemBarTheme.backgroundColor : appTheme.color.background}
+        style={activeTab === "feed" ? feedSystemBarTheme.style : "dark"}
+        translucent={false}
+      />
       <View style={styles.screen}>
         {activeTab === "feed" ? (
           <FeedScreen
             onClearTheme={clearTheme}
             onRequireAuth={() => setActiveTab("profile")}
+            onSystemBarChange={setFeedSystemBarTheme}
             themeName={selectedTheme?.name}
             themeSlug={selectedTheme?.slug}
           />

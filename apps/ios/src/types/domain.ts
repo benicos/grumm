@@ -9,6 +9,7 @@ export type FeedFact = {
   slug: string;
   source: string | null;
   sourceUrl: string | null;
+  themeIcon: string | null;
   title: string;
   tone: string;
 };
@@ -50,12 +51,14 @@ export type RelatedFactRow = {
               accent_color: string;
               name: string;
               slug: string;
+              theme_icon?: string | null;
               tone: string;
             }
           | {
               accent_color: string;
               name: string;
               slug: string;
+              theme_icon?: string | null;
               tone: string;
             }[]
           | null;

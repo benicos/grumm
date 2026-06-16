@@ -1,7 +1,8 @@
 import { mobileConfig } from "../config/app";
 import { normalizeLearningGoal, type LearningGoal } from "./learning";
 import { getUsernameValidationMessage, normalizeUsername } from "./slug";
-import { getSupabaseClient } from "./supabase";
+import { getSupabaseClient, withSupabaseTimeout } from "./supabase";
+import { checkUsernameAvailability } from "./usernames";
 
 export type ProfileField = "dailyGoal" | "email" | "global" | "learningGoal" | "password" | "username";
 
@@ -13,7 +14,12 @@ async function getAuthenticatedClient() {
   const supabase = getSupabaseClient();
   const {
     data: { user },
-  } = await supabase.auth.getUser();
+  } = await withSupabaseTimeout(
+    supabase.auth.getUser(),
+    "Connexion impossible pour le moment.",
+    undefined,
+    "auth.getUser",
+  );
 
   if (!user) {
     return {
@@ -63,49 +69,64 @@ export async function updateProfileSettings({
     );
   }
 
-  const { data: currentProfile, error: currentProfileError } = await auth.supabase
-    .from("profiles")
-    .select("username")
-    .eq("id", auth.user.id)
-    .maybeSingle();
+  const { data: currentProfile, error: currentProfileError } = await withSupabaseTimeout(
+    auth.supabase
+      .from("profiles")
+      .select("username")
+      .eq("id", auth.user.id)
+      .maybeSingle(),
+    "Nous n'avons pas pu vérifier ce pseudo.",
+    undefined,
+    "profiles.select.username",
+  );
 
   if (currentProfileError) {
     return humanUpdateError("username", "Nous n'avons pas pu vérifier ce pseudo.");
   }
 
   if (currentProfile?.username !== normalizedUsername) {
-    const { data: isAvailable, error: usernameError } = await auth.supabase.rpc("is_username_available", {
-      p_username: normalizedUsername,
-    });
+    const isAvailable = await checkUsernameAvailability(auth.supabase, normalizedUsername).catch(
+      (error) => error,
+    );
 
-    if (usernameError) {
-      return humanUpdateError("username", "Nous n'avons pas pu vérifier ce pseudo.");
+    if (isAvailable instanceof Error) {
+      return humanUpdateError("username", isAvailable.message);
     }
 
     if (!isAvailable) {
-      return humanUpdateError("username", "Ce nom d'utilisateur est déjà pris.");
+      return humanUpdateError("username", "Ce pseudo est déjà utilisé.");
     }
   }
 
-  const { error } = await auth.supabase
-    .from("profiles")
-    .update({
-      daily_goal: dailyGoal,
-      learning_goal: normalizedLearningGoal,
-      username: normalizedUsername,
-    })
-    .eq("id", auth.user.id);
+  const { error } = await withSupabaseTimeout(
+    auth.supabase
+      .from("profiles")
+      .update({
+        daily_goal: dailyGoal,
+        learning_goal: normalizedLearningGoal,
+        username: normalizedUsername,
+      })
+      .eq("id", auth.user.id),
+    "Nous n'avons pas pu mettre ton profil à jour.",
+    undefined,
+    "profiles.update.settings",
+  );
 
   if (error) {
     return humanUpdateError("global", "Nous n'avons pas pu mettre ton profil à jour.");
   }
 
-  await auth.supabase.auth.updateUser({
-    data: {
-      username: normalizedUsername,
-      learning_goal: normalizedLearningGoal,
-    },
-  });
+  await withSupabaseTimeout(
+    auth.supabase.auth.updateUser({
+      data: {
+        username: normalizedUsername,
+        learning_goal: normalizedLearningGoal,
+      },
+    }),
+    "Nous n'avons pas pu mettre ton profil à jour.",
+    undefined,
+    "auth.updateUser.metadata",
+  );
 
   return { message: "Profil mis à jour.", ok: true };
 }
@@ -121,9 +142,14 @@ export async function updateProfileEmail(email: string): Promise<ProfileMutation
     return humanUpdateError("email", "Entre une adresse email valide.");
   }
 
-  const { error } = await auth.supabase.auth.updateUser({
-    email: email.trim(),
-  });
+  const { error } = await withSupabaseTimeout(
+    auth.supabase.auth.updateUser({
+      email: email.trim(),
+    }),
+    "Nous n'avons pas pu mettre ton email à jour.",
+    undefined,
+    "auth.updateUser.email",
+  );
 
   if (error) {
     return humanUpdateError("email", "Nous n'avons pas pu mettre ton email à jour.");
@@ -146,9 +172,14 @@ export async function updateProfilePassword(password: string): Promise<ProfileMu
     return humanUpdateError("password", "Le mot de passe doit contenir au moins 8 caractères.");
   }
 
-  const { error } = await auth.supabase.auth.updateUser({
-    password,
-  });
+  const { error } = await withSupabaseTimeout(
+    auth.supabase.auth.updateUser({
+      password,
+    }),
+    "Nous n'avons pas pu mettre ton mot de passe à jour.",
+    undefined,
+    "auth.updateUser.password",
+  );
 
   if (error) {
     return humanUpdateError("password", "Nous n'avons pas pu mettre ton mot de passe à jour.");
