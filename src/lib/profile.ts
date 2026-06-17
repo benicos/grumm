@@ -108,18 +108,17 @@ export type UserProfileSummary = {
   dailyGoal: number;
   learningGoal: LearningGoal;
   role: UserRole;
-  likedCount: number;
   savedCount: number;
   uniqueViewsCount: number;
   completedDailyGoals: number;
   currentStreakDays: number;
+  bestDailyStreakDays: number;
+  perfectQuizCount: number;
   weeklyDailyProgress: WeeklyDailyProgressDay[];
   grades: GradeDefinition[];
   todayReadCount: number;
-  likedFacts: FeedFact[];
   savedFacts: FeedFact[];
   topThemes: ThemeViewStat[];
-  exploredThemeCount: number;
   memoryStats: MemoryStats;
 };
 
@@ -182,6 +181,34 @@ function getCurrentDailyGoalStreak(
   }
 
   return streak;
+}
+
+function getBestDailyGoalStreak(
+  rows: { goal_completed: boolean; progress_date: string }[],
+) {
+  const completedDates = [
+    ...new Set(
+      rows
+        .filter((row) => row.goal_completed)
+        .map((row) => row.progress_date),
+    ),
+  ].sort();
+  let bestStreak = 0;
+  let runningStreak = 0;
+  let previousTime: number | null = null;
+  const oneDay = 24 * 60 * 60 * 1000;
+
+  completedDates.forEach((date) => {
+    const currentTime = new Date(`${date}T00:00:00`).getTime();
+    runningStreak =
+      previousTime !== null && currentTime - previousTime === oneDay
+        ? runningStreak + 1
+        : 1;
+    bestStreak = Math.max(bestStreak, runningStreak);
+    previousTime = currentTime;
+  });
+
+  return bestStreak;
 }
 
 function dateKey(date: Date) {
@@ -299,6 +326,7 @@ const RELATED_FACT_SELECT =
   "fact_id,facts(id,slug,title,hook,content,difficulty_level,long_content,source,source_url,tone,accent_color,categories(name,slug,tone,accent_color,theme_icon,visual_motif))";
 const VIEWED_FACT_SELECT =
   "fact_id,facts(category_id,categories(id,name,slug,tone,accent_color,theme_icon,visual_motif))";
+const PROFILE_SAVED_FACTS_LIMIT = 3;
 
 function getTopViewedThemes(rows: ViewedFactRow[]): ThemeViewStat[] {
   const themesBySlug = new Map<string, Omit<ThemeViewStat, "percent">>();
@@ -339,30 +367,6 @@ function getTopViewedThemes(rows: ViewedFactRow[]): ThemeViewStat[] {
     ...theme,
     percent: Math.round((theme.count / maxCount) * 100),
   }));
-}
-
-function getExploredThemeCount(rows: ViewedFactRow[]) {
-  const categoryIds = new Set<string>();
-
-  rows.forEach((row) => {
-    const fact = row.facts;
-
-    if (!fact?.category_id) {
-      return;
-    }
-
-    const category = Array.isArray(fact.categories)
-      ? fact.categories[0]
-      : fact.categories;
-
-    if (category?.slug && isCommercialCollaborationSlug(category.slug)) {
-      return;
-    }
-
-    categoryIds.add(fact.category_id);
-  });
-
-  return categoryIds.size;
 }
 
 export async function getUserThemeProgress(): Promise<UserThemeProgress> {
@@ -429,11 +433,12 @@ export async function getUserProfileSummary(): Promise<UserProfileSummary> {
 
   const [
     profileResult,
-    likesResult,
+    savesCountResult,
     savesResult,
     viewsResult,
     dailyProgressResult,
     gradesResult,
+    quizSessionsResult,
   ] = await Promise.all([
     supabase
       .from("profiles")
@@ -441,15 +446,15 @@ export async function getUserProfileSummary(): Promise<UserProfileSummary> {
       .eq("id", user.id)
       .maybeSingle(),
     supabase
-      .from("likes")
-      .select(RELATED_FACT_SELECT)
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false }),
+      .from("saves")
+      .select("fact_id", { count: "exact", head: true })
+      .eq("user_id", user.id),
     supabase
       .from("saves")
       .select(RELATED_FACT_SELECT)
       .eq("user_id", user.id)
-      .order("created_at", { ascending: false }),
+      .order("created_at", { ascending: false })
+      .limit(PROFILE_SAVED_FACTS_LIMIT),
     supabase
       .from("user_fact_views")
       .select(VIEWED_FACT_SELECT)
@@ -464,11 +469,17 @@ export async function getUserProfileSummary(): Promise<UserProfileSummary> {
       .select("id,slug,name,required_goals,description,badge,display_order")
       .order("required_goals", { ascending: true })
       .order("display_order", { ascending: true }),
+    supabase
+      .from("quiz_sessions")
+      .select("score,total_questions")
+      .eq("user_id", user.id)
+      .not("completed_at", "is", null)
+      .limit(200),
   ]);
 
   const blockingError =
     profileResult.error ??
-    likesResult.error ??
+    savesCountResult.error ??
     savesResult.error ??
     viewsResult.error ??
     dailyProgressResult.error;
@@ -477,9 +488,6 @@ export async function getUserProfileSummary(): Promise<UserProfileSummary> {
     throw new FeedError(getProfileErrorMessage(blockingError));
   }
 
-  const likedFacts = ((likesResult.data ?? []) as RelatedFactRow[])
-    .map(mapRelatedFact)
-    .filter(isStandardProfileFact);
   const savedFacts = ((savesResult.data ?? []) as RelatedFactRow[])
     .map(mapRelatedFact)
     .filter(isStandardProfileFact);
@@ -496,7 +504,6 @@ export async function getUserProfileSummary(): Promise<UserProfileSummary> {
     standardViewRows.map((view) => view.fact_id),
   );
   const topThemes = getTopViewedThemes(standardViewRows);
-  const exploredThemeCount = getExploredThemeCount(standardViewRows);
   const dailyRows = dailyProgressResult.data ?? [];
   const grades = gradesResult.error
     ? []
@@ -512,6 +519,18 @@ export async function getUserProfileSummary(): Promise<UserProfileSummary> {
   const today = todayKey();
   const todayRow = dailyRows.find((row) => row.progress_date === today);
   const dailyGoal = profileResult.data?.daily_goal ?? dailyGoalConfig.defaultGoal;
+  const currentDailyStreak = getCurrentDailyGoalStreak(dailyRows);
+  const bestDailyStreak = Math.max(
+    getBestDailyGoalStreak(dailyRows),
+    currentDailyStreak,
+  );
+  const perfectQuizCount = quizSessionsResult.error
+    ? 0
+    : (quizSessionsResult.data ?? []).filter(
+        (session) =>
+          session.total_questions > 0 &&
+          session.score === session.total_questions,
+      ).length;
   let memoryStats: MemoryStats = {
     averageScorePercent: null,
     bestStreakDays: 0,
@@ -528,6 +547,13 @@ export async function getUserProfileSummary(): Promise<UserProfileSummary> {
     // Memory stats are secondary; the profile should remain available.
   }
 
+  if (quizSessionsResult.error) {
+    logSupabaseError(quizSessionsResult.error, {
+      operation: "read perfect quiz count",
+      table: "quiz_sessions",
+    });
+  }
+
   return {
     username:
       profileResult.data?.username ??
@@ -539,18 +565,17 @@ export async function getUserProfileSummary(): Promise<UserProfileSummary> {
     dailyGoal,
     learningGoal: normalizeLearningGoal(profileResult.data?.learning_goal),
     role: (profileResult.data?.role ?? "membre") as UserRole,
-    likedCount: likedFacts.length,
-    savedCount: savedFacts.length,
+    savedCount: savesCountResult.count ?? savedFacts.length,
     uniqueViewsCount: uniqueViews.size,
     completedDailyGoals: dailyRows.filter((row) => row.goal_completed).length,
-    currentStreakDays: getCurrentDailyGoalStreak(dailyRows),
+    currentStreakDays: currentDailyStreak,
+    bestDailyStreakDays: bestDailyStreak,
+    perfectQuizCount,
     weeklyDailyProgress: buildWeeklyDailyProgress(dailyRows, dailyGoal),
     grades,
     todayReadCount: todayRow?.facts_read_count ?? 0,
-    likedFacts,
     savedFacts,
     topThemes,
-    exploredThemeCount,
     memoryStats,
   };
 }

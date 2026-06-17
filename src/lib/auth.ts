@@ -33,15 +33,7 @@ export function getSupabaseErrorMessage(message: string) {
   }
 
   if (normalizedMessage.includes("invalid login credentials")) {
-    return "Email ou mot de passe incorrect.";
-  }
-
-  if (
-    normalizedMessage.includes("already registered") ||
-    normalizedMessage.includes("user already registered") ||
-    normalizedMessage.includes("already exists")
-  ) {
-    return "Un compte existe deja avec cet email.";
+    return "Email ou mot de passe incorrect. Vérifie tes identifiants puis réessaie.";
   }
 
   if (
@@ -49,7 +41,15 @@ export function getSupabaseErrorMessage(message: string) {
     normalizedMessage.includes("profiles_username") ||
     normalizedMessage.includes("username")
   ) {
-    return "Ce nom d'utilisateur est deja pris.";
+    return "Ce pseudo est déjà utilisé. Choisis un autre nom d'utilisateur.";
+  }
+
+  if (
+    normalizedMessage.includes("already registered") ||
+    normalizedMessage.includes("user already registered") ||
+    normalizedMessage.includes("already exists")
+  ) {
+    return "Cet email est déjà utilisé. Connecte-toi ou utilise une autre adresse.";
   }
 
   if (normalizedMessage.includes("email not confirmed")) {
@@ -57,11 +57,11 @@ export function getSupabaseErrorMessage(message: string) {
   }
 
   if (normalizedMessage.includes("signup is disabled")) {
-    return "Les inscriptions sont temporairement desactivees.";
+    return "Les inscriptions sont temporairement désactivées.";
   }
 
   if (normalizedMessage.includes("rate limit")) {
-    return "Trop de tentatives. Attends un moment avant de reessayer.";
+    return "Trop de tentatives. Attends un moment avant de réessayer.";
   }
 
   if (
@@ -99,7 +99,9 @@ function getSupabaseField(message: string): "username" | "email" | "password" | 
 
   if (
     normalizedMessage.includes("email") ||
-    normalizedMessage.includes("already registered")
+    normalizedMessage.includes("already registered") ||
+    normalizedMessage.includes("user already registered") ||
+    normalizedMessage.includes("already exists")
   ) {
     return "email";
   }
@@ -218,13 +220,13 @@ export async function signUpWithEmail(
   if (!availability.available) {
     return {
       ok: false,
-      message: "Ce nom d'utilisateur est deja pris.",
+      message: "Ce pseudo est déjà utilisé. Choisis un autre nom d'utilisateur.",
       field: "username",
     };
   }
 
   const { data, error } = await supabase.auth.signUp({
-    email,
+    email: email.trim(),
     password,
     options: {
       data: {
@@ -245,6 +247,15 @@ export async function signUpWithEmail(
       ok: false,
       message: getSupabaseErrorMessage(error.message),
       field: getSupabaseField(error.message),
+    };
+  }
+
+  if (data.user?.identities?.length === 0) {
+    return {
+      ok: false,
+      message:
+        "Cet email est déjà utilisé. Connecte-toi ou utilise une autre adresse.",
+      field: "email",
     };
   }
 

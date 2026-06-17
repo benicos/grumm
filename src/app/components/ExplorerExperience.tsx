@@ -7,17 +7,16 @@ import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { trackAnalyticsEvent } from "@/lib/analytics/web";
 import {
   getExplorerData,
-  getPopularExplorerSearches,
   getThemeDiscoverySummaries,
   type FeedFact,
   type ThemeDiscoverySummary,
 } from "@/lib/facts";
 import { getUserThemeProgress } from "@/lib/profile";
 import { AppState } from "./AppState";
+import { premiumTitleGradientClassName } from "./buttonStyles";
 import Footer from "./Footer";
 import HeroBackground from "./HeroBackground";
 import Navbar from "./Navbar";
-import PageHero from "./PageHero";
 import ThemeCard from "./ThemeCard";
 import { useAuth } from "../auth/AuthProvider";
 
@@ -51,7 +50,7 @@ function SectionTitle({
       <p className="text-xs font-black uppercase tracking-[0.22em] text-[#f4ead5]">
         {eyebrow}
       </p>
-      <h2 className="mt-2 text-[clamp(1.9rem,5vw,3.2rem)] font-black tracking-[-0.055em] text-white">
+      <h2 className="mt-2 text-[clamp(1.55rem,4vw,2.45rem)] font-black tracking-[-0.045em] text-white">
         {title}
       </h2>
     </div>
@@ -98,9 +97,7 @@ export default function ExplorerExperience() {
   const [submittedQuery, setSubmittedQuery] = useState("");
   const [allThemes, setAllThemes] = useState<ThemeDiscoverySummary[]>([]);
   const [facts, setFacts] = useState<FeedFact[]>([]);
-  const [popularSearches, setPopularSearches] = useState<string[]>([]);
   const [themeProgress, setThemeProgress] = useState<Record<string, number>>({});
-  const [themePage, setThemePage] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const hasActiveSearch = submittedQuery.trim().length > 0;
@@ -118,13 +115,6 @@ export default function ExplorerExperience() {
 
     return allThemes[index];
   }, [allThemes]);
-  const pageSize = 6;
-  const themePageCount = Math.max(1, Math.ceil(allThemes.length / pageSize));
-  const safeThemePage = Math.min(themePage, themePageCount);
-  const visibleThemes = allThemes.slice(
-    (safeThemePage - 1) * pageSize,
-    safeThemePage * pageSize,
-  );
 
   const loadExplorer = useCallback(
     async (searchValue?: string) => {
@@ -155,12 +145,8 @@ export default function ExplorerExperience() {
           }
         } else {
           setFacts([]);
-          const [themes, searches] = await Promise.all([
-            getThemeDiscoverySummaries(120),
-            getPopularExplorerSearches(6),
-          ]);
+          const themes = await getThemeDiscoverySummaries(120);
           setAllThemes(themes);
-          setPopularSearches(searches);
 
           if (isAuthenticated) {
             try {
@@ -171,7 +157,6 @@ export default function ExplorerExperience() {
           } else {
             setThemeProgress({});
           }
-          setThemePage(1);
         }
       } catch (loadError) {
         setError(
@@ -235,20 +220,26 @@ export default function ExplorerExperience() {
       <HeroBackground />
       <Navbar />
 
-      <main className="relative z-10 mx-auto w-full max-w-[1180px] px-5 py-8 sm:px-6 sm:py-10 lg:px-8">
-        <PageHero
-          eyebrow="Explorer"
-          title="Que veux-tu apprendre aujourd'hui ?"
-          description="Trouve un thème, une époque, une œuvre ou une idée, puis laisse Grumm. t'ouvrir la bonne porte."
-        />
-
-        <section className="mx-auto flex max-w-3xl flex-col items-center pb-10 text-center">
+      <main className="relative z-10 mx-auto w-full max-w-[1180px] px-5 pb-8 pt-5 sm:px-6 sm:pb-10 sm:pt-6 lg:px-8">
+        <section className="mx-auto flex max-w-4xl flex-col items-center pb-5 pt-3 text-center sm:pb-6 lg:pb-7">
+          <p className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-[0.22em] text-[#f4ead5]/58">
+            Explorer
+          </p>
+          <h1
+            className={`${premiumTitleGradientClassName} mt-3 max-w-2xl text-[clamp(1.75rem,4vw,2.55rem)] font-black leading-[1.04] tracking-[-0.04em]`}
+          >
+            Explore les grandes idées.
+          </h1>
+          <p className="mt-3 max-w-2xl text-sm font-semibold leading-6 text-white/58">
+            Histoire, science, art, géographie, cinéma… choisis un territoire
+            et commence à découvrir.
+          </p>
           <form
             onSubmit={submitSearch}
-            className="mt-9 flex w-full max-w-3xl flex-col gap-3 rounded-[24px] border border-white/12 bg-white/[0.085] px-3 py-3 shadow-[0_28px_90px_rgba(0,0,0,0.34)] backdrop-blur-2xl transition focus-within:border-[#f4ead5]/50 sm:flex-row sm:items-center sm:px-5"
+            className="mt-4 flex w-full max-w-3xl flex-col gap-3 rounded-[22px] border border-white/12 bg-white/[0.085] px-3 py-2.5 shadow-[0_20px_70px_rgba(0,0,0,0.28)] backdrop-blur-2xl transition focus-within:border-[#f4ead5]/50 sm:flex-row sm:items-center sm:px-4"
           >
             <div className="flex min-w-0 flex-1 items-center gap-3">
-              <span className="grid h-11 w-11 shrink-0 place-items-center rounded-[16px] bg-white/8 text-[#f4ead5]">
+              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-[15px] bg-white/8 text-[#f4ead5]">
                 <Search className="h-5 w-5" />
               </span>
               <label htmlFor="explorer-search" className="sr-only">
@@ -303,7 +294,7 @@ export default function ExplorerExperience() {
             </div>
           </section>
         ) : (
-          <div className="space-y-14 pb-20">
+          <div className="space-y-8 pb-16">
             <section className="grid gap-5 rounded-[34px] border border-white/10 bg-white/[0.055] p-6 shadow-[0_28px_100px_rgba(0,0,0,0.24)] backdrop-blur-2xl md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
               <div>
                 <p className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-[0.22em] text-[#6ae3c0]">
@@ -311,7 +302,7 @@ export default function ExplorerExperience() {
                   Pas d&apos;idée ?
                 </p>
                 <h2 className="mt-3 text-3xl font-black tracking-[-0.055em] text-white">
-                  Laisse Grumm. choisir une direction.
+                  Laisse Grumm choisir une direction.
                 </h2>
                 <p className="mt-2 text-sm font-semibold leading-6 text-white/56">
                   Un thème au hasard, pour ouvrir une porte sans réfléchir.
@@ -325,29 +316,8 @@ export default function ExplorerExperience() {
               </Link>
             </section>
 
-            {popularSearches.length > 0 ? (
-              <section>
-                <SectionTitle
-                  eyebrow="Recherches populaires"
-                  title="Ce que les lecteurs cherchent."
-                />
-                <div className="mt-6 flex flex-wrap gap-3">
-                  {popularSearches.map((term) => (
-                    <button
-                      key={term}
-                      type="button"
-                      onClick={() => runSearch(term)}
-                      className="rounded-full border border-white/12 bg-white/[0.06] px-4 py-2 text-sm font-bold text-white/72 transition hover:border-white/24 hover:bg-white/[0.10] hover:text-white"
-                    >
-                      {term}
-                    </button>
-                  ))}
-                </div>
-              </section>
-            ) : null}
-
             <section>
-              <div className="mb-6 flex flex-wrap items-end justify-between gap-5">
+              <div className="mb-5 flex flex-wrap items-end justify-between gap-5">
                 <SectionTitle
                   eyebrow="Thèmes"
                   title="Tous les thèmes."
@@ -356,9 +326,8 @@ export default function ExplorerExperience() {
               {isLoading ? (
                 <ExplorerSkeleton cards={6} />
               ) : (
-                <>
-                  <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-                    {visibleThemes.map((theme) => (
+                <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+                  {allThemes.map((theme) => (
                     <ThemeCard
                       key={`${theme.id}:${theme.slug}`}
                       progress={
@@ -372,33 +341,7 @@ export default function ExplorerExperience() {
                       theme={theme}
                     />
                   ))}
-                  </div>
-                  {themePageCount > 1 ? (
-                    <div className="mt-7 flex items-center justify-center gap-3">
-                      <button
-                        type="button"
-                        disabled={safeThemePage <= 1}
-                        onClick={() => setThemePage((page) => Math.max(1, page - 1))}
-                        className="rounded-full border border-white/12 px-4 py-2 text-sm font-bold text-white/68 transition hover:border-white/24 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
-                      >
-                        Précédent
-                      </button>
-                      <span className="text-sm font-bold text-white/48">
-                        {safeThemePage} / {themePageCount}
-                      </span>
-                      <button
-                        type="button"
-                        disabled={safeThemePage >= themePageCount}
-                        onClick={() =>
-                          setThemePage((page) => Math.min(themePageCount, page + 1))
-                        }
-                        className="rounded-full border border-white/12 px-4 py-2 text-sm font-bold text-white/68 transition hover:border-white/24 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
-                      >
-                        Suivant
-                      </button>
-                    </div>
-                  ) : null}
-                </>
+                </div>
               )}
             </section>
           </div>

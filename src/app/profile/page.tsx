@@ -18,14 +18,12 @@ import {
   Play,
   Sparkles,
   Target,
-  Trophy,
   X,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 import { trackAnalyticsEvent, trackAnalyticsEventOnce } from "@/lib/analytics/web";
 import { getBadgeInfo } from "@/lib/badges";
-import type { GradeDefinition } from "@/lib/badges";
 import { MIN_MEMORY_FACTS } from "@/lib/memoryChallenge";
 import { getUserProfileSummary } from "@/lib/profile";
 import type { UserProfileSummary } from "@/lib/profile";
@@ -34,7 +32,6 @@ import RequireAuth from "../auth/RequireAuth";
 import { AppState } from "../components/AppState";
 import Footer from "../components/Footer";
 import { premiumPrimaryCtaClassName } from "../components/buttonStyles";
-import GradeIcon from "../components/GradeIcon";
 import HeroBackground from "../components/HeroBackground";
 import Navbar from "../components/Navbar";
 import ThemeIcon from "../components/ThemeIcon";
@@ -85,23 +82,10 @@ function getGradeSnapshot(profile: UserProfileSummary) {
   );
   const currentGrade = orderedGrades[currentIndex] ?? orderedGrades[0];
   const nextGrade = orderedGrades[currentIndex + 1] ?? null;
-  const currentThreshold = currentGrade?.requiredGoals ?? 0;
-  const nextThreshold = nextGrade?.requiredGoals ?? currentThreshold;
-  const progressPercent = nextGrade
-    ? Math.min(
-        ((profile.completedDailyGoals - currentThreshold) /
-          Math.max(nextThreshold - currentThreshold, 1)) *
-          100,
-        100,
-      )
-    : 100;
 
   return {
     currentGrade,
-    currentThreshold,
     nextGrade,
-    nextThreshold,
-    progressPercent,
     rank: currentIndex + 1,
     remainingGoals: nextGrade
       ? Math.max(nextGrade.requiredGoals - profile.completedDailyGoals, 0)
@@ -113,264 +97,81 @@ function gradeAvatarSrc(rank: number) {
   return `/avatar/avatar_rank_${Math.max(rank, 1)}.png`;
 }
 
-function NextUnlockPanel({
-  activeGradeTitle,
-  nextGrade,
-  nextGradeTitle,
-  nextRank,
-  progressPercent,
-  remainingGoals,
-}: {
-  activeGradeTitle: string;
-  nextGrade: GradeDefinition | null;
-  nextGradeTitle: string;
-  nextRank: number;
-  progressPercent: number;
-  remainingGoals: number;
-}) {
-  return (
-    <section className="mt-5 overflow-hidden rounded-[30px] border border-white/10 bg-[radial-gradient(circle_at_90%_10%,rgba(106,227,192,0.18),transparent_30%),linear-gradient(145deg,rgba(255,255,255,0.064),rgba(255,255,255,0.022))] p-5 shadow-[0_24px_80px_rgba(0,0,0,0.20)] backdrop-blur-xl">
-      <div className="flex items-center gap-4">
-        <div className="relative grid h-24 w-24 shrink-0 place-items-center overflow-hidden rounded-[28px] border border-white/12 bg-black/20 grayscale">
-          <Image
-            alt="Avatar du prochain rang"
-            height={96}
-            src={gradeAvatarSrc(nextRank)}
-            width={96}
-            className="h-full w-full object-cover opacity-42"
-            onError={(event) => {
-              event.currentTarget.onerror = null;
-              event.currentTarget.src = "/avatar/avatar.png";
-            }}
-          />
-          <div className="absolute inset-0 bg-black/32" />
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className="text-xs font-black uppercase tracking-[0.22em] text-[#6ae3c0]">
-            Prochain grade
-          </p>
-          <h2 className="mt-2 text-2xl font-black tracking-[-0.045em] text-white">
-            {nextGrade?.name ?? "Tous les rangs sont débloqués"}
-          </h2>
-          <p className="mt-2 text-sm font-semibold leading-6 text-white/58">
-            {nextGrade
-              ? `Plus que ${remainingGoals} objectif${remainingGoals > 1 ? "s" : ""} pour débloquer ce rang.`
-              : "Ton avatar a atteint le dernier palier disponible."}
-          </p>
-        </div>
-        {nextGrade?.badge ? (
-          <span className="hidden h-12 w-12 shrink-0 place-items-center rounded-2xl border border-white/10 bg-white/[0.045] text-[#6ae3c0] sm:grid">
-            <GradeIcon badge={nextGrade.badge} className="h-6 w-6" />
-          </span>
-        ) : null}
-      </div>
-      <div className="mt-5 rounded-[24px] border border-white/10 bg-black/18 p-4">
-        <div className="flex items-center justify-between gap-3 text-xs font-black uppercase tracking-[0.16em] text-white/52">
-          <span>{activeGradeTitle}</span>
-          <span>{Math.round(progressPercent)}%</span>
-          <span>{nextGradeTitle}</span>
-        </div>
-        <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-white/10">
-          <div
-            className="h-full rounded-full bg-gradient-to-r from-[#ffd166] via-[#6ae3c0] to-[#a78bfa] transition-[width] duration-700"
-            style={{ width: `${progressPercent}%` }}
-          />
-        </div>
-      </div>
-    </section>
-  );
+function getDailyProgressClassName(
+  status: UserProfileSummary["weeklyDailyProgress"][number]["status"],
+) {
+  if (status === "completed") {
+    return "border-[#6ae3c0]/42 bg-[#6ae3c0]/18 text-[#b8fff0]";
+  }
+
+  if (status === "current") {
+    return "border-[#ffd166]/45 bg-[#ffd166]/14 text-[#ffe2a3]";
+  }
+
+  if (status === "missed") {
+    return "border-white/10 bg-black/20 text-white/34";
+  }
+
+  return "border-white/10 bg-white/[0.035] text-white/42";
 }
 
-function DailyStreakPanel({ profile }: { profile: UserProfileSummary }) {
-  const now = new Date();
-  const todayKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-  const today = profile.weeklyDailyProgress.find((day) => day.date === todayKey);
-  const statusLabel =
-    today?.status === "completed"
-      ? "Objectif atteint aujourd'hui"
-      : today?.status === "current"
-        ? "Aujourd'hui est en cours"
-        : "Semaine en cours";
+function ProfileHeaderSignals({
+  hasNextGrade,
+  nextGradeTitle,
+  profile,
+  remainingGoals,
+}: {
+  hasNextGrade: boolean;
+  nextGradeTitle: string;
+  profile: UserProfileSummary;
+  remainingGoals: number;
+}) {
+  const remainingLabel = hasNextGrade
+    ? `${remainingGoals} objectif${remainingGoals > 1 ? "s" : ""} restant${remainingGoals > 1 ? "s" : ""}`
+    : "Tous les grades sont débloqués";
 
   return (
-    <section className="mt-5 rounded-[26px] border border-white/10 bg-white/[0.045] p-5 shadow-[0_24px_80px_rgba(0,0,0,0.18)] backdrop-blur-xl">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <p className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-[0.18em] text-[#ffb45f]">
-            <Flame className="h-4 w-4" aria-hidden="true" />
-            Série quotidienne
+    <div className="mt-4 border-t border-white/10 pt-4">
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,0.86fr)_minmax(260px,1fr)] xl:items-end">
+        <div className="min-w-0">
+          <p className="inline-flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.18em] text-[#6ae3c0]">
+            <Target className="h-3.5 w-3.5" aria-hidden="true" />
+            Avancement
           </p>
-          <h2 className="mt-2 text-2xl font-black tracking-[-0.045em] text-white">
-            {profile.currentStreakDays} jour{profile.currentStreakDays > 1 ? "s" : ""} consécutif{profile.currentStreakDays > 1 ? "s" : ""}
-          </h2>
+          <p className="mt-1 text-sm font-black leading-5 text-white">
+            <span className="text-white/52">Prochain grade :</span>{" "}
+            <span className="text-[#6ae3c0]">{nextGradeTitle}</span>
+          </p>
+          <p className="mt-1 text-xs font-bold leading-5 text-white/48">
+            {remainingLabel}
+          </p>
         </div>
-        <span className="rounded-full border border-white/10 bg-black/18 px-3 py-1.5 text-xs font-black text-white/56">
-          {statusLabel}
-        </span>
-      </div>
 
-      <div className="mt-5 grid grid-cols-7 gap-2">
-        {profile.weeklyDailyProgress.map((day) => {
-          const statusClassName =
-            day.status === "completed"
-              ? "border-[#6ae3c0]/40 bg-[#6ae3c0]/18 text-[#b8fff0]"
-              : day.status === "current"
-                ? "border-[#ffd166]/45 bg-[#ffd166]/14 text-[#ffe2a3]"
-                : day.status === "missed"
-                  ? "border-white/10 bg-black/18 text-white/34"
-                  : "border-white/10 bg-white/[0.035] text-white/42";
+        <hr className="border-white/10 xl:hidden" />
 
-          return (
-            <div key={day.date} className="min-w-0">
-              <div
-                className={`grid aspect-square place-items-center rounded-full border text-sm font-black lg:mx-auto lg:h-9 lg:w-9 lg:text-xs ${statusClassName}`}
-                title={`${day.readCount}/${day.goal} faits`}
+        <div className="min-w-0 flex-1">
+          <p className="inline-flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.18em] text-[#ffb45f]">
+            <Flame className="h-3.5 w-3.5" aria-hidden="true" />
+            {profile.currentStreakDays} jour{profile.currentStreakDays > 1 ? "s" : ""} consécutif{profile.currentStreakDays > 1 ? "s" : ""}
+          </p>
+          <div className="mt-2 flex flex-wrap items-center gap-1.5">
+            {profile.weeklyDailyProgress.map((day) => (
+              <span
+                key={day.date}
+                className={`grid h-7 w-7 place-items-center rounded-full border text-[10px] font-black sm:h-6 sm:w-6 sm:text-[9px] ${getDailyProgressClassName(day.status)}`}
+                title={`${day.label} - ${day.readCount}/${day.goal} faits`}
               >
                 {day.status === "completed" ? (
-                  <Check className="h-4 w-4" aria-hidden="true" />
+                  <Check className="h-3.5 w-3.5 sm:h-3 sm:w-3" aria-hidden="true" />
                 ) : (
                   day.label
                 )}
-              </div>
-              <p className="mt-2 text-center text-[10px] font-black uppercase tracking-[0.08em] text-white/36">
-                {day.label}
-              </p>
-            </div>
-          );
-        })}
-      </div>
-    </section>
-  );
-}
-
-function ProgressPanel({ profile }: { profile: UserProfileSummary }) {
-  const badge = getBadgeInfo(profile.completedDailyGoals, profile.grades);
-  const nextGrade =
-    profile.grades.find(
-      (grade) => grade.requiredGoals > profile.completedDailyGoals,
-    ) ?? null;
-  const currentGrade =
-    [...profile.grades]
-      .reverse()
-      .find((grade) => grade.requiredGoals <= profile.completedDailyGoals) ??
-    null;
-  const nextThreshold = nextGrade?.requiredGoals ?? badge.currentThreshold;
-  const remainingGoals = nextGrade
-    ? Math.max(nextGrade.requiredGoals - profile.completedDailyGoals, 0)
-    : 0;
-  const gradePercent = badge.nextThreshold
-    ? Math.min((profile.completedDailyGoals / Math.max(nextThreshold, 1)) * 100, 100)
-    : 100;
-  const orderedGrades = [...profile.grades].sort(
-    (a, b) =>
-      a.requiredGoals - b.requiredGoals ||
-      (a.displayOrder ?? 0) - (b.displayOrder ?? 0),
-  );
-
-  return (
-    <section className="mt-6 rounded-[26px] border border-white/10 bg-white/[0.045] p-5 shadow-[0_24px_80px_rgba(0,0,0,0.22)] backdrop-blur-xl">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        <div>
-          <p className="flex items-center gap-2 text-sm font-black uppercase tracking-[0.16em] text-[#ffd166]">
-            <Trophy className="h-4 w-4" aria-hidden="true" />
-            Prochain grade
-          </p>
-          <h2 className="mt-2 text-2xl font-black tracking-[-0.045em] text-white">
-            {currentGrade?.name ?? badge.title}
-            {nextGrade ? ` → ${nextGrade.name}` : ""}
-          </h2>
-          <p className="mt-2 text-sm font-semibold leading-6 text-white/56">
-            {nextGrade
-              ? `${remainingGoals} objectif${remainingGoals > 1 ? "s" : ""} quotidien${remainingGoals > 1 ? "s" : ""} avant le prochain palier. Ton avatar évoluera avec ton grade !`
-              : "Dernier palier atteint. Ton avatar évoluera avec ton grade !"}
-          </p>
+              </span>
+            ))}
+          </div>
         </div>
-        <span className="rounded-full border border-white/10 bg-black/18 px-4 py-2 text-sm font-black text-white/72">
-          {profile.completedDailyGoals}/{nextThreshold} objectifs
-        </span>
       </div>
-
-      <div className="mt-5 h-2 overflow-hidden rounded-full bg-white/10">
-        <div
-          className="h-full rounded-full bg-gradient-to-r from-[#ffd166] to-[#6ae3c0] transition-[width] duration-700"
-          style={{ width: `${gradePercent}%` }}
-        />
-      </div>
-
-      <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
-        {orderedGrades.map((grade) => {
-          const isReached = profile.completedDailyGoals >= grade.requiredGoals;
-          const progressValue = Math.min(
-            profile.completedDailyGoals,
-            grade.requiredGoals,
-          );
-
-          return (
-            <div
-              key={grade.slug}
-              className={`flex min-h-[132px] flex-col justify-between rounded-[20px] border p-4 ${
-                isReached
-                  ? "border-[#ffd166]/28 bg-[#ffd166]/12 text-white"
-                  : "border-white/10 bg-black/16 text-white/58"
-              }`}
-            >
-              <div className="flex items-start gap-3">
-                <span
-                  className={`grid h-11 w-11 shrink-0 place-items-center rounded-2xl border ${
-                    isReached
-                      ? "border-[#ffd166]/30 bg-[#ffd166]/16 text-[#ffd166]"
-                      : "border-white/10 bg-white/[0.04] text-white/42"
-                  }`}
-                >
-                  <GradeIcon badge={grade.badge} className="h-5 w-5" />
-                </span>
-                <div className="min-w-0">
-                  <h3 className="break-words text-sm font-black leading-5 text-white">
-                    {grade.name}
-                  </h3>
-                  <p className="mt-1 text-xs font-bold leading-5 text-white/46">
-                    {grade.requiredGoals === 0
-                      ? "Disponible dès le départ"
-                      : `${grade.requiredGoals} objectifs requis`}
-                  </p>
-                </div>
-              </div>
-
-              <div className="mt-4">
-                <div className="flex items-center justify-between gap-3 text-[11px] font-black uppercase tracking-[0.13em] text-white/42">
-                  <span>{isReached ? "Atteint" : "Progression"}</span>
-                  <span>
-                    {grade.requiredGoals === 0
-                      ? "Départ"
-                      : `${progressValue}/${grade.requiredGoals}`}
-                  </span>
-                </div>
-                <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/10">
-                  <div
-                    className={`h-full rounded-full ${
-                      isReached
-                        ? "bg-[#ffd166]"
-                        : "bg-gradient-to-r from-[#ffd166]/55 to-[#6ae3c0]/55"
-                    }`}
-                    style={{
-                      width:
-                        grade.requiredGoals <= 0
-                          ? "100%"
-                          : `${Math.min(
-                              (profile.completedDailyGoals /
-                                Math.max(grade.requiredGoals, 1)) *
-                                100,
-                              100,
-                            )}%`,
-                    }}
-                  />
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </section>
+    </div>
   );
 }
 
@@ -675,18 +476,25 @@ function QuickAccessPanel() {
 
 function SavedFactsPanel({ profile }: { profile: UserProfileSummary }) {
   const savedFacts = profile.savedFacts.slice(0, 3);
+  const hasFewSavedFacts = savedFacts.length < 3;
 
   return (
-    <section className="mt-6 rounded-[28px] border border-white/10 bg-[linear-gradient(145deg,rgba(255,255,255,0.06),rgba(255,255,255,0.022))] p-5 shadow-[0_24px_80px_rgba(0,0,0,0.18)] backdrop-blur-xl">
+    <section
+      id="bibliotheque-personnelle"
+      className="mt-6 scroll-mt-28 overflow-hidden rounded-[28px] border border-white/10 bg-[radial-gradient(circle_at_92%_8%,rgba(244,234,213,0.14),transparent_28%),linear-gradient(145deg,rgba(255,255,255,0.06),rgba(255,255,255,0.022))] p-5 shadow-[0_24px_80px_rgba(0,0,0,0.18)] backdrop-blur-xl"
+    >
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-[0.2em] text-[#f4ead5]">
             <BookMarked className="h-4 w-4" aria-hidden="true" />
             Bibliothèque
           </p>
-          <h2 className="mt-2 text-2xl font-black tracking-[-0.045em] text-white">
-            Tes faits enregistrés
+          <h2 className="mt-2 text-2xl font-black tracking-[-0.045em] text-white sm:text-3xl">
+            Bibliothèque personnelle
           </h2>
+          <p className="mt-2 max-w-2xl text-sm font-semibold leading-6 text-white/56">
+            Les idées que tu gardes pour plus tard.
+          </p>
         </div>
         <span className="rounded-full border border-white/10 bg-black/18 px-3 py-1.5 text-xs font-black text-white/52">
           {profile.savedCount} fait{profile.savedCount > 1 ? "s" : ""}
@@ -694,37 +502,80 @@ function SavedFactsPanel({ profile }: { profile: UserProfileSummary }) {
       </div>
 
       {savedFacts.length > 0 ? (
-        <div className="mt-5 grid gap-3 md:grid-cols-3">
+        <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {savedFacts.map((fact) => (
             <Link
               key={fact.id}
               href={`/fait/${fact.slug}`}
-              className="group rounded-[20px] border border-white/10 bg-black/16 p-4 transition hover:-translate-y-0.5 hover:border-white/20 hover:bg-white/[0.045]"
+              className="group relative min-h-[172px] overflow-hidden rounded-[22px] border border-white/10 bg-black/16 p-4 transition hover:-translate-y-0.5 hover:border-white/20 hover:bg-white/[0.045]"
             >
-              <p className="text-xs font-black uppercase tracking-[0.16em] text-white/38">
-                {fact.category}
-              </p>
-              <h3 className="mt-3 line-clamp-2 text-base font-extrabold leading-5 text-white">
+              <span
+                className="absolute -right-10 -top-12 h-28 w-28 rounded-full opacity-25 blur-3xl transition group-hover:scale-110"
+                style={{ backgroundColor: fact.accent }}
+                aria-hidden="true"
+              />
+              <div className="relative flex items-start justify-between gap-3">
+                <p
+                  className="rounded-full border px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em]"
+                  style={{
+                    backgroundColor: `${fact.accent}14`,
+                    borderColor: `${fact.accent}34`,
+                    color: fact.accent,
+                  }}
+                >
+                  {fact.category}
+                </p>
+                <BookMarked className="h-4 w-4 shrink-0 text-white/32" aria-hidden="true" />
+              </div>
+              <h3 className="relative mt-4 line-clamp-2 text-base font-extrabold leading-5 text-white">
                 {fact.title}
               </h3>
-              <span className="mt-4 inline-flex items-center text-xs font-black text-[#f4ead5]">
+              {fact.hook ? (
+                <p className="relative mt-3 line-clamp-2 text-xs font-semibold leading-5 text-white/48">
+                  {fact.hook}
+                </p>
+              ) : null}
+              <span className="relative mt-5 inline-flex items-center text-xs font-black text-[#f4ead5]">
                 Relire
                 <ChevronRight className="ml-1 h-3.5 w-3.5 transition group-hover:translate-x-0.5" aria-hidden="true" />
               </span>
             </Link>
           ))}
         </div>
-      ) : (
-        <div className="mt-5 rounded-[20px] border border-white/10 bg-black/16 p-4 text-sm font-semibold leading-6 text-white/54">
-          Enregistre quelques faits depuis le flux pour construire ta bibliothèque.
+      ) : null}
+
+      {hasFewSavedFacts ? (
+        <div className={`${savedFacts.length > 0 ? "mt-3" : "mt-5"} rounded-[22px] border border-dashed border-white/14 bg-black/14 p-4 sm:flex sm:items-center sm:justify-between sm:gap-4`}>
+          <div className="flex items-start gap-3">
+            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl border border-[#f4ead5]/18 bg-[#f4ead5]/10 text-[#f4ead5]">
+              <BookOpen className="h-5 w-5" aria-hidden="true" />
+            </span>
+            <div>
+              <p className="text-sm font-black text-white">
+                {savedFacts.length > 0
+                  ? "Ta bibliothèque commence à prendre forme."
+                  : "Ta bibliothèque est prête à accueillir ses premiers faits."}
+              </p>
+              <p className="mt-1 text-xs font-semibold leading-5 text-white/48">
+                Sauvegarde ce qui mérite d&apos;être relu, cité ou partagé plus tard.
+              </p>
+            </div>
+          </div>
+          <Link
+            href="/decouvrir"
+            className="mt-4 inline-flex rounded-full border border-white/12 px-4 py-2 text-xs font-black text-white/70 transition hover:border-white/24 hover:text-white sm:mt-0"
+          >
+            Découvrir d&apos;autres faits
+          </Link>
         </div>
-      )}
+      ) : null}
     </section>
   );
 }
 
 function ProfileStatsPanel({ profile }: { profile: UserProfileSummary }) {
   const stats: {
+    action?: "library";
     accent: string;
     accentSoft: string;
     icon: LucideIcon;
@@ -741,6 +592,7 @@ function ProfileStatsPanel({ profile }: { profile: UserProfileSummary }) {
     {
       accent: "#ffd166",
       accentSoft: "rgba(255,209,102,0.12)",
+      action: "library",
       icon: BookMarked,
       label: "Enregistrés",
       value: String(profile.savedCount),
@@ -749,28 +601,30 @@ function ProfileStatsPanel({ profile }: { profile: UserProfileSummary }) {
       accent: "#ff9f43",
       accentSoft: "rgba(255,159,67,0.12)",
       icon: Flame,
-      label: "Série",
-      value: `${profile.currentStreakDays} j`,
+      label: "Meilleure série",
+      value: String(profile.bestDailyStreakDays),
     },
     {
       accent: "#a78bfa",
       accentSoft: "rgba(167,139,250,0.12)",
       icon: Brain,
-      label: "Quiz joués",
-      value: String(profile.memoryStats.challengesCompleted),
+      label: "Quiz parfaits",
+      value: String(profile.perfectQuizCount),
     },
   ];
+
+  function scrollToLibrary() {
+    document
+      .getElementById("bibliotheque-personnelle")
+      ?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
 
   return (
     <section className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
       {stats.map((stat) => {
         const Icon = stat.icon;
-
-        return (
-          <div
-            key={stat.label}
-            className="rounded-[22px] border border-white/10 bg-black/16 p-4 shadow-[0_18px_55px_rgba(0,0,0,0.12)]"
-          >
+        const content = (
+          <>
             <div className="flex items-center justify-between gap-3">
               <span
                 className="grid h-10 w-10 place-items-center rounded-2xl border"
@@ -792,6 +646,28 @@ function ProfileStatsPanel({ profile }: { profile: UserProfileSummary }) {
             >
               {stat.label}
             </p>
+          </>
+        );
+
+        if (stat.action === "library") {
+          return (
+            <button
+              key={stat.label}
+              type="button"
+              onClick={scrollToLibrary}
+              className="rounded-[22px] border border-white/10 bg-black/16 p-4 text-left shadow-[0_18px_55px_rgba(0,0,0,0.12)] transition hover:-translate-y-0.5 hover:border-[#ffd166]/28 hover:bg-white/[0.045]"
+            >
+              {content}
+            </button>
+          );
+        }
+
+        return (
+          <div
+            key={stat.label}
+            className="rounded-[22px] border border-white/10 bg-black/16 p-4 shadow-[0_18px_55px_rgba(0,0,0,0.12)]"
+          >
+            {content}
           </div>
         );
       })}
@@ -909,6 +785,7 @@ function ProfileContent() {
   const activeGradeTitle =
     gradeSnapshot?.currentGrade?.name ?? gradeTitle ?? "Curieux";
   const nextGradeTitle = gradeSnapshot?.nextGrade?.name ?? "Dernier rang";
+  const hasNextGrade = Boolean(gradeSnapshot?.nextGrade);
   const activeGradeRank = gradeSnapshot?.rank ?? gradeRank;
   const remainingGradeGoals = gradeSnapshot?.remainingGoals ?? 0;
   const avatarSrc = gradeAvatarSrc(activeGradeRank);
@@ -928,8 +805,8 @@ function ProfileContent() {
 
             <section className="mb-7 rounded-[34px] border border-white/10 bg-[radial-gradient(circle_at_86%_10%,rgba(255,209,102,0.18),transparent_30%),radial-gradient(circle_at_10%_80%,rgba(106,227,192,0.14),transparent_32%),linear-gradient(145deg,rgba(255,255,255,0.07),rgba(255,255,255,0.024))] p-5 shadow-[0_32px_110px_rgba(0,0,0,0.28)] backdrop-blur-xl sm:p-6">
               <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-                <div className="flex min-w-0 items-center gap-5">
-                  <div className="relative h-[136px] w-[136px] shrink-0 overflow-hidden rounded-[36px] border-[4px] border-[#ffd166]/38 bg-white/[0.06] shadow-[0_0_0_1px_rgba(255,255,255,0.10),0_28px_90px_rgba(0,0,0,0.36),0_0_78px_rgba(255,209,102,0.22)]">
+                <div className="flex min-w-0 flex-col gap-5 sm:flex-row sm:items-start lg:items-center">
+                  <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-[28px] border-[4px] border-[#ffd166]/38 bg-white/[0.06] shadow-[0_0_0_1px_rgba(255,255,255,0.10),0_28px_90px_rgba(0,0,0,0.36),0_0_78px_rgba(255,209,102,0.22)] sm:h-[136px] sm:w-[136px] sm:rounded-[36px]">
                     {/* Les avatars sont liés au rang, pas modifiables par l'utilisateur. */}
                     <Image
                       alt="Avatar de rang Grumm"
@@ -943,7 +820,7 @@ function ProfileContent() {
                       className="h-full w-full object-cover"
                     />
                   </div>
-                  <div className="min-w-0">
+                  <div className="min-w-0 sm:max-w-[760px]">
                     <h1 className="truncate text-[clamp(2rem,6vw,3.25rem)] font-black leading-none tracking-[-0.055em] text-white">
                       {profile.username ?? "Profil"}
                     </h1>
@@ -961,6 +838,12 @@ function ProfileContent() {
                         <span className="truncate">{profile.email}</span>
                       </p>
                     ) : null}
+                    <ProfileHeaderSignals
+                      hasNextGrade={hasNextGrade}
+                      nextGradeTitle={nextGradeTitle}
+                      profile={profile}
+                      remainingGoals={remainingGradeGoals}
+                    />
                   </div>
                 </div>
 
@@ -973,17 +856,6 @@ function ProfileContent() {
                 </Link>
               </div>
             </section>
-
-            <NextUnlockPanel
-              activeGradeTitle={activeGradeTitle}
-              nextGrade={gradeSnapshot?.nextGrade ?? null}
-              nextGradeTitle={nextGradeTitle}
-              nextRank={activeGradeRank + 1}
-              progressPercent={gradeSnapshot?.progressPercent ?? 100}
-              remainingGoals={remainingGradeGoals}
-            />
-
-            <DailyStreakPanel profile={profile} />
 
             <ProfileStatsPanel profile={profile} />
 
@@ -999,16 +871,29 @@ function ProfileContent() {
                   className="absolute inset-0 cursor-default"
                   onClick={() => setIsGradeModalOpen(false)}
                 />
-                <div className="grade-modal relative max-h-[86vh] w-full max-w-[720px] overflow-y-auto pr-1">
+                <div className="grade-modal relative w-full max-w-md rounded-[28px] border border-white/10 bg-[#07111f]/88 p-5 shadow-[0_28px_90px_rgba(0,0,0,0.36)] backdrop-blur-2xl">
                   <button
                     type="button"
-                    aria-label="Fermer la progression"
+                    aria-label="Fermer l'explication du rang"
                     className="absolute right-4 top-4 z-10 grid h-10 w-10 place-items-center rounded-full border border-white/10 bg-black/24 text-white/62 transition hover:border-white/20 hover:text-white"
                     onClick={() => setIsGradeModalOpen(false)}
                   >
                     <X className="h-4 w-4" aria-hidden="true" />
                   </button>
-                  <ProgressPanel profile={profile} />
+                  <span className="grid h-11 w-11 place-items-center rounded-2xl border border-[#ffd166]/24 bg-[#ffd166]/12 text-[#ffd166]">
+                    <Info className="h-5 w-5" aria-hidden="true" />
+                  </span>
+                  <p className="mt-5 text-xs font-black uppercase tracking-[0.18em] text-[#ffd166]">
+                    Rang actuel
+                  </p>
+                  <h2 className="mt-2 pr-12 text-2xl font-black tracking-[-0.045em] text-white">
+                    {activeGradeTitle}
+                  </h2>
+                  <p className="mt-3 text-sm font-semibold leading-6 text-white/64">
+                    Ton rang reflète ta progression sur Grumm. Il évolue quand
+                    tu atteins ton objectif quotidien et construis une vraie
+                    routine de découverte.
+                  </p>
                 </div>
               </div>
             ) : null}
@@ -1021,21 +906,8 @@ function ProfileContent() {
       </main>
       <Footer />
       <style jsx>{`
-        .profile-daily-progress {
-          animation: profileDailyGlow 1.8s ease-in-out infinite alternate;
-        }
-
         .grade-modal {
           animation: gradeModalEnter 180ms ease-out both;
-        }
-
-        @keyframes profileDailyGlow {
-          from {
-            box-shadow: 0 0 0 rgba(106, 227, 192, 0);
-          }
-          to {
-            box-shadow: 0 0 28px rgba(106, 227, 192, 0.22);
-          }
         }
 
         @keyframes gradeModalEnter {
@@ -1050,7 +922,6 @@ function ProfileContent() {
         }
 
         @media (prefers-reduced-motion: reduce) {
-          .profile-daily-progress,
           .grade-modal {
             animation: none;
           }

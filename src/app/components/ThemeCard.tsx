@@ -39,7 +39,7 @@ export default function ThemeCard({
     total > 0 ? Math.min(Math.round((discovered / total) * 100), 100) : 0;
   const progressLabel = progress
     ? discovered > 0
-      ? `${discovered} / ${total} ${publicSiteTexts.themeProgress.readSuffix}`
+      ? `${discovered} ${publicSiteTexts.themeProgress.readSuffix}`
       : publicSiteTexts.themeProgress.empty
     : count > 0
       ? `${count} ${publicSiteTexts.themeProgress.factsToExplore}`

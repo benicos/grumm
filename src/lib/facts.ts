@@ -974,49 +974,6 @@ export async function getThemeDiscoverySummaries(
   }));
 }
 
-export async function getPopularExplorerSearches(limit = 6) {
-  const supabase = createSupabaseBrowserClient();
-
-  if (!supabase) {
-    return [] as string[];
-  }
-
-  const { data, error } = await supabase
-    .from("analytics_events")
-    .select("metadata")
-    .eq("event_name", "explorer_search")
-    .order("created_at", { ascending: false })
-    .limit(250);
-
-  if (error) {
-    return [];
-  }
-
-  const counts = new Map<string, number>();
-
-  (data ?? []).forEach((event) => {
-    const metadata = event.metadata;
-
-    if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) {
-      return;
-    }
-
-    const term = metadata.term;
-
-    if (typeof term !== "string" || term.trim().length < 2) {
-      return;
-    }
-
-    const normalized = term.trim().replace(/\s+/g, " ");
-    counts.set(normalized, (counts.get(normalized) ?? 0) + 1);
-  });
-
-  return [...counts.entries()]
-    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "fr"))
-    .slice(0, limit)
-    .map(([term]) => term);
-}
-
 async function hydrateFactThemeVisuals(
   supabase: NonNullable<ReturnType<typeof createSupabaseBrowserClient>>,
   fact: FeedFact,

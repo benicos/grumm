@@ -6,31 +6,13 @@ import { requestPasswordReset, updatePasswordAfterReset } from "@/lib/auth";
 import { appRoutes } from "@/config/app";
 import { isPasswordValid, passwordValidationMessage } from "@/lib/password";
 import { premiumPrimaryCtaClassName } from "../components/buttonStyles";
+import StatusMessage from "../components/StatusMessage";
 import PasswordRuleChecklist from "./PasswordRuleChecklist";
 import { useAuth } from "./AuthProvider";
 
-function Message({
-  tone,
-  children,
-}: {
-  tone: "error" | "success";
-  children: React.ReactNode;
-}) {
-  return (
-    <p
-      className={`mt-5 rounded-md border px-4 py-3 text-sm font-semibold leading-6 ${
-        tone === "success"
-          ? "border-emerald-300/20 bg-emerald-500/10 text-emerald-100"
-          : "border-red-300/20 bg-red-500/10 text-red-100"
-      }`}
-    >
-      {children}
-    </p>
-  );
-}
-
 export function PasswordResetRequestForm() {
   const [email, setEmail] = useState("");
+  const [emailError, setEmailError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [messageTone, setMessageTone] = useState<"error" | "success">("success");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -39,15 +21,21 @@ export function PasswordResetRequestForm() {
     event.preventDefault();
     setIsSubmitting(true);
     setMessage(null);
+    setEmailError(null);
 
     const result = await requestPasswordReset(email);
     setIsSubmitting(false);
     setMessage(result.message ?? null);
     setMessageTone(result.ok ? "success" : "error");
+
+    if (!result.ok && result.field === "email") {
+      setEmailError(result.message);
+    }
   }
 
   return (
     <form
+      noValidate
       onSubmit={submit}
       className="w-full max-w-md rounded-lg border border-white/10 bg-white/[0.06] p-6 shadow-2xl backdrop-blur-xl"
     >
@@ -65,16 +53,37 @@ export function PasswordResetRequestForm() {
         <span className="text-sm font-semibold text-white/72">Email</span>
         <input
           value={email}
-          onChange={(event) => setEmail(event.target.value)}
+          onChange={(event) => {
+            setEmail(event.target.value);
+            setEmailError(null);
+            setMessage(null);
+          }}
           type="email"
           autoComplete="email"
           required
-          className="mt-2 w-full rounded-md border border-white/10 bg-black/20 px-4 py-3 text-white outline-none transition placeholder:text-white/35 focus:border-[#ffd166]"
+          aria-invalid={Boolean(emailError)}
+          className={`mt-2 w-full rounded-[16px] border bg-black/20 px-4 py-3 text-white outline-none transition placeholder:text-white/35 focus:border-[#ffd166] ${
+            emailError
+              ? "border-red-300/65 bg-red-500/[0.08] shadow-[0_0_0_1px_rgba(252,165,165,0.22)]"
+              : "border-white/10"
+          }`}
           placeholder="mail@exemple.fr"
         />
       </label>
 
-      {message && <Message tone={messageTone}>{message}</Message>}
+      {message ? (
+        <StatusMessage
+          className="mt-5"
+          tone={messageTone}
+          title={
+            messageTone === "success"
+              ? "Email envoyé si le compte existe"
+              : "Envoi impossible"
+          }
+        >
+          {message}
+        </StatusMessage>
+      ) : null}
 
       <button
         type="submit"
@@ -122,7 +131,7 @@ export function PasswordUpdateForm() {
       return;
     }
 
-      setMessage(result.message ?? "Mot de passe mis à jour.");
+    setMessage(result.message ?? "Mot de passe mis à jour.");
     setMessageTone("success");
     await refreshUser();
     window.setTimeout(() => router.replace(appRoutes.profile), 900);
@@ -130,6 +139,7 @@ export function PasswordUpdateForm() {
 
   return (
     <form
+      noValidate
       onSubmit={submit}
       className="w-full max-w-md rounded-lg border border-white/10 bg-white/[0.06] p-6 shadow-2xl backdrop-blur-xl"
     >
@@ -140,7 +150,7 @@ export function PasswordUpdateForm() {
         Nouveau mot de passe
       </h1>
       <p className="mt-3 text-sm leading-6 text-white/58">
-        Choisis un mot de passe securise pour retrouver ton espace.
+        Choisis un mot de passe sécurisé pour retrouver ton espace.
       </p>
 
       <div className="mt-7 space-y-4">
@@ -156,7 +166,7 @@ export function PasswordUpdateForm() {
             required
             minLength={8}
             className="mt-2 w-full rounded-md border border-white/10 bg-black/20 px-4 py-3 text-white outline-none transition placeholder:text-white/35 focus:border-[#ffd166]"
-            placeholder="Mot de passe securise"
+            placeholder="Mot de passe sécurisé"
           />
           <PasswordRuleChecklist password={password} />
         </label>
@@ -177,7 +187,19 @@ export function PasswordUpdateForm() {
         </label>
       </div>
 
-      {message && <Message tone={messageTone}>{message}</Message>}
+      {message ? (
+        <StatusMessage
+          className="mt-5"
+          tone={messageTone}
+          title={
+            messageTone === "success"
+              ? "Mot de passe modifié"
+              : "Mise à jour impossible"
+          }
+        >
+          {message}
+        </StatusMessage>
+      ) : null}
 
       <button
         type="submit"

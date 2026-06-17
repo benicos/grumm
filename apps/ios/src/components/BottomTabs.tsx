@@ -15,7 +15,7 @@ export type MobileTab = "feed" | "themes" | "quiz" | "profile";
 
 const tabs: { Icon: LucideIcon; key: MobileTab; label: string }[] = [
   { Icon: BookOpenText, key: "feed", label: "Feed" },
-  { Icon: Grid2X2, key: "themes", label: "Thèmes" },
+  { Icon: Grid2X2, key: "themes", label: "Explorer" },
   { Icon: Brain, key: "quiz", label: "Quiz" },
   { Icon: UserRound, key: "profile", label: "Profil" },
 ];

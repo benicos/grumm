@@ -60,15 +60,6 @@ export const userMessages = {
   genericLoadError: "Impossible de charger ce contenu pour le moment.",
 } as const;
 
-export const footerLinks = [
-  { href: appRoutes.discover, label: "D\u00e9couvrir" },
-  { href: appRoutes.explorer, label: "Explorer" },
-  { href: appRoutes.about, label: "\u00c0 propos" },
-  { href: appRoutes.contact, label: "Contact" },
-  { href: appRoutes.privacy, label: "Politique de confidentialit\u00e9" },
-  { href: appRoutes.legalNotice, label: "Mentions l\u00e9gales" },
-] as const;
-
 export const socialShareConfig = {
   fallbackMessage:
     "Le partage direct d\u2019image n\u2019est pas disponible ici, mais tu peux toujours t\u00e9l\u00e9charger l\u2019image et la partager \u00e0 ta guise !",

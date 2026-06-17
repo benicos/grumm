@@ -139,7 +139,13 @@ function GrummMobileApp() {
         ) : null}
         {activeTab === "themes" ? <ThemesScreen onOpenTheme={openTheme} /> : null}
         {activeTab === "quiz" ? <QuizScreen /> : null}
-        {activeTab === "profile" ? <ProfileScreen /> : null}
+        {activeTab === "profile" ? (
+          <ProfileScreen
+            onOpenFeed={() => setActiveTab("feed")}
+            onOpenQuiz={() => setActiveTab("quiz")}
+            onOpenThemes={() => setActiveTab("themes")}
+          />
+        ) : null}
       </View>
       <BottomTabs activeTab={activeTab} onChange={changeTab} />
     </View>

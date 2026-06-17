@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Eye, EyeOff, MailCheck } from "lucide-react";
+import { CircleAlert, Eye, EyeOff, MailCheck } from "lucide-react";
 import { appRoutes, dailyGoalConfig, signupDailyGoalOptions } from "@/config/app";
 import { trackAnalyticsEvent } from "@/lib/analytics/web";
 import { signInWithEmail, signUpWithEmail } from "@/lib/auth";
@@ -19,6 +19,7 @@ import {
 } from "@/lib/slug";
 import { isPasswordValid, passwordValidationMessage } from "@/lib/password";
 import { premiumPrimaryCtaClassName } from "../components/buttonStyles";
+import StatusMessage from "../components/StatusMessage";
 import PasswordRuleChecklist from "./PasswordRuleChecklist";
 import { useAuth } from "./AuthProvider";
 
@@ -42,14 +43,37 @@ const signupSteps: SignupStep[] = [
   "credentials",
 ];
 
+const signupStepForField: Record<keyof FieldErrors, SignupStep> = {
+  dailyGoal: "dailyGoal",
+  email: "credentials",
+  password: "credentials",
+  passwordConfirmation: "credentials",
+  username: "username",
+};
+
+const inputBaseClassName =
+  "w-full rounded-[16px] border bg-white/[0.055] px-4 py-3 text-white outline-none transition placeholder:text-white/35 focus:border-[#ffd166] focus:bg-white/[0.08]";
+
+function getInputClassName(hasError: boolean, extraClassName = "") {
+  return `${inputBaseClassName} ${
+    hasError
+      ? "border-red-300/65 bg-red-500/[0.08] shadow-[0_0_0_1px_rgba(252,165,165,0.22),0_12px_38px_rgba(185,28,28,0.16)]"
+      : "border-white/10"
+  } ${extraClassName}`;
+}
+
 function FieldError({ message }: { message?: string }) {
   if (!message) {
     return null;
   }
 
   return (
-    <span className="mt-2 block rounded-md border border-red-300/15 bg-red-500/10 px-3 py-2 text-xs font-semibold leading-5 text-red-100">
-      {message}
+    <span
+      role="alert"
+      className="mt-2 flex items-start gap-2 rounded-[12px] border border-red-300/22 bg-red-500/12 px-3 py-2 text-xs font-bold leading-5 text-red-100"
+    >
+      <CircleAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+      <span>{message}</span>
     </span>
   );
 }
@@ -237,6 +261,11 @@ export default function AuthForm({ mode }: AuthFormProps) {
 
     if (!result.ok) {
       if (result.field && result.field !== "global") {
+        if (!isLogin) {
+          setSignupStep(signupStepForField[result.field]);
+          setMessageTone("error");
+          setMessage(result.message);
+        }
         setFieldErrors({ [result.field]: result.message });
       } else {
         setMessageTone("error");
@@ -273,17 +302,19 @@ export default function AuthForm({ mode }: AuthFormProps) {
             value={username}
             onChange={(event) => {
               setUsername(event.target.value);
+              setMessage(null);
               setFieldError("username");
             }}
             autoComplete="username"
             required
             minLength={3}
             maxLength={24}
-            className="mt-2 w-full rounded-[16px] border border-white/10 bg-white/[0.055] px-4 py-3 text-white outline-none transition placeholder:text-white/35 focus:border-[#ffd166] focus:bg-white/[0.08]"
+            aria-invalid={Boolean(fieldErrors.username)}
+            className={getInputClassName(Boolean(fieldErrors.username), "mt-2")}
             placeholder="Nom d'utilisateur"
           />
           <span className="mt-2 block text-xs leading-5 text-white/45">
-            Il sera normalise en{" "}
+            Il sera normalisé en{" "}
             <strong className="font-semibold text-white/70">
               {normalizedUsername || "nom_utilisateur"}
             </strong>
@@ -346,7 +377,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
             Objectif quotidien
           </legend>
           <p className="mt-2 text-sm leading-6 text-white/50">
-            Choisis un rythme realiste. Tu pourras le modifier depuis ton profil.
+            Choisis un rythme réaliste. Tu pourras le modifier depuis ton profil.
           </p>
           <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
             {signupDailyGoalOptions.map((option) => {
@@ -358,6 +389,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
                   type="button"
                   onClick={() => {
                     setDailyGoal(option);
+                    setMessage(null);
                     setFieldError("dailyGoal");
                   }}
                   className={`rounded-[16px] border px-4 py-3 text-center transition ${
@@ -385,12 +417,14 @@ export default function AuthForm({ mode }: AuthFormProps) {
             value={email}
             onChange={(event) => {
               setEmail(event.target.value);
+              setMessage(null);
               setFieldError("email");
             }}
             type="email"
             autoComplete="email"
             required
-            className="mt-2 w-full rounded-[16px] border border-white/10 bg-white/[0.055] px-4 py-3 text-white outline-none transition placeholder:text-white/35 focus:border-[#ffd166] focus:bg-white/[0.08]"
+            aria-invalid={Boolean(fieldErrors.email)}
+            className={getInputClassName(Boolean(fieldErrors.email), "mt-2")}
             placeholder="adresse@mail.fr"
           />
           <FieldError message={fieldErrors.email} />
@@ -405,6 +439,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
               value={password}
               onChange={(event) => {
                 setPassword(event.target.value);
+                setMessage(null);
                 setFieldError("password");
                 setFieldError("passwordConfirmation");
               }}
@@ -412,8 +447,9 @@ export default function AuthForm({ mode }: AuthFormProps) {
               autoComplete="new-password"
               required
               minLength={8}
-              className="w-full rounded-[16px] border border-white/10 bg-white/[0.055] px-4 py-3 pr-14 text-white outline-none transition placeholder:text-white/35 focus:border-[#ffd166] focus:bg-white/[0.08]"
-              placeholder="Mot de passe securise"
+              aria-invalid={Boolean(fieldErrors.password)}
+              className={getInputClassName(Boolean(fieldErrors.password), "pr-14")}
+              placeholder="Mot de passe sécurisé"
             />
             <button
               type="button"
@@ -445,13 +481,18 @@ export default function AuthForm({ mode }: AuthFormProps) {
               value={passwordConfirmation}
               onChange={(event) => {
                 setPasswordConfirmation(event.target.value);
+                setMessage(null);
                 setFieldError("passwordConfirmation");
               }}
               type={showPasswordConfirmation ? "text" : "password"}
               autoComplete="new-password"
               required
               minLength={8}
-              className="w-full rounded-[16px] border border-white/10 bg-white/[0.055] px-4 py-3 pr-14 text-white outline-none transition placeholder:text-white/35 focus:border-[#ffd166] focus:bg-white/[0.08]"
+              aria-invalid={Boolean(fieldErrors.passwordConfirmation)}
+              className={getInputClassName(
+                Boolean(fieldErrors.passwordConfirmation),
+                "pr-14",
+              )}
               placeholder="Confirme le mot de passe"
             />
             <button
@@ -497,10 +538,10 @@ export default function AuthForm({ mode }: AuthFormProps) {
           <p className="mt-4 text-sm font-semibold leading-6 text-white/72">
             {message}
           </p>
-          <p className="mt-3 rounded-[16px] border border-white/10 bg-white/[0.055] px-4 py-3 text-sm font-semibold leading-6 text-white/62">
+          <StatusMessage className="mt-4" tone="info" title="À vérifier aussi">
             Pense à vérifier tes spams ou courriers indésirables si tu ne vois
             pas l&apos;email.
-          </p>
+          </StatusMessage>
           <Link
             href="/login"
             className="mt-6 inline-flex w-full justify-center rounded-full border border-white/12 px-5 py-3 text-sm font-black text-white/72 transition hover:border-white/24 hover:text-white"
@@ -514,6 +555,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
 
   return (
     <form
+      noValidate
       onSubmit={handleSubmit}
       className="relative w-full max-w-md overflow-hidden rounded-[28px] border border-white/12 bg-[#07111f]/62 p-6 shadow-[0_30px_100px_rgba(0,0,0,0.34),inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-2xl sm:p-7"
     >
@@ -540,12 +582,14 @@ export default function AuthForm({ mode }: AuthFormProps) {
                 value={email}
                 onChange={(event) => {
                   setEmail(event.target.value);
+                  setMessage(null);
                   setFieldError("email");
                 }}
                 type="email"
                 autoComplete="email"
                 required
-                className="mt-2 w-full rounded-[16px] border border-white/10 bg-white/[0.055] px-4 py-3 text-white outline-none transition placeholder:text-white/35 focus:border-[#ffd166] focus:bg-white/[0.08]"
+                aria-invalid={Boolean(fieldErrors.email)}
+                className={getInputClassName(Boolean(fieldErrors.email), "mt-2")}
                 placeholder="adresse@mail.fr"
               />
               <FieldError message={fieldErrors.email} />
@@ -559,12 +603,14 @@ export default function AuthForm({ mode }: AuthFormProps) {
                 value={password}
                 onChange={(event) => {
                   setPassword(event.target.value);
+                  setMessage(null);
                   setFieldError("password");
                 }}
                 type="password"
                 autoComplete="current-password"
                 required
-                className="mt-2 w-full rounded-[16px] border border-white/10 bg-white/[0.055] px-4 py-3 text-white outline-none transition placeholder:text-white/35 focus:border-[#ffd166] focus:bg-white/[0.08]"
+                aria-invalid={Boolean(fieldErrors.password)}
+                className={getInputClassName(Boolean(fieldErrors.password), "mt-2")}
                 placeholder="Mot de passe"
               />
               <FieldError message={fieldErrors.password} />
@@ -574,7 +620,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
                 href={appRoutes.forgotPassword}
                 className="text-xs font-bold text-[#ffd166] transition hover:text-white"
               >
-                Mot de passe oublie ?
+                Mot de passe oublié ?
               </Link>
             </div>
           </>
@@ -583,29 +629,21 @@ export default function AuthForm({ mode }: AuthFormProps) {
         )}
       </div>
 
-      {message && (
-        messageTone === "success" ? (
-          <div className="mt-5 rounded-[22px] border border-[#ffd166]/30 bg-[#ffd166]/12 px-4 py-4 text-white shadow-[0_18px_60px_rgba(255,209,102,0.14)]">
-            <div className="flex items-start gap-3">
-              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#ffd166] text-[#07111f]">
-                <MailCheck className="h-5 w-5" aria-hidden="true" />
-              </span>
-              <span>
-                <span className="block text-lg font-black tracking-[-0.03em]">
-                  Vérifie ta boîte mail
-                </span>
-                <span className="mt-1 block text-sm font-semibold leading-6 text-white/78">
-                  {message}
-                </span>
-              </span>
-            </div>
-          </div>
-        ) : (
-          <p className="mt-5 rounded-md border border-red-300/20 bg-red-500/10 px-4 py-3 text-sm text-red-100">
-            {message}
-          </p>
-        )
-      )}
+      {message ? (
+        <StatusMessage
+          className="mt-5"
+          tone={messageTone}
+          title={
+            messageTone === "success"
+              ? "Vérifie ta boîte mail"
+              : isLogin
+                ? "Connexion impossible"
+                : "Inscription bloquée"
+          }
+        >
+          {message}
+        </StatusMessage>
+      ) : null}
 
       <div className="relative mt-6 flex gap-3">
         {!isLogin && signupStep !== "username" ? (
@@ -627,7 +665,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
             : isLogin
               ? "Se connecter"
               : signupStep === "credentials"
-                ? "Creer mon compte"
+                ? "Créer mon compte"
                 : "Continuer"}
         </button>
       </div>

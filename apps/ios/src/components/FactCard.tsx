@@ -1,5 +1,5 @@
 import { LinearGradient } from "expo-linear-gradient";
-import { Bookmark, ExternalLink, Heart, Share2 } from "lucide-react-native";
+import { Bookmark, ExternalLink, Heart, SquareArrowUp } from "lucide-react-native";
 import { Linking, Pressable, StyleSheet, Text, View } from "react-native";
 
 import { cleanFactSource } from "../lib/source";
@@ -22,6 +22,30 @@ type FactCardProps = {
   onView?: () => void;
 };
 
+type FactLength = "long" | "medium" | "short";
+
+function getFactLength(title: string, detail: string, expanded: boolean): FactLength {
+  const score = title.trim().length * 1.35 + detail.trim().length;
+
+  if (expanded || score > 430) {
+    return "long";
+  }
+
+  if (score > 230) {
+    return "medium";
+  }
+
+  return "short";
+}
+
+function getImmersiveDetailLines(length: FactLength, expanded: boolean) {
+  if (expanded) {
+    return undefined;
+  }
+
+  return length === "short" ? 9 : length === "medium" ? 8 : 7;
+}
+
 export function FactCard({
   actions,
   expanded = false,
@@ -40,6 +64,7 @@ export function FactCard({
   const body = expanded ? fact.longContent ?? fact.detail : fact.detail;
   const isImmersive = immersive;
   const themeIconName = getThemeIconName(fact.categorySlug, fact.themeIcon);
+  const factLength = getFactLength(fact.title, body, expanded);
 
   return (
     <Pressable
@@ -64,47 +89,69 @@ export function FactCard({
       ) : (
         <View style={[styles.accentWash, { backgroundColor: withAlpha(fact.accent, 0.11) }]} />
       )}
-      <View style={styles.topRow}>
+      <View style={[styles.contentZone, isImmersive && styles.immersiveContentZone]}>
         <View
           style={[
-            styles.badge,
-            { backgroundColor: withAlpha(fact.accent, isImmersive ? 0.22 : 0.14) },
-            isImmersive && styles.immersiveBadge,
+            styles.textBlock,
+            isImmersive && styles.immersiveTextBlock,
+            isImmersive && factLength === "short" && styles.immersiveTextBlockShort,
+            isImmersive && factLength === "medium" && styles.immersiveTextBlockMedium,
+            isImmersive && factLength === "long" && styles.immersiveTextBlockLong,
           ]}
         >
-          <View
-            style={[
-              styles.badgeIcon,
-              { backgroundColor: withAlpha(fact.accent, isImmersive ? 0.2 : 0.12) },
-            ]}
-          >
-            <ThemeIcon
-              color={isImmersive ? "#ffffff" : fact.accent}
-              name={themeIconName}
-              size={13}
-              strokeWidth={2.5}
-            />
+          <View style={[styles.topRow, isImmersive && styles.immersiveTopRow]}>
+            <View
+              style={[
+                styles.badge,
+                { backgroundColor: withAlpha(fact.accent, isImmersive ? 0.22 : 0.14) },
+                isImmersive && styles.immersiveBadge,
+              ]}
+            >
+              <View
+                style={[
+                  styles.badgeIcon,
+                  { backgroundColor: withAlpha(fact.accent, isImmersive ? 0.2 : 0.12) },
+                ]}
+              >
+                <ThemeIcon
+                  color={isImmersive ? "#ffffff" : fact.accent}
+                  name={themeIconName}
+                  size={13}
+                  strokeWidth={2.5}
+                />
+              </View>
+              <Text
+                numberOfLines={1}
+                style={[
+                  styles.badgeText,
+                  { color: isImmersive ? "#ffffff" : fact.accent },
+                ]}
+              >
+                {fact.category}
+              </Text>
+            </View>
           </View>
+
           <Text
-            numberOfLines={1}
             style={[
-              styles.badgeText,
-              { color: isImmersive ? "#ffffff" : fact.accent },
+              styles.title,
+              immersive && styles.immersiveTitle,
+              isImmersive && factLength === "long" && styles.immersiveTitleLong,
             ]}
           >
-            {fact.category}
+            {fact.title}
           </Text>
-        </View>
-      </View>
-
-      <View style={[styles.textBlock, immersive && styles.immersiveTextBlock]}>
-        <Text style={[styles.title, immersive && styles.immersiveTitle]}>{fact.title}</Text>
-        <Text
-          numberOfLines={expanded ? undefined : immersive ? 7 : 4}
-          style={[styles.detail, immersive && styles.immersiveDetail]}
-        >
-          {body}
-        </Text>
+          <Text
+            numberOfLines={immersive ? getImmersiveDetailLines(factLength, expanded) : expanded ? undefined : 4}
+            style={[
+              styles.detail,
+              immersive && styles.immersiveDetail,
+              isImmersive && factLength === "short" && styles.immersiveDetailShort,
+              isImmersive && factLength === "long" && styles.immersiveDetailLong,
+            ]}
+          >
+            {body}
+          </Text>
 
         {hasMore && !expanded ? (
           <Pressable
@@ -112,6 +159,8 @@ export function FactCard({
             onPress={onReadMore}
             style={[
               styles.readMore,
+              isImmersive && styles.immersiveReadMore,
+              isImmersive && factLength === "long" && styles.immersiveReadMoreLong,
               isImmersive
                 ? {
                     backgroundColor: withAlpha(fact.accent, 0.22),
@@ -134,49 +183,52 @@ export function FactCard({
           </Pressable>
         ) : null}
       </View>
+      </View>
 
-      {source ? (
-        fact.sourceUrl ? (
-          <Pressable
-            accessibilityRole="link"
-            onPress={() => {
-              onSourcePress?.();
-              void Linking.openURL(fact.sourceUrl ?? "");
-            }}
-            style={styles.sourceLink}
-          >
+      <View style={[styles.bottomZone, isImmersive && styles.immersiveBottomZone]}>
+        {source ? (
+          fact.sourceUrl ? (
+            <Pressable
+              accessibilityRole="link"
+              onPress={() => {
+                onSourcePress?.();
+                void Linking.openURL(fact.sourceUrl ?? "");
+              }}
+              style={styles.sourceLink}
+            >
+              <Text numberOfLines={1} style={[styles.source, isImmersive && styles.immersiveSource]}>
+                Source : {source}
+              </Text>
+              <ExternalLink
+                color={isImmersive ? "rgba(255,255,255,0.72)" : appTheme.color.muted}
+                size={13}
+                strokeWidth={2.2}
+              />
+            </Pressable>
+          ) : (
             <Text numberOfLines={1} style={[styles.source, isImmersive && styles.immersiveSource]}>
               Source : {source}
             </Text>
-            <ExternalLink
-              color={isImmersive ? "rgba(255,255,255,0.70)" : appTheme.color.muted}
-              size={13}
-              strokeWidth={2.2}
-            />
-          </Pressable>
-        ) : (
-          <Text numberOfLines={1} style={[styles.source, isImmersive && styles.immersiveSource]}>
-            Source : {source}
-          </Text>
-        )
-      ) : null}
+          )
+        ) : null}
 
-      <View style={[styles.actions, immersive && styles.immersiveActions]}>
-        <IconAction
-          active={actions.liked}
-          accent={fact.accent}
-          Icon={Heart}
-          label="Aimer"
-          onPress={onToggleLike}
-        />
-        <IconAction
-          active={actions.saved}
-          accent={fact.accent}
-          Icon={Bookmark}
-          label="Enregistrer"
-          onPress={onToggleSave}
-        />
-        <IconAction accent={fact.accent} Icon={Share2} label="Partager" onPress={onShare} />
+        <View style={[styles.actions, immersive && styles.immersiveActions]}>
+          <IconAction
+            active={actions.liked}
+            accent={fact.accent}
+            Icon={Heart}
+            label="Aimer"
+            onPress={onToggleLike}
+          />
+          <IconAction
+            active={actions.saved}
+            accent={fact.accent}
+            Icon={Bookmark}
+            label="Enregistrer"
+            onPress={onToggleSave}
+          />
+          <IconAction accent={fact.accent} Icon={SquareArrowUp} label="Partager" onPress={onShare} />
+        </View>
       </View>
     </Pressable>
   );
@@ -219,7 +271,7 @@ function IconAction({
       <Icon
         color={active ? accent : appTheme.color.ink}
         fill={active ? withAlpha(accent, 0.22) : "transparent"}
-        size={20}
+        size={22}
         strokeWidth={2.25}
       />
     </Pressable>
@@ -237,8 +289,7 @@ const styles = StyleSheet.create({
   },
   actions: {
     flexDirection: "row",
-    gap: 10,
-    marginTop: 16,
+    gap: 12,
   },
   badge: {
     alignItems: "center",
@@ -270,6 +321,13 @@ const styles = StyleSheet.create({
     padding: 16,
     ...appTheme.shadow.card,
   },
+  bottomZone: {
+    gap: 13,
+    marginTop: 12,
+  },
+  contentZone: {
+    minWidth: 0,
+  },
   detail: {
     color: appTheme.color.muted,
     fontSize: 15,
@@ -283,9 +341,9 @@ const styles = StyleSheet.create({
     borderColor: appTheme.color.border,
     borderRadius: appTheme.radius.pill,
     borderWidth: 1,
-    height: 44,
+    height: 48,
     justifyContent: "center",
-    width: 44,
+    width: 48,
   },
   iconPressed: {
     opacity: 0.72,
@@ -294,6 +352,11 @@ const styles = StyleSheet.create({
   immersiveActions: {
     justifyContent: "center",
   },
+  immersiveBottomZone: {
+    gap: 14,
+    marginTop: 0,
+    paddingBottom: 6,
+  },
   immersiveBadge: {
     borderColor: "rgba(255,255,255,0.20)",
     borderWidth: 1,
@@ -301,33 +364,62 @@ const styles = StyleSheet.create({
   immersiveCard: {
     backgroundColor: "#172033",
     flex: 1,
-    justifyContent: "space-between",
     overflow: "hidden",
-    paddingBottom: 28,
+    paddingBottom: 24,
     paddingHorizontal: 22,
     paddingTop: 22,
+  },
+  immersiveContentZone: {
+    flex: 1,
+    justifyContent: "center",
+    minHeight: 0,
+    paddingBottom: 18,
+    paddingTop: 12,
   },
   immersiveDetail: {
     color: "rgba(255,255,255,0.82)",
     fontSize: 16,
-    lineHeight: 24,
+    lineHeight: 25,
+    marginTop: 13,
+  },
+  immersiveDetailLong: {
+    fontSize: 15,
+    lineHeight: 22,
+    marginTop: 10,
+  },
+  immersiveDetailShort: {
+    lineHeight: 26,
   },
   immersiveOverlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: "rgba(0,0,0,0.24)",
   },
   immersiveSource: {
-    color: "rgba(255,255,255,0.70)",
+    color: "rgba(255,255,255,0.76)",
+    fontSize: 12.5,
   },
   immersiveTextBlock: {
-    flex: 1,
     justifyContent: "center",
-    paddingVertical: 14,
+    minHeight: 0,
+  },
+  immersiveTextBlockLong: {
+    justifyContent: "flex-start",
+  },
+  immersiveTextBlockMedium: {
+    justifyContent: "center",
+  },
+  immersiveTextBlockShort: {
+    justifyContent: "center",
   },
   immersiveTitle: {
     color: "#ffffff",
     fontSize: 27,
-    lineHeight: 33,
+    lineHeight: 34,
+    marginTop: 17,
+  },
+  immersiveTitleLong: {
+    fontSize: 25,
+    lineHeight: 31,
   },
   pressed: {
     opacity: 0.9,
@@ -340,6 +432,12 @@ const styles = StyleSheet.create({
     marginTop: 10,
     paddingHorizontal: 12,
     paddingVertical: 7,
+  },
+  immersiveReadMore: {
+    marginTop: 14,
+  },
+  immersiveReadMoreLong: {
+    marginTop: 10,
   },
   readMoreText: {
     fontSize: 13,
@@ -355,7 +453,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     flexDirection: "row",
     gap: 6,
-    marginTop: 12,
   },
   title: {
     color: appTheme.color.ink,
@@ -371,5 +468,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     flexDirection: "row",
     justifyContent: "space-between",
+  },
+  immersiveTopRow: {
+    justifyContent: "flex-start",
   },
 });

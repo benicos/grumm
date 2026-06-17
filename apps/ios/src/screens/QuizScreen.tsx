@@ -1,21 +1,25 @@
+import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
 import {
+  ArrowRight,
+  BarChart3,
   Brain,
   CheckCircle2,
-  Clock3,
-  History,
+  Flame,
+  Play,
   RotateCcw,
+  Sparkles,
   Target,
   Trophy,
   XCircle,
+  Zap,
+  type LucideIcon,
 } from "lucide-react-native";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { AppScreen } from "../components/AppScreen";
 import { LoadingState } from "../components/ScreenState";
-import { ProfileStat } from "../components/ProfileStat";
-import { QuizCard } from "../components/QuizCard";
 import { useAuth } from "../context/AuthContext";
 import { getProfileSummary, getQuizStatsSummary } from "../lib/facts";
 import {
@@ -32,6 +36,47 @@ import {
 import { appTheme, withAlpha } from "../theme/appTheme";
 import type { ProfileSummary, QuizStatsSummary } from "../types/domain";
 
+type QuizMode = {
+  Icon: LucideIcon;
+  accent: string;
+  body: string;
+  cta: string;
+  detail: string;
+  gradient: [string, string, string];
+  kicker: string;
+  title: string;
+  type: MobileQuizType;
+};
+
+const quizModes: QuizMode[] = [
+  {
+    Icon: Zap,
+    accent: "#ffb156",
+    body: "5 questions pour tester ta culture.",
+    cta: "Lancer",
+    detail: "Feedback immédiat",
+    gradient: ["#7c5cff", "#ff7a59", "#f2c94c"],
+    kicker: "Mode rapide",
+    title: "Quiz général",
+    type: "general_quizz",
+  },
+  {
+    Icon: Brain,
+    accent: "#6ae3c0",
+    body: "Des questions issues de tes lectures quand c'est possible.",
+    cta: "Réviser",
+    detail: "Mémoire ciblée",
+    gradient: ["#173044", "#1ea7a1", "#47b881"],
+    kicker: "Mode personnel",
+    title: "Défi mémoire",
+    type: "memory_challenge",
+  },
+];
+
+function getMode(type: MobileQuizType) {
+  return quizModes.find((mode) => mode.type === type) ?? quizModes[0];
+}
+
 export function QuizScreen() {
   const { isLoading: isAuthLoading, session } = useAuth();
   const [summary, setSummary] = useState<ProfileSummary | null>(null);
@@ -44,6 +89,7 @@ export function QuizScreen() {
   const [activeQuizType, setActiveQuizType] = useState<MobileQuizType>("general_quizz");
   const [result, setResult] = useState<MobileQuizResult | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [sessionNotice, setSessionNotice] = useState<string | null>(null);
 
   const loadHistory = useCallback(async () => {
     if (!session) {
@@ -72,6 +118,11 @@ export function QuizScreen() {
     await Haptics.selectionAsync();
     setIsLoading(true);
     setMessage(null);
+    setSessionNotice(
+      type === "memory_challenge" && (!session || (summary?.uniqueViewsCount ?? 0) < 3)
+        ? "On te préparera un défi mémoire plus personnel dès que tu auras lu quelques faits. En attendant, voici un entraînement général."
+        : null,
+    );
     setResult(null);
     setQuestions([]);
     setAnswers([]);
@@ -133,6 +184,7 @@ export function QuizScreen() {
     setResult(nextResult ?? getQuizResult(finalAnswers));
     setQuestions([]);
     setSelectedAnswer(null);
+    setSessionNotice(null);
     await loadHistory();
   }
 
@@ -143,6 +195,7 @@ export function QuizScreen() {
     setSelectedAnswer(null);
     setResult(null);
     setMessage(null);
+    setSessionNotice(null);
   }
 
   if (isAuthLoading) {
@@ -163,124 +216,55 @@ export function QuizScreen() {
 
   if (result) {
     return (
-      <AppScreen contentStyle={styles.centered}>
-        <View style={styles.resultBadge}>
-          <Trophy color={appTheme.color.yellow} size={34} strokeWidth={2.25} />
-        </View>
-        <Text style={styles.resultScore}>{result.scorePercent}%</Text>
-        <Text style={styles.resultTitle}>Session terminée</Text>
-        <Text style={styles.resultText}>
-          {result.correctAnswers}/{result.totalQuestions} bonnes réponses
-        </Text>
-        <View style={styles.resultActions}>
-          <Pressable onPress={() => void startQuiz("general_quizz")} style={styles.primaryButton}>
-            <Text style={styles.primaryButtonText}>Recommencer</Text>
-          </Pressable>
-          <Pressable onPress={resetHub} style={styles.secondaryButton}>
-            <Text style={styles.secondaryButtonText}>Retour quiz</Text>
-          </Pressable>
-        </View>
-      </AppScreen>
+      <ResultView
+        activeQuizType={activeQuizType}
+        onBack={resetHub}
+        onStartQuiz={startQuiz}
+        result={result}
+      />
     );
   }
 
   if (questions.length > 0) {
-    const question = questions[currentIndex];
-    const selectedIsCorrect = selectedAnswer === question.correctAnswer;
-
     return (
-      <AppScreen scroll>
-        <View style={styles.questionTop}>
-          <Text style={styles.kicker}>
-            {activeQuizType === "memory_challenge" ? "Défi mémoire" : "Quiz rapide"}
-          </Text>
-          <Text style={styles.questionCounter}>
-            {currentIndex + 1}/{questions.length}
-          </Text>
-        </View>
-
-        <View style={styles.questionCard}>
-          <View style={styles.themePill}>
-            <Target color={appTheme.color.violet} size={15} strokeWidth={2.3} />
-            <Text numberOfLines={1} style={styles.themePillText}>
-              {question.theme}
-            </Text>
-          </View>
-          <Text style={styles.questionText}>{question.prompt}</Text>
-
-          <View style={styles.answerList}>
-            {question.options.map((option) => {
-              const isSelected = selectedAnswer === option;
-              const isCorrect = Boolean(selectedAnswer) && option === question.correctAnswer;
-              const isWrong = isSelected && !isCorrect;
-
-              return (
-                <Pressable
-                  disabled={Boolean(selectedAnswer)}
-                  key={option}
-                  onPress={() => void chooseAnswer(option)}
-                  style={[
-                    styles.answerButton,
-                    isCorrect && styles.answerCorrect,
-                    isWrong && styles.answerWrong,
-                  ]}
-                >
-                  <Text style={styles.answerText}>{option}</Text>
-                </Pressable>
-              );
-            })}
-          </View>
-        </View>
-
-        {selectedAnswer ? (
-          <View style={selectedIsCorrect ? styles.feedbackGood : styles.feedbackBad}>
-            {selectedIsCorrect ? (
-              <CheckCircle2 color={appTheme.color.green} size={19} strokeWidth={2.35} />
-            ) : (
-              <XCircle color={appTheme.color.danger} size={19} strokeWidth={2.35} />
-            )}
-            <Text style={styles.feedbackText}>
-              {selectedIsCorrect
-                ? "Bonne réponse."
-                : `Presque. La bonne réponse était ${question.correctAnswer}.`}
-            </Text>
-          </View>
-        ) : null}
-
-        {selectedAnswer ? (
-          <Pressable onPress={() => void goNext()} style={styles.primaryButton}>
-            <Text style={styles.primaryButtonText}>Question suivante</Text>
-          </Pressable>
-        ) : null}
-      </AppScreen>
+      <QuestionView
+        activeQuizType={activeQuizType}
+        currentIndex={currentIndex}
+        onChooseAnswer={chooseAnswer}
+        onNext={goNext}
+        question={questions[currentIndex]}
+        selectedAnswer={selectedAnswer}
+        sessionNotice={sessionNotice}
+        totalQuestions={questions.length}
+      />
     );
   }
 
   return (
     <AppScreen contentStyle={styles.hubContent} scroll>
-      <View style={styles.header}>
-        <Text style={styles.kicker}>Entrainement</Text>
-        <Text style={styles.title}>Quiz</Text>
+      <View style={styles.hero}>
+        <LinearGradient
+          colors={["rgba(124,92,255,0.16)", "rgba(30,167,161,0.10)", "rgba(255,255,255,0.34)"]}
+          end={{ x: 1, y: 1 }}
+          start={{ x: 0, y: 0 }}
+          style={styles.heroGradient}
+        >
+          <View style={styles.heroTop}>
+            <View style={styles.heroIcon}>
+              <Brain color={appTheme.color.teal} size={24} strokeWidth={2.35} />
+            </View>
+            <Text style={styles.kicker}>Entraînement</Text>
+          </View>
+          <Text style={styles.title}>Quiz</Text>
+          <Text style={styles.subtitle}>Teste ce que tu sais. Renforce ce que tu as découvert.</Text>
+        </LinearGradient>
       </View>
 
-      <QuizCard
-        Icon={Clock3}
-        color={appTheme.color.violet}
-        description="5 questions, feedback immédiat."
-        meta="Court"
-        onPress={() => startQuiz("general_quizz")}
-        title="Quiz rapide"
-        variant="gradient"
-      />
-
-      <QuizCard
-        Icon={Brain}
-        color={appTheme.color.teal}
-        description="Des questions issues de tes lectures quand c'est possible."
-        meta="Mémoire"
-        onPress={() => startQuiz("memory_challenge")}
-        title="Défi mémoire"
-      />
+      <View style={styles.modeStack}>
+        {quizModes.map((mode) => (
+          <ModeCard key={mode.type} mode={mode} onPress={() => void startQuiz(mode.type)} />
+        ))}
+      </View>
 
       {message ? (
         <View style={styles.notice}>
@@ -289,75 +273,340 @@ export function QuizScreen() {
       ) : null}
 
       {session ? (
-        <>
-          <View style={styles.sectionHeader}>
-            <History color={appTheme.color.ink} size={18} strokeWidth={2.25} />
-            <Text style={styles.sectionTitle}>Historique</Text>
-          </View>
-          <View style={styles.statsGrid}>
-            <ProfileStat
-              Icon={Trophy}
-              color={appTheme.color.yellow}
-              label="Meilleur score"
-              value={quizStats?.bestScore ? `${quizStats.bestScore}%` : "-"}
-            />
-            <ProfileStat
-              Icon={Target}
-              color={appTheme.color.violet}
-              label="Quiz joues"
-              value={quizStats?.sessionsCount ?? 0}
-            />
-            <ProfileStat
-              Icon={RotateCcw}
-              color={appTheme.color.teal}
-              label="Serie"
-              value={summary?.streakCount ?? 0}
-            />
-          </View>
-        </>
+        <TrainingStats quizStats={quizStats} summary={summary} />
       ) : (
         <View style={styles.connectHint}>
           <Text style={styles.connectTitle}>Progression non sauvegardée</Text>
-          <Text style={styles.connectText}>
-            Connecte-toi depuis le profil pour garder tes scores.
-          </Text>
+          <Text style={styles.connectText}>Connecte-toi depuis le profil pour garder tes scores.</Text>
         </View>
       )}
     </AppScreen>
   );
 }
 
+function ModeCard({ mode, onPress }: { mode: QuizMode; onPress: () => void }) {
+  const Icon = mode.Icon;
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      onPress={onPress}
+      style={({ pressed }) => [styles.modePressable, pressed && styles.pressed]}
+    >
+      <LinearGradient
+        colors={mode.gradient}
+        end={{ x: 1, y: 1 }}
+        start={{ x: 0, y: 0 }}
+        style={styles.modeCard}
+      >
+        <View style={styles.modeTop}>
+          <View style={styles.modeIcon}>
+            <Icon color={mode.accent} size={24} strokeWidth={2.35} />
+          </View>
+          <Text style={styles.modeKicker}>{mode.kicker}</Text>
+        </View>
+        <View style={styles.modeCopy}>
+          <Text style={styles.modeTitle}>{mode.title}</Text>
+          <Text style={styles.modeBody}>{mode.body}</Text>
+        </View>
+        <View style={styles.modeBottom}>
+          <Text style={styles.modeDetail}>{mode.detail}</Text>
+          <View style={styles.playButton}>
+            <Play color={appTheme.color.ink} fill={appTheme.color.ink} size={15} strokeWidth={2.4} />
+          </View>
+        </View>
+      </LinearGradient>
+    </Pressable>
+  );
+}
+
+function QuestionView({
+  activeQuizType,
+  currentIndex,
+  onChooseAnswer,
+  onNext,
+  question,
+  selectedAnswer,
+  sessionNotice,
+  totalQuestions,
+}: {
+  activeQuizType: MobileQuizType;
+  currentIndex: number;
+  onChooseAnswer: (answer: string) => Promise<void>;
+  onNext: () => Promise<void>;
+  question: MobileQuizQuestion;
+  selectedAnswer: string | null;
+  sessionNotice: string | null;
+  totalQuestions: number;
+}) {
+  const mode = getMode(activeQuizType);
+  const selectedIsCorrect = selectedAnswer === question.correctAnswer;
+  const progress = (currentIndex + 1) / Math.max(totalQuestions, 1);
+
+  return (
+    <AppScreen contentStyle={styles.questionContent} scroll>
+      <View style={styles.questionHeader}>
+        <View>
+          <Text style={[styles.kicker, { color: mode.accent }]}>{mode.title}</Text>
+          <Text style={styles.questionCounter}>Question {currentIndex + 1}/{totalQuestions}</Text>
+        </View>
+        <View style={[styles.questionBadge, { backgroundColor: withAlpha(mode.accent, 0.14) }]}>
+          <Target color={mode.accent} size={18} strokeWidth={2.35} />
+        </View>
+      </View>
+
+      <View style={styles.progressTrack}>
+        <View style={[styles.progressFill, { backgroundColor: mode.accent, width: `${progress * 100}%` }]} />
+      </View>
+
+      {sessionNotice ? (
+        <View style={styles.softNotice}>
+          <Text style={styles.softNoticeText}>{sessionNotice}</Text>
+        </View>
+      ) : null}
+
+      <LinearGradient
+        colors={[withAlpha(mode.accent, 0.13), "rgba(255,255,255,0.74)"]}
+        end={{ x: 1, y: 1 }}
+        start={{ x: 0, y: 0 }}
+        style={styles.questionCard}
+      >
+        <View style={styles.themePill}>
+          <Sparkles color={mode.accent} size={14} strokeWidth={2.35} />
+          <Text numberOfLines={1} style={styles.themePillText}>{question.theme}</Text>
+        </View>
+        <Text style={styles.questionText}>{question.prompt}</Text>
+      </LinearGradient>
+
+      <View style={styles.answerList}>
+        {question.options.map((option) => {
+          const isSelected = selectedAnswer === option;
+          const isCorrect = Boolean(selectedAnswer) && option === question.correctAnswer;
+          const isWrong = isSelected && !isCorrect;
+
+          return (
+            <Pressable
+              accessibilityRole="button"
+              disabled={Boolean(selectedAnswer)}
+              key={option}
+              onPress={() => void onChooseAnswer(option)}
+              style={({ pressed }) => [
+                styles.answerButton,
+                isCorrect && styles.answerCorrect,
+                isWrong && styles.answerWrong,
+                selectedAnswer && !isCorrect && !isWrong ? styles.answerMuted : null,
+                pressed && !selectedAnswer ? styles.answerPressed : null,
+              ]}
+            >
+              <Text style={[styles.answerText, isCorrect && styles.answerTextStrong]}>{option}</Text>
+            </Pressable>
+          );
+        })}
+      </View>
+
+      {selectedAnswer ? (
+        <FeedbackCard
+          correctAnswer={question.correctAnswer}
+          isCorrect={selectedIsCorrect}
+          theme={question.theme}
+        />
+      ) : null}
+
+      {selectedAnswer ? (
+        <Pressable onPress={() => void onNext()} style={styles.primaryButton}>
+          <Text style={styles.primaryButtonText}>
+            {currentIndex + 1 < totalQuestions ? "Question suivante" : "Voir le résultat"}
+          </Text>
+          <ArrowRight color="#ffffff" size={17} strokeWidth={2.5} />
+        </Pressable>
+      ) : null}
+    </AppScreen>
+  );
+}
+
+function FeedbackCard({
+  correctAnswer,
+  isCorrect,
+  theme,
+}: {
+  correctAnswer: string;
+  isCorrect: boolean;
+  theme: string;
+}) {
+  const Icon = isCorrect ? CheckCircle2 : XCircle;
+  const color = isCorrect ? appTheme.color.green : appTheme.color.danger;
+
+  return (
+    <View
+      style={[
+        styles.feedbackCard,
+        {
+          backgroundColor: withAlpha(color, 0.11),
+          borderColor: withAlpha(color, 0.24),
+        },
+      ]}
+    >
+      <View style={[styles.feedbackIcon, { backgroundColor: withAlpha(color, 0.14) }]}>
+        <Icon color={color} size={21} strokeWidth={2.45} />
+      </View>
+      <View style={styles.feedbackCopy}>
+        <Text style={styles.feedbackTitle}>
+          {isCorrect ? "Bonne réponse." : "Pas tout à fait."}
+        </Text>
+        <Text style={styles.feedbackText}>
+          {isCorrect
+            ? `Tu as bien retenu ce repère ${theme.toLowerCase()}.`
+            : `La bonne réponse était : ${correctAnswer}.`}
+        </Text>
+      </View>
+    </View>
+  );
+}
+
+function ResultView({
+  activeQuizType,
+  onBack,
+  onStartQuiz,
+  result,
+}: {
+  activeQuizType: MobileQuizType;
+  onBack: () => void;
+  onStartQuiz: (type: MobileQuizType) => Promise<void>;
+  result: MobileQuizResult;
+}) {
+  const mode = getMode(activeQuizType);
+  const alternateType: MobileQuizType =
+    activeQuizType === "general_quizz" ? "memory_challenge" : "general_quizz";
+  const alternateMode = getMode(alternateType);
+
+  return (
+    <AppScreen contentStyle={styles.resultContent} scroll>
+      <LinearGradient
+        colors={[withAlpha(mode.accent, 0.18), "rgba(255,255,255,0.72)"]}
+        end={{ x: 1, y: 1 }}
+        start={{ x: 0, y: 0 }}
+        style={styles.resultCard}
+      >
+        <View style={[styles.resultBadge, { backgroundColor: withAlpha(mode.accent, 0.16) }]}>
+          <Trophy color={mode.accent} size={34} strokeWidth={2.25} />
+        </View>
+        <Text style={styles.resultScore}>{result.correctAnswers}/{result.totalQuestions}</Text>
+        <Text style={styles.resultTitle}>{getResultTitle(result)}</Text>
+        <Text style={styles.resultText}>{result.scorePercent}% de réussite</Text>
+      </LinearGradient>
+
+      <View style={styles.resultActions}>
+        <Pressable onPress={() => void onStartQuiz(activeQuizType)} style={styles.primaryButton}>
+          <Text style={styles.primaryButtonText}>Recommencer</Text>
+          <RotateCcw color="#ffffff" size={17} strokeWidth={2.5} />
+        </Pressable>
+        <Pressable onPress={() => void onStartQuiz(alternateType)} style={styles.secondaryButton}>
+          <Text style={styles.secondaryButtonText}>{alternateMode.title}</Text>
+        </Pressable>
+        <Pressable onPress={onBack} style={styles.ghostButton}>
+          <Text style={styles.ghostButtonText}>Retour au quiz</Text>
+        </Pressable>
+      </View>
+    </AppScreen>
+  );
+}
+
+function TrainingStats({
+  quizStats,
+  summary,
+}: {
+  quizStats: QuizStatsSummary | null;
+  summary: ProfileSummary | null;
+}) {
+  const stats = useMemo(
+    () => [
+      {
+        Icon: Trophy,
+        color: appTheme.color.yellow,
+        label: "Meilleur score",
+        value: typeof quizStats?.bestScore === "number" ? `${quizStats.bestScore}%` : "-",
+      },
+      {
+        Icon: BarChart3,
+        color: appTheme.color.violet,
+        label: "Quiz joués",
+        value: quizStats?.sessionsCount ?? 0,
+      },
+      {
+        Icon: Flame,
+        color: appTheme.color.teal,
+        label: "Série",
+        value: summary?.streakCount ?? 0,
+      },
+    ],
+    [quizStats, summary],
+  );
+
+  return (
+    <View style={styles.trainingSection}>
+      <Text style={styles.sectionTitle}>Ton entraînement</Text>
+      <View style={styles.trainingStats}>
+        {stats.map(({ Icon, color, label, value }) => (
+          <View key={label} style={styles.statPill}>
+            <Icon color={color} size={16} strokeWidth={2.35} />
+            <Text style={styles.statValue}>{value}</Text>
+            <Text numberOfLines={1} style={styles.statLabel}>{label}</Text>
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+}
+
+function getResultTitle(result: MobileQuizResult) {
+  if (result.scorePercent >= 100) {
+    return "Mémoire affûtée.";
+  }
+
+  if (result.scorePercent >= 60) {
+    return "Bonne base, continue.";
+  }
+
+  return "Rien de grave, c'est comme ça qu'on apprend.";
+}
+
 const styles = StyleSheet.create({
   answerButton: {
     backgroundColor: appTheme.color.card,
     borderColor: appTheme.color.border,
-    borderRadius: appTheme.radius.control,
+    borderRadius: 18,
     borderWidth: 1,
     justifyContent: "center",
-    minHeight: 54,
-    paddingHorizontal: 14,
+    minHeight: 58,
+    paddingHorizontal: 15,
+    paddingVertical: 12,
   },
   answerCorrect: {
-    backgroundColor: withAlpha(appTheme.color.green, 0.12),
-    borderColor: withAlpha(appTheme.color.green, 0.42),
+    backgroundColor: withAlpha(appTheme.color.green, 0.13),
+    borderColor: withAlpha(appTheme.color.green, 0.48),
   },
   answerList: {
-    gap: 9,
-    marginTop: 18,
+    gap: 10,
+  },
+  answerMuted: {
+    opacity: 0.58,
+  },
+  answerPressed: {
+    opacity: 0.86,
+    transform: [{ scale: 0.99 }],
   },
   answerText: {
     color: appTheme.color.ink,
     fontSize: 15,
     fontWeight: appTheme.weight.semibold,
-    lineHeight: 20,
+    lineHeight: 21,
+  },
+  answerTextStrong: {
+    fontWeight: appTheme.weight.bold,
   },
   answerWrong: {
     backgroundColor: withAlpha(appTheme.color.danger, 0.11),
-    borderColor: withAlpha(appTheme.color.danger, 0.38),
-  },
-  centered: {
-    alignItems: "center",
-    justifyContent: "center",
+    borderColor: withAlpha(appTheme.color.danger, 0.42),
   },
   connectHint: {
     backgroundColor: withAlpha(appTheme.color.teal, 0.09),
@@ -378,46 +627,139 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: appTheme.weight.bold,
   },
-  feedbackBad: {
-    alignItems: "center",
-    backgroundColor: withAlpha(appTheme.color.danger, 0.1),
-    borderColor: withAlpha(appTheme.color.danger, 0.18),
-    borderRadius: appTheme.radius.control,
+  feedbackCard: {
+    alignItems: "flex-start",
+    borderRadius: appTheme.radius.card,
     borderWidth: 1,
     flexDirection: "row",
-    gap: 8,
-    padding: 13,
+    gap: 12,
+    padding: 14,
   },
-  feedbackGood: {
+  feedbackCopy: {
+    flex: 1,
+    gap: 4,
+  },
+  feedbackIcon: {
     alignItems: "center",
-    backgroundColor: withAlpha(appTheme.color.green, 0.1),
-    borderColor: withAlpha(appTheme.color.green, 0.2),
-    borderRadius: appTheme.radius.control,
-    borderWidth: 1,
-    flexDirection: "row",
-    gap: 8,
-    padding: 13,
+    borderRadius: appTheme.radius.pill,
+    height: 38,
+    justifyContent: "center",
+    width: 38,
   },
   feedbackText: {
-    color: appTheme.color.ink,
-    flex: 1,
+    color: appTheme.color.muted,
     fontSize: 14,
-    fontWeight: appTheme.weight.semibold,
+    fontWeight: appTheme.weight.medium,
     lineHeight: 20,
   },
-  header: {
-    gap: 3,
-    paddingBottom: 8,
-    paddingTop: 8,
+  feedbackTitle: {
+    color: appTheme.color.ink,
+    fontSize: 16,
+    fontWeight: appTheme.weight.bold,
+  },
+  ghostButton: {
+    alignItems: "center",
+    justifyContent: "center",
+    minHeight: 48,
+  },
+  ghostButtonText: {
+    color: appTheme.color.muted,
+    fontSize: 14,
+    fontWeight: appTheme.weight.bold,
+  },
+  hero: {
+    borderRadius: 26,
+    overflow: "hidden",
+  },
+  heroGradient: {
+    borderColor: "rgba(255,255,255,0.68)",
+    borderRadius: 26,
+    borderWidth: 1,
+    gap: 8,
+    padding: 18,
+  },
+  heroIcon: {
+    alignItems: "center",
+    backgroundColor: "rgba(255,255,255,0.62)",
+    borderRadius: 18,
+    height: 46,
+    justifyContent: "center",
+    width: 46,
+  },
+  heroTop: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 10,
   },
   hubContent: {
-    gap: 18,
+    gap: 17,
+    paddingTop: 8,
   },
   kicker: {
     color: appTheme.color.teal,
     fontSize: 12,
     fontWeight: appTheme.weight.bold,
+    letterSpacing: 0,
     textTransform: "uppercase",
+  },
+  modeBody: {
+    color: "rgba(255,255,255,0.84)",
+    fontSize: 14,
+    fontWeight: appTheme.weight.medium,
+    lineHeight: 21,
+  },
+  modeBottom: {
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  modeCard: {
+    borderRadius: 24,
+    gap: 16,
+    minHeight: 166,
+    overflow: "hidden",
+    padding: 17,
+    ...appTheme.shadow.card,
+  },
+  modeCopy: {
+    gap: 6,
+  },
+  modeDetail: {
+    color: "rgba(255,255,255,0.74)",
+    fontSize: 12,
+    fontWeight: appTheme.weight.bold,
+    textTransform: "uppercase",
+  },
+  modeIcon: {
+    alignItems: "center",
+    backgroundColor: "rgba(255,255,255,0.9)",
+    borderRadius: 18,
+    height: 48,
+    justifyContent: "center",
+    width: 48,
+  },
+  modeKicker: {
+    color: "rgba(255,255,255,0.74)",
+    fontSize: 12,
+    fontWeight: appTheme.weight.bold,
+    textTransform: "uppercase",
+  },
+  modePressable: {
+    borderRadius: 24,
+  },
+  modeStack: {
+    gap: 12,
+  },
+  modeTitle: {
+    color: "#ffffff",
+    fontSize: 24,
+    fontWeight: appTheme.weight.bold,
+    lineHeight: 29,
+  },
+  modeTop: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 11,
   },
   notice: {
     backgroundColor: withAlpha(appTheme.color.yellow, 0.16),
@@ -430,13 +772,28 @@ const styles = StyleSheet.create({
     color: appTheme.color.ink,
     fontSize: 14,
     fontWeight: appTheme.weight.semibold,
+    lineHeight: 20,
+  },
+  playButton: {
+    alignItems: "center",
+    backgroundColor: "rgba(255,255,255,0.88)",
+    borderRadius: appTheme.radius.pill,
+    height: 42,
+    justifyContent: "center",
+    width: 42,
+  },
+  pressed: {
+    opacity: 0.9,
+    transform: [{ scale: 0.988 }],
   },
   primaryButton: {
     alignItems: "center",
     backgroundColor: appTheme.color.ink,
     borderRadius: appTheme.radius.control,
+    flexDirection: "row",
+    gap: 8,
     justifyContent: "center",
-    minHeight: 52,
+    minHeight: 54,
     paddingHorizontal: 18,
   },
   primaryButtonText: {
@@ -444,62 +801,92 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: appTheme.weight.bold,
   },
+  progressFill: {
+    borderRadius: appTheme.radius.pill,
+    height: "100%",
+  },
+  progressTrack: {
+    backgroundColor: withAlpha(appTheme.color.ink, 0.08),
+    borderRadius: appTheme.radius.pill,
+    height: 7,
+    overflow: "hidden",
+  },
+  questionBadge: {
+    alignItems: "center",
+    borderRadius: appTheme.radius.pill,
+    height: 42,
+    justifyContent: "center",
+    width: 42,
+  },
   questionCard: {
-    backgroundColor: appTheme.color.cardSoft,
-    borderColor: appTheme.color.border,
-    borderRadius: appTheme.radius.card,
+    borderColor: "rgba(255,255,255,0.68)",
+    borderRadius: 26,
     borderWidth: 1,
-    padding: 16,
-    ...appTheme.shadow.card,
+    gap: 15,
+    padding: 17,
+  },
+  questionContent: {
+    gap: 15,
+    paddingTop: 8,
   },
   questionCounter: {
     color: appTheme.color.ink,
     fontSize: 18,
     fontWeight: appTheme.weight.bold,
+    marginTop: 3,
+  },
+  questionHeader: {
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "space-between",
   },
   questionText: {
     color: appTheme.color.ink,
     fontSize: 22,
     fontWeight: appTheme.weight.bold,
-    lineHeight: 28,
-    marginTop: 16,
-  },
-  questionTop: {
-    alignItems: "center",
-    flexDirection: "row",
-    justifyContent: "space-between",
-    paddingTop: 8,
+    lineHeight: 29,
   },
   resultActions: {
     gap: 10,
-    marginTop: 22,
-    width: "100%",
   },
   resultBadge: {
     alignItems: "center",
-    backgroundColor: withAlpha(appTheme.color.yellow, 0.18),
     borderRadius: appTheme.radius.pill,
     height: 76,
     justifyContent: "center",
     width: 76,
   },
+  resultCard: {
+    alignItems: "center",
+    borderColor: "rgba(255,255,255,0.68)",
+    borderRadius: 28,
+    borderWidth: 1,
+    gap: 8,
+    padding: 24,
+  },
+  resultContent: {
+    gap: 18,
+    justifyContent: "center",
+    paddingTop: 18,
+  },
   resultScore: {
     color: appTheme.color.ink,
-    fontSize: 56,
+    fontSize: 50,
     fontWeight: appTheme.weight.bold,
-    lineHeight: 62,
-    marginTop: 18,
+    lineHeight: 56,
+    marginTop: 6,
   },
   resultText: {
     color: appTheme.color.muted,
     fontSize: 15,
     fontWeight: appTheme.weight.medium,
-    marginTop: 6,
   },
   resultTitle: {
     color: appTheme.color.ink,
-    fontSize: 22,
+    fontSize: 21,
     fontWeight: appTheme.weight.bold,
+    lineHeight: 27,
+    textAlign: "center",
   },
   secondaryButton: {
     alignItems: "center",
@@ -508,37 +895,67 @@ const styles = StyleSheet.create({
     borderRadius: appTheme.radius.control,
     borderWidth: 1,
     justifyContent: "center",
-    minHeight: 50,
+    minHeight: 52,
   },
   secondaryButtonText: {
     color: appTheme.color.ink,
     fontSize: 15,
     fontWeight: appTheme.weight.semibold,
   },
-  sectionHeader: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: 8,
-    marginTop: 8,
-  },
   sectionTitle: {
     color: appTheme.color.ink,
     fontSize: 17,
     fontWeight: appTheme.weight.bold,
   },
-  statsGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 10,
+  softNotice: {
+    backgroundColor: withAlpha(appTheme.color.teal, 0.09),
+    borderColor: withAlpha(appTheme.color.teal, 0.18),
+    borderRadius: appTheme.radius.control,
+    borderWidth: 1,
+    padding: 12,
+  },
+  softNoticeText: {
+    color: appTheme.color.ink,
+    fontSize: 13,
+    fontWeight: appTheme.weight.medium,
+    lineHeight: 19,
+  },
+  statLabel: {
+    color: appTheme.color.muted,
+    fontSize: 10.5,
+    fontWeight: appTheme.weight.semibold,
+  },
+  statPill: {
+    alignItems: "center",
+    backgroundColor: "rgba(255,255,255,0.58)",
+    borderColor: appTheme.color.border,
+    borderRadius: 18,
+    borderWidth: 1,
+    flex: 1,
+    gap: 3,
+    minHeight: 82,
+    minWidth: 0,
+    padding: 10,
+  },
+  statValue: {
+    color: appTheme.color.ink,
+    fontSize: 18,
+    fontWeight: appTheme.weight.bold,
+  },
+  subtitle: {
+    color: appTheme.color.muted,
+    fontSize: 14,
+    fontWeight: appTheme.weight.medium,
+    lineHeight: 21,
   },
   themePill: {
     alignItems: "center",
     alignSelf: "flex-start",
-    backgroundColor: withAlpha(appTheme.color.violet, 0.11),
+    backgroundColor: "rgba(255,255,255,0.58)",
     borderRadius: appTheme.radius.pill,
     flexDirection: "row",
     gap: 7,
-    maxWidth: "80%",
+    maxWidth: "86%",
     paddingHorizontal: 10,
     paddingVertical: 7,
   },
@@ -549,8 +966,16 @@ const styles = StyleSheet.create({
   },
   title: {
     color: appTheme.color.ink,
-    fontSize: 24,
+    fontSize: 30,
     fontWeight: appTheme.weight.bold,
-    lineHeight: 29,
+    lineHeight: 36,
+  },
+  trainingSection: {
+    gap: 10,
+    paddingTop: 2,
+  },
+  trainingStats: {
+    flexDirection: "row",
+    gap: 9,
   },
 });

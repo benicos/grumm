@@ -48,29 +48,29 @@ export default function QuizHubPage() {
     <div className="relative min-h-screen overflow-x-hidden bg-[#07111f] text-white">
       <HeroBackground />
       <Navbar />
-      <main className="relative z-10 mx-auto flex min-h-[calc(100vh-92px)] w-full max-w-[1120px] flex-col justify-center px-5 py-12 sm:px-6 lg:px-8">
-        <section className="mx-auto grid w-full max-w-5xl gap-6 rounded-[34px] border border-white/10 bg-[radial-gradient(circle_at_82%_12%,rgba(106,227,192,0.18),transparent_30%),radial-gradient(circle_at_14%_82%,rgba(167,139,250,0.18),transparent_32%),linear-gradient(145deg,rgba(255,255,255,0.07),rgba(255,255,255,0.024))] p-6 shadow-[0_32px_110px_rgba(0,0,0,0.26)] backdrop-blur-2xl md:grid-cols-[minmax(0,1fr)_220px] md:items-center">
+      <main className="relative z-10 mx-auto flex min-h-[calc(100vh-92px)] w-full max-w-[1120px] flex-col px-5 pb-12 pt-3 sm:px-6 sm:pt-7 lg:px-8">
+        <section className="mx-auto grid w-full max-w-5xl gap-4 rounded-[24px] border border-white/10 bg-[radial-gradient(circle_at_88%_8%,rgba(106,227,192,0.12),transparent_28%),linear-gradient(145deg,rgba(255,255,255,0.055),rgba(255,255,255,0.02))] p-4 shadow-[0_20px_76px_rgba(0,0,0,0.2)] backdrop-blur-2xl sm:p-5 md:grid-cols-[minmax(0,1fr)_136px] md:items-center">
           <div>
             <p className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-[0.22em] text-[#6ae3c0]">
               <Trophy className="h-4 w-4" aria-hidden="true" />
               Grumm Quiz
             </p>
-            <h1 className="mt-4 max-w-2xl text-[clamp(2.35rem,7vw,4.75rem)] font-black leading-[0.94] tracking-[-0.07em] text-white">
+            <h1 className="mt-3 max-w-2xl text-[clamp(1.85rem,8vw,3.25rem)] font-black leading-[0.98] tracking-[-0.055em] text-white">
               Entraîne ta mémoire.
             </h1>
-            <p className="mt-4 max-w-xl text-sm font-semibold leading-7 text-white/62 sm:text-base">
+            <p className="mt-3 max-w-2xl text-sm font-semibold leading-6 text-white/62 sm:text-base">
               Deux formats courts pour retenir ce que tu découvres et faire progresser ton avatar Grumm.
             </p>
           </div>
-          <div className="relative mx-auto grid h-44 w-44 place-items-center rounded-[44px] border border-white/10 bg-black/18 text-[#6ae3c0] shadow-[0_24px_90px_rgba(0,0,0,0.28)]">
-            <div className="absolute inset-4 rounded-[34px] bg-[#6ae3c0]/10 blur-xl" />
-            <Brain className="relative h-20 w-20" aria-hidden="true" />
-            <Sparkles className="absolute right-8 top-7 h-5 w-5 text-[#ffd166]" aria-hidden="true" />
-            <Zap className="absolute bottom-8 left-8 h-5 w-5 text-[#a78bfa]" aria-hidden="true" />
+          <div className="relative mx-auto hidden h-32 w-32 place-items-center rounded-[32px] border border-white/10 bg-black/18 text-[#6ae3c0] shadow-[0_20px_72px_rgba(0,0,0,0.22)] md:grid">
+            <div className="absolute inset-4 rounded-[24px] bg-[#6ae3c0]/10 blur-xl" />
+            <Brain className="relative h-14 w-14" aria-hidden="true" />
+            <Sparkles className="absolute right-6 top-5 h-4 w-4 text-[#ffd166]" aria-hidden="true" />
+            <Zap className="absolute bottom-6 left-6 h-4 w-4 text-[#a78bfa]" aria-hidden="true" />
           </div>
         </section>
 
-        <section className="mx-auto mt-10 grid w-full max-w-5xl gap-4">
+        <section className="mx-auto mt-5 grid w-full max-w-5xl gap-4 sm:mt-7">
           {quizEntries.map(({ Icon, accent, cta, description, href, kicker, title, tone }) => (
             <Link
               key={href}
